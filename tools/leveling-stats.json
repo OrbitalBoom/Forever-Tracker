@@ -1,0 +1,230 @@
+{
+  "races": {
+    "Undead": {
+      "faction": "Horde",
+      "steps": 1650,
+      "quests": 1595,
+      "newZoneQuests": {
+        "Riverglades": 94,
+        "Shen'dralas": 36,
+        "Mount Hyjal": 132
+      },
+      "naiveTravel": 35855.1,
+      "optimizedTravel": 9137.4,
+      "travelReducedPct": 74.5
+    },
+    "Orc": {
+      "faction": "Horde",
+      "steps": 1649,
+      "quests": 1594,
+      "newZoneQuests": {
+        "Riverglades": 94,
+        "Shen'dralas": 36,
+        "Mount Hyjal": 132
+      },
+      "naiveTravel": 36214.1,
+      "optimizedTravel": 9305.1,
+      "travelReducedPct": 74.3
+    },
+    "Troll": {
+      "faction": "Horde",
+      "steps": 1649,
+      "quests": 1594,
+      "newZoneQuests": {
+        "Riverglades": 94,
+        "Shen'dralas": 36,
+        "Mount Hyjal": 132
+      },
+      "naiveTravel": 36214.1,
+      "optimizedTravel": 9305.1,
+      "travelReducedPct": 74.3
+    },
+    "Tauren": {
+      "faction": "Horde",
+      "steps": 1636,
+      "quests": 1581,
+      "newZoneQuests": {
+        "Riverglades": 94,
+        "Shen'dralas": 36,
+        "Mount Hyjal": 132
+      },
+      "naiveTravel": 35773.3,
+      "optimizedTravel": 9447.8,
+      "travelReducedPct": 73.6
+    },
+    "Windshaper Skyborne": {
+      "faction": "Horde",
+      "steps": 1686,
+      "quests": 1631,
+      "newZoneQuests": {
+        "Zephras Isle": 107,
+        "Riverglades": 94,
+        "Shen'dralas": 36,
+        "Mount Hyjal": 132
+      },
+      "naiveTravel": 36340.6,
+      "optimizedTravel": 9376.0,
+      "travelReducedPct": 74.2
+    },
+    "Human": {
+      "faction": "Alliance",
+      "steps": 1811,
+      "quests": 1750,
+      "newZoneQuests": {
+        "Riverglades": 108,
+        "Shen'dralas": 38,
+        "Mount Hyjal": 139
+      },
+      "naiveTravel": 42819.2,
+      "optimizedTravel": 11564.6,
+      "travelReducedPct": 73.0
+    },
+    "Dwarf": {
+      "faction": "Alliance",
+      "steps": 1793,
+      "quests": 1732,
+      "newZoneQuests": {
+        "Riverglades": 108,
+        "Shen'dralas": 38,
+        "Mount Hyjal": 139
+      },
+      "naiveTravel": 42676.9,
+      "optimizedTravel": 11536.9,
+      "travelReducedPct": 73.0
+    },
+    "Gnome": {
+      "faction": "Alliance",
+      "steps": 1794,
+      "quests": 1733,
+      "newZoneQuests": {
+        "Riverglades": 108,
+        "Shen'dralas": 38,
+        "Mount Hyjal": 139
+      },
+      "naiveTravel": 42677.2,
+      "optimizedTravel": 11536.9,
+      "travelReducedPct": 73.0
+    },
+    "Night Elf": {
+      "faction": "Alliance",
+      "steps": 1789,
+      "quests": 1728,
+      "newZoneQuests": {
+        "Riverglades": 108,
+        "Shen'dralas": 38,
+        "Mount Hyjal": 139
+      },
+      "naiveTravel": 42494.2,
+      "optimizedTravel": 11510.3,
+      "travelReducedPct": 72.9
+    },
+    "High Order Skyborne": {
+      "faction": "Alliance",
+      "steps": 1831,
+      "quests": 1770,
+      "newZoneQuests": {
+        "Zephras Isle": 105,
+        "Riverglades": 108,
+        "Shen'dralas": 38,
+        "Mount Hyjal": 139
+      },
+      "naiveTravel": 42785.8,
+      "optimizedTravel": 11747.7,
+      "travelReducedPct": 72.5
+    }
+  },
+  "optimizer": {
+    "Undead": {
+      "naive": 35855.1,
+      "optimized": 9137.4,
+      "reducedPct": 74.5,
+      "unit": "sum of zone-map percentage points between consecutive start (or turn-in) coordinates; only steps with coordinates"
+    },
+    "Orc": {
+      "naive": 36214.1,
+      "optimized": 9305.1,
+      "reducedPct": 74.3,
+      "unit": "sum of zone-map percentage points between consecutive start (or turn-in) coordinates; only steps with coordinates"
+    },
+    "Troll": {
+      "naive": 36214.1,
+      "optimized": 9305.1,
+      "reducedPct": 74.3,
+      "unit": "sum of zone-map percentage points between consecutive start (or turn-in) coordinates; only steps with coordinates"
+    },
+    "Tauren": {
+      "naive": 35773.3,
+      "optimized": 9447.8,
+      "reducedPct": 73.6,
+      "unit": "sum of zone-map percentage points between consecutive start (or turn-in) coordinates; only steps with coordinates"
+    },
+    "Windshaper Skyborne": {
+      "naive": 36340.6,
+      "optimized": 9376.0,
+      "reducedPct": 74.2,
+      "unit": "sum of zone-map percentage points between consecutive start (or turn-in) coordinates; only steps with coordinates"
+    },
+    "Human": {
+      "naive": 42819.2,
+      "optimized": 11564.6,
+      "reducedPct": 73.0,
+      "unit": "sum of zone-map percentage points between consecutive start (or turn-in) coordinates; only steps with coordinates"
+    },
+    "Dwarf": {
+      "naive": 42676.9,
+      "optimized": 11536.9,
+      "reducedPct": 73.0,
+      "unit": "sum of zone-map percentage points between consecutive start (or turn-in) coordinates; only steps with coordinates"
+    },
+    "Gnome": {
+      "naive": 42677.2,
+      "optimized": 11536.9,
+      "reducedPct": 73.0,
+      "unit": "sum of zone-map percentage points between consecutive start (or turn-in) coordinates; only steps with coordinates"
+    },
+    "Night Elf": {
+      "naive": 42494.2,
+      "optimized": 11510.3,
+      "reducedPct": 72.9,
+      "unit": "sum of zone-map percentage points between consecutive start (or turn-in) coordinates; only steps with coordinates"
+    },
+    "High Order Skyborne": {
+      "naive": 42785.8,
+      "optimized": 11747.7,
+      "reducedPct": 72.5,
+      "unit": "sum of zone-map percentage points between consecutive start (or turn-in) coordinates; only steps with coordinates"
+    }
+  },
+  "newZones": {
+    "Riverglades": {
+      "questsInCatalog": 171,
+      "withStartCoords": 165
+    },
+    "Shen'dralas": {
+      "questsInCatalog": 39,
+      "withStartCoords": 34
+    },
+    "Zephras Isle": {
+      "questsInCatalog": 133,
+      "withStartCoords": 123
+    },
+    "Mount Hyjal": {
+      "questsInCatalog": 157,
+      "withStartCoords": 142
+    }
+  },
+  "guide": {
+    "userGuide": "The attached file could not be decoded (custom encrypted envelope 213|\u2026|40000; Read tool returned file not found). Zone order instead follows ForeverDB's published leveling guide (updated 2026-11-05, checked on build 1.60.1.70938), with Shen'dralas (38\u201345) and Mount Hyjal (55\u201360) inserted from official/Zephras zone data because the guide's per-level 30\u201360 estimate table did not yet list them.",
+    "userGuidePath": "/home/box/agent-data/agents/cbf94620-2339-4daa-8185-8b4c57f2cba8/attachments/7300d0c87fa617c7f0ffbf82568a886268feab6507393d463b83a8ab5217bbb1.txt",
+    "userGuideBytes": 1323474,
+    "zoneOrderSource": "https://foreverdb.net/guide/leveling"
+  },
+  "catalogSize": 5137,
+  "questsEmbedded": 2922,
+  "coordSources": {
+    "forever": "Start/end coordinates labeled 'seen in WoW Forever' in the ForeverDB snapshot of 2026-11-02 (https://foreverdb.net).",
+    "classic": "Start/end coordinates labeled Classic data (CMaNGOS) in the same ForeverDB snapshot.",
+    "zephras-list": "Quest-giver coordinates from the Zephras public quest list (https://zephras.com/forever/enUS/quest/), already downloaded 2026-11-17 during research; client build 1.60.1.70938. Not a new scrape, and not under Zephras's CC BY 4.0 talent-file license. Used only for this personal local copy. Game names \u00a9 Blizzard.",
+    "missing": "No coordinate in the local sources; nothing was invented."
+  }
+}

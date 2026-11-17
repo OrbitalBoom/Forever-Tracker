@@ -1,0 +1,1962 @@
+/* Forever Tracker — runs from file:// with no build step. */
+(function () {
+  "use strict";
+
+  var DATA = window.WOW_DATA;
+  var ITEMS = window.WOW_ITEMS || [];
+  var TALENT_META = window.WOW_TALENT_META || {};
+  var STORAGE_KEY = "wowForever.tracker.v1";
+  var LEVEL_WINDOW = 5;
+
+  var ARMOR = ["cloth", "leather", "mail", "plate"];
+  var WEAPONS = ["sword","axe","mace","dagger","staff","polearm","fist","bow","gun","crossbow","wand","thrown","shield","held","idol","totem","libram"];
+  var RELICS = ["idol","totem","libram"];
+
+  var state = defaultState();
+  var activeTab = "character";
+  var goalFilter = "all";
+  var talentFocusTree = 0;
+
+
+  function emptyTalentState(cls) {
+    return {
+      class: cls || "Warrior",
+      mode: "forever",
+      activeSpec: "primary",
+      foreverPrimary: { trees: {} },
+      foreverSecondary: { trees: {} },
+      classic: { trees: {} }
+    };
+  }
+
+  function normalizeTalents() {
+    var t = state.talents;
+    if (!t) { state.talents = emptyTalentState(ch().class); return; }
+    // Migrate the original { class, trees } shape
+    if (t.trees && !t.foreverPrimary) {
+      state.talents = {
+        class: t.class || ch().class,
+        mode: t.mode || "forever",
+        activeSpec: t.activeSpec || "primary",
+        foreverPrimary: { trees: t.trees || {} },
+        foreverSecondary: { trees: {} },
+        classic: { trees: {} }
+      };
+      return;
+    }
+    if (!t.foreverPrimary) t.foreverPrimary = { trees: {} };
+    if (!t.foreverPrimary.trees) t.foreverPrimary.trees = {};
+    if (!t.foreverSecondary) t.foreverSecondary = { trees: {} };
+    if (!t.foreverSecondary.trees) t.foreverSecondary.trees = {};
+    if (!t.classic) t.classic = { trees: {} };
+    if (!t.classic.trees) t.classic.trees = {};
+    if (!t.mode) t.mode = "forever";
+    if (!t.activeSpec) t.activeSpec = "primary";
+  }
+
+  function talentMode() {
+    normalizeTalents();
+    return state.talents.mode === "classic" ? "classic" : "forever";
+  }
+
+  function talentPack() {
+    return talentMode() === "classic"
+      ? (window.WOW_TALENTS_CLASSIC || [])
+      : (window.WOW_TALENTS_FOREVER || window.WOW_TALENTS || []);
+  }
+
+  function talentBuilds() {
+    return talentMode() === "classic"
+      ? (window.WOW_TALENT_BUILDS_CLASSIC || [])
+      : (window.WOW_TALENT_BUILDS_FOREVER || window.WOW_TALENT_BUILDS || []);
+  }
+
+  function talentStore() {
+    normalizeTalents();
+    if (talentMode() === "classic") return state.talents.classic;
+    return state.talents.activeSpec === "secondary" ? state.talents.foreverSecondary : state.talents.foreverPrimary;
+  }
+
+  function dualSpecUnlocked() {
+    return (ch().level || 1) >= 40 && talentMode() === "forever";
+  }
+
+  /* ---------- state ---------- */
+  function defaultState() {
+    return {
+      character: { name: "", race: "Undead", class: "Warrior", spec: "Arms", level: 1 },
+      goals: {},
+      customGoals: [],
+      goldLog: [],
+      professions: [],
+      crafting: [],
+      journal: [],
+      notes: [],
+      equipment: {},
+      customItems: [],
+      talents: emptyTalentState("Warrior"),
+      savedTalentBuilds: [],
+      leveling: defaultLeveling()
+    };
+  }
+
+  function uid(prefix) {
+    return (prefix || "id") + "_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 8);
+  }
+
+  function todayISO() {
+    var d = new Date();
+    var m = String(d.getMonth() + 1).padStart(2, "0");
+    var day = String(d.getDate()).padStart(2, "0");
+    return d.getFullYear() + "-" + m + "-" + day;
+  }
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      var parsed = JSON.parse(raw);
+      var base = defaultState();
+      Object.keys(base).forEach(function (k) {
+        if (parsed[k] != null) base[k] = parsed[k];
+      });
+      if (!base.character) base.character = defaultState().character;
+      state = base;
+      normalizeTalents();
+      normalizeLeveling();
+    } catch (e) {
+      console.warn("Could not load saved data", e);
+    }
+  }
+
+  function save() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {
+      toast("Could not save to localStorage: " + (e.message || e));
+    }
+  }
+
+  /* ---------- UI helpers ---------- */
+  function $(sel, root) { return (root || document).querySelector(sel); }
+  function $all(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
+  function el(tag, attrs, kids) {
+    var n = document.createElement(tag);
+    if (attrs) {
+      Object.keys(attrs).forEach(function (k) {
+        if (k === "class") n.className = attrs[k];
+        else if (k === "html") n.innerHTML = attrs[k];
+        else if (k === "text") n.textContent = attrs[k];
+        else if (k.indexOf("on") === 0 && typeof attrs[k] === "function") n.addEventListener(k.slice(2).toLowerCase(), attrs[k]);
+        else if (attrs[k] != null && attrs[k] !== false) n.setAttribute(k, attrs[k] === true ? "" : attrs[k]);
+      });
+    }
+    (kids || []).forEach(function (c) { if (c) n.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
+    return n;
+  }
+  function escapeHtml(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+  function toast(msg) {
+    var t = $("#toast");
+    t.textContent = msg;
+    t.hidden = false;
+    clearTimeout(toast._id);
+    toast._id = setTimeout(function () { t.hidden = true; }, 2800);
+  }
+  function openModal(html) {
+    var back = $("#modalBack");
+    $("#modal").innerHTML = html;
+    back.hidden = false;
+    var close = function (e) {
+      if (e.target === back || (e.target && e.target.getAttribute && e.target.getAttribute("data-close") != null)) {
+        closeModal();
+      }
+    };
+    back.onclick = close;
+  }
+  function closeModal() {
+    $("#modalBack").hidden = true;
+    $("#modal").innerHTML = "";
+  }
+
+  function qualityClass(q) { return "q-" + (q || "common"); }
+
+  /* ---------- gold ---------- */
+  function toCopper(g, s, c) {
+    return (Number(g) || 0) * 10000 + (Number(s) || 0) * 100 + (Number(c) || 0);
+  }
+  function fromCopper(total) {
+    var sign = total < 0 ? -1 : 1;
+    total = Math.abs(Math.round(total));
+    var g = Math.floor(total / 10000);
+    var s = Math.floor((total % 10000) / 100);
+    var c = total % 100;
+    return { g: g * sign, s: s, c: c, sign: sign };
+  }
+  function formatGold(copper) {
+    var p = fromCopper(copper);
+    var sign = p.g < 0 || (p.g === 0 && copper < 0) ? "-" : "";
+    var g = Math.abs(p.g);
+    return sign +
+      '<span class="money-g">' + g + "g</span> " +
+      '<span class="money-s">' + p.s + "s</span> " +
+      '<span class="money-c">' + p.c + "c</span>";
+  }
+  function goldTotal() {
+    return state.goldLog.reduce(function (sum, e) { return sum + (e.copper || 0); }, 0);
+  }
+
+  /* ---------- character helpers ---------- */
+  function ch() { return state.character || defaultState().character; }
+  function classColor(name) { return (DATA.classColors && DATA.classColors[name]) || "var(--gold)"; }
+
+  function fillSelect(sel, values, current) {
+    sel.innerHTML = "";
+    values.forEach(function (v) {
+      var name = typeof v === "string" ? v : v.name;
+      var opt = el("option", { value: name, text: name });
+      if (name === current) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  }
+
+  /* ---------- tabs ---------- */
+  function showTab(name) {
+    activeTab = name;
+    $all(".tabs [data-tab]").forEach(function (b) {
+      b.setAttribute("aria-selected", b.getAttribute("data-tab") === name ? "true" : "false");
+    });
+    $all(".panel").forEach(function (p) {
+      p.classList.toggle("active", p.id === "tab-" + name);
+    });
+    renderTab(name);
+    try { history.replaceState(null, "", "#"+name); } catch (e) {}
+  }
+
+  function renderTab(name) {
+    renderChrome();
+    if (name === "character") renderCharacter();
+    else if (name === "goals") renderGoals();
+    else if (name === "gold") renderGold();
+    else if (name === "notes") renderNotes();
+    else if (name === "items") renderItems();
+    else if (name === "talents") renderTalents();
+    else if (name === "leveling") renderLeveling();
+  }
+
+  function renderChrome() {
+    var c = ch();
+    var chip = $("#charChip");
+    if (c.name) {
+      chip.innerHTML = "<strong style=\"color:" + classColor(c.class) + "\">" + escapeHtml(c.name) +
+        "</strong> · " + escapeHtml(c.race) + " " + escapeHtml(c.class) +
+        " (" + escapeHtml(c.spec) + ") · " + c.level;
+    } else {
+      chip.textContent = "Set up your character";
+    }
+  }
+
+  /* ---------- character tab ---------- */
+  function renderCharacter() {
+    var c = ch();
+    var form = $("#characterForm");
+    form.name.value = c.name || "";
+    fillSelect(form.race, DATA.races, c.race);
+    fillSelect(form.class, DATA.classes, c.class);
+    var specs = (DATA.specs[c.class] || []);
+    if (specs.indexOf(c.spec) === -1) c.spec = specs[0] || "";
+    fillSelect(form.spec, specs, c.spec);
+    form.level.value = c.level || 1;
+    var races = DATA.classRaces[c.class] || [];
+    var hint = $("#classHint");
+    hint.textContent = c.class + " can be: " + races.join(", ") + ". Forever may add races — pick what you play.";
+    if (c.race && c.race.indexOf("Skyborne") !== -1) {
+      hint.textContent += " Skyborne class lists are not fully sourced, so every class stays selectable.";
+    } else if (c.race && races.length && races.indexOf(c.race) === -1) {
+      hint.textContent += " Note: " + c.race + " is not a vanilla option for " + c.class + ", but it's saved anyway.";
+    }
+  }
+
+  function onCharacterChange() {
+    var form = $("#characterForm");
+    var prevClass = state.character.class;
+    state.character = {
+      name: form.name.value.trim(),
+      race: form.race.value,
+      class: form.class.value,
+      spec: form.spec.value,
+      level: Math.max(1, Math.min(60, parseInt(form.level.value, 10) || 1))
+    };
+    if (state.character.class !== prevClass) {
+      var specs = DATA.specs[state.character.class] || [];
+      state.character.spec = specs[0] || "";
+      if (state.talents && state.talents.class && state.talents.class !== state.character.class) {
+        var mode = talentMode();
+        var spec = (state.talents && state.talents.activeSpec) || "primary";
+        state.talents = emptyTalentState(state.character.class);
+        state.talents.mode = mode;
+        state.talents.activeSpec = spec;
+      } else if (state.talents) {
+        state.talents.class = state.character.class;
+      }
+    }
+    normalizeLeveling();
+    if (state.leveling.follow) state.leveling.race = state.character.race || state.leveling.race;
+    save();
+    renderCharacter();
+    renderChrome();
+  }
+
+  /* ---------- goals ---------- */
+  function allGoalDefs() {
+    var list = [];
+    DATA.dungeons.forEach(function (d) {
+      list.push(Object.assign({ category: "dungeon" }, d));
+    });
+    DATA.raids.forEach(function (d) {
+      list.push(Object.assign({ category: "raid" }, d));
+    });
+    DATA.mounts.forEach(function (d) {
+      list.push(Object.assign({ category: "mount" }, d));
+    });
+    DATA.achievements.forEach(function (d) {
+      list.push(Object.assign({ category: "achievement" }, d));
+    });
+    (state.customGoals || []).forEach(function (d) {
+      list.push(Object.assign({ category: "custom" }, d));
+    });
+    return list;
+  }
+
+  function goalProgress(g) {
+    var rec = state.goals[g.id] || {};
+    var status = rec.status || "not-started";
+    var progress = status === "done" ? 100 : (status === "in-progress" ? (rec.progress != null ? rec.progress : 40) : 0);
+    return { status: status, progress: progress, notes: rec.notes || "" };
+  }
+
+  function renderGoals() {
+    var q = ($("#goalSearch").value || "").toLowerCase();
+    var defs = allGoalDefs().filter(function (g) {
+      if (goalFilter !== "all" && g.category !== goalFilter) return false;
+      if (q && (g.name + " " + (g.notes || "") + " " + (g.zone || "")).toLowerCase().indexOf(q) === -1) return false;
+      return true;
+    });
+    var counts = { total: 0, done: 0, "in-progress": 0 };
+    allGoalDefs().forEach(function (g) {
+      counts.total++;
+      var s = goalProgress(g).status;
+      if (s === "done") counts.done++;
+      if (s === "in-progress") counts["in-progress"]++;
+    });
+    $("#goalSummary").innerHTML =
+      pill("Tracked", counts.total) + pill("In progress", counts["in-progress"]) + pill("Completed", counts.done);
+
+    var groups = { dungeon: "Dungeons", raid: "Raids & world bosses", mount: "Mounts", achievement: "Milestones", custom: "Custom" };
+    var html = "";
+    Object.keys(groups).forEach(function (cat) {
+      var items = defs.filter(function (g) { return g.category === cat; });
+      if (!items.length) return;
+      html += "<h3>" + groups[cat] + "</h3><div class=\"card-grid\">";
+      items.forEach(function (g) { html += goalCard(g); });
+      html += "</div>";
+    });
+    $("#goalLists").innerHTML = html || "<p class=\"muted\">No goals match that filter.</p>";
+  }
+
+  function pill(label, value) {
+    return '<div class="stat-pill"><div class="kicker">' + label + '</div><div class="value">' + value + "</div></div>";
+  }
+
+  function goalCard(g) {
+    var p = goalProgress(g);
+    var meta = [];
+    if (g.levelMin) meta.push("Level " + g.levelMin + (g.levelMax && g.levelMax !== g.levelMin ? "–" + g.levelMax : ""));
+    if (g.players) meta.push(g.players + "-player");
+    if (g.zone) meta.push(g.zone);
+    if (g.faction && g.faction !== "both") meta.push(g.faction);
+    if (g.phase) meta.push(g.phase);
+    var lvl = ch().level || 1;
+    var rec = "";
+    if (g.levelMin) {
+      if (lvl < g.levelMin - 2) rec = " <span class=\"muted\">(later)</span>";
+      else if (lvl <= g.levelMax) rec = " <span class=\"badge at-level\">in range</span>";
+    }
+    return '<article class="card" data-goal="' + escapeHtml(g.id) + '">' +
+      '<div class="goal-head"><h4>' + escapeHtml(g.name) + rec + "</h4>" +
+      '<span class="status ' + p.status + '">' + p.status.replace("-", " ") + "</span></div>" +
+      (meta.length ? '<div class="goal-meta">' + escapeHtml(meta.join(" · ")) + "</div>" : "") +
+      (g.notes ? '<p class="muted" style="margin:0 0 8px">' + escapeHtml(g.notes) + "</p>" : "") +
+      '<div class="progress ' + (p.status === "done" ? "done" : "") + '"><span style="width:' + p.progress + '%"></span></div>' +
+      '<div class="row-actions">' +
+      '<button type="button" class="btn btn-sm" data-goal-status="not-started">Not started</button>' +
+      '<button type="button" class="btn btn-sm" data-goal-status="in-progress">In progress</button>' +
+      '<button type="button" class="btn btn-sm" data-goal-status="done">Done</button>' +
+      (g.category === "custom" ? '<button type="button" class="btn btn-sm btn-danger" data-goal-del="1">Delete</button>' : "") +
+      "</div>" +
+      '<label class="field" style="margin-top:8px">Notes<textarea data-goal-notes rows="2">' + escapeHtml(p.notes) + "</textarea></label>" +
+      "</article>";
+  }
+
+  /* ---------- gold & professions ---------- */
+  function renderGold() {
+    var form = $("#goldForm");
+    if (!form.date.value) form.date.value = todayISO();
+    $("#goldSummary").innerHTML = pill("Running total", formatGold(goldTotal()));
+    drawGoldChart();
+    var rows = state.goldLog.slice().sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });
+    var html = "<thead><tr><th>Date</th><th>Amount</th><th>Source</th><th></th></tr></thead><tbody>";
+    if (!rows.length) html += "<tr><td colspan=\"4\" class=\"muted\">No entries yet.</td></tr>";
+    rows.forEach(function (e) {
+      html += "<tr><td>" + escapeHtml(e.date) + "</td><td>" + formatGold(e.copper) + "</td><td>" +
+        escapeHtml(e.note || "") + "</td><td><button type=\"button\" class=\"btn btn-sm btn-danger\" data-del-gold=\"" +
+        escapeHtml(e.id) + "\">Remove</button></td></tr>";
+    });
+    html += "</tbody>";
+    $("#goldTable").innerHTML = html;
+    renderProfessions();
+    renderCrafting();
+  }
+
+  function drawGoldChart() {
+    var canvas = $("#goldChart");
+    var ctx = canvas.getContext("2d");
+    var w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    var entries = state.goldLog.slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+    ctx.fillStyle = "#c4b48a";
+    ctx.font = "12px sans-serif";
+    if (entries.length < 1) {
+      ctx.fillText("Add gold entries to see a running-total chart.", 16, h / 2);
+      return;
+    }
+    var running = 0;
+    var pts = entries.map(function (e) { running += e.copper; return running; });
+    var min = Math.min(0, Math.min.apply(null, pts));
+    var max = Math.max(0, Math.max.apply(null, pts));
+    if (min === max) max = min + 10000;
+    var pad = 28;
+    ctx.strokeStyle = "#3a2c18";
+    ctx.beginPath();
+    ctx.moveTo(pad, pad);
+    ctx.lineTo(pad, h - pad);
+    ctx.lineTo(w - 8, h - pad);
+    ctx.stroke();
+    // zero line
+    var z = h - pad - ((0 - min) / (max - min)) * (h - pad * 2);
+    ctx.strokeStyle = "#4a3a22";
+    ctx.beginPath(); ctx.moveTo(pad, z); ctx.lineTo(w - 8, z); ctx.stroke();
+    ctx.strokeStyle = "#d4b44c";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    pts.forEach(function (v, i) {
+      var x = pad + (pts.length === 1 ? (w - pad - 8) / 2 : i * (w - pad - 16) / (pts.length - 1));
+      var y = h - pad - ((v - min) / (max - min)) * (h - pad * 2);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    ctx.fillStyle = "#d4b44c";
+    pts.forEach(function (v, i) {
+      var x = pad + (pts.length === 1 ? (w - pad - 8) / 2 : i * (w - pad - 16) / (pts.length - 1));
+      var y = h - pad - ((v - min) / (max - min)) * (h - pad * 2);
+      ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
+    });
+    ctx.fillStyle = "#8d7d5e";
+    ctx.fillText(fromCopper(max).g + "g", 4, pad);
+    ctx.fillText(fromCopper(min).g + "g", 4, h - 10);
+  }
+
+  function renderProfessions() {
+    var box = $("#professions");
+    if (!state.professions.length) {
+      box.innerHTML = "<p class=\"muted\">No professions yet. Classic caps at 300.</p>";
+      return;
+    }
+    box.innerHTML = state.professions.map(function (p) {
+      var pct = Math.max(0, Math.min(100, (p.skill || 0) / 300 * 100));
+      return '<div class="card" data-prof="' + escapeHtml(p.id) + '"><div class="goal-head"><h4>' +
+        escapeHtml(p.name) + "</h4><button type=\"button\" class=\"btn btn-sm btn-danger\" data-del-prof>Remove</button></div>" +
+        '<label class="field">Skill <input type="number" min="0" max="300" value="' + (p.skill || 0) + '" data-prof-skill></label>' +
+        '<div class="progress ' + (p.skill >= 300 ? "done" : "") + '"><span style="width:' + pct + '%"></span></div>' +
+        '<div class="muted" style="margin-top:4px">' + (p.skill || 0) + " / 300</div></div>";
+    }).join("");
+  }
+
+  function renderCrafting() {
+    var box = $("#craftList");
+    if (!state.crafting.length) {
+      box.innerHTML = "<p class=\"muted\">No recipes on the list.</p>";
+      return;
+    }
+    box.innerHTML = state.crafting.map(function (r) {
+      var mats = (r.mats || []).map(function (m, i) {
+        var need = Math.max(0, (m.qty || 0) - (m.have || 0));
+        return '<div style="display:flex;gap:8px;align-items:center;margin:4px 0" data-mat="' + i + '">' +
+          "<span style=\"flex:1\">" + escapeHtml(m.name) + " × " + m.qty + "</span>" +
+          '<label class="muted">Have <input type="number" min="0" value="' + (m.have || 0) + '" data-mat-have style="width:70px"></label>' +
+          "<span>Need <strong>" + need + "</strong></span></div>";
+      }).join("");
+      return '<div class="card" data-craft="' + escapeHtml(r.id) + '" style="margin-bottom:10px"><div class="goal-head"><h4>' +
+        escapeHtml(r.recipe) + "</h4><button type=\"button\" class=\"btn btn-sm btn-danger\" data-del-craft>Remove</button></div>" +
+        mats + "</div>";
+    }).join("");
+  }
+
+  /* ---------- notes ---------- */
+  function renderNotes() {
+    var jf = $("#journalForm");
+    if (!jf.date.value) jf.date.value = todayISO();
+    var q = ($("#notesSearch").value || "").toLowerCase();
+    var journals = state.journal.filter(function (e) {
+      return !q || (e.title + " " + e.body + " " + e.date).toLowerCase().indexOf(q) !== -1;
+    }).slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+    var notes = state.notes.filter(function (e) {
+      return !q || (e.title + " " + e.body).toLowerCase().indexOf(q) !== -1;
+    }).slice().sort(function (a, b) { return (b.updated || "") > (a.updated || "") ? 1 : -1; });
+    $("#journalList").innerHTML = journals.length ? journals.map(function (e) {
+      return '<article class="entry" data-journal="' + escapeHtml(e.id) + '"><div class="when">' + escapeHtml(e.date) +
+        '</div><h4>' + escapeHtml(e.title || "Untitled") + "</h4><p style=\"white-space:pre-wrap\">" +
+        escapeHtml(e.body || "") + "</p>" +
+        '<button type="button" class="btn btn-sm btn-danger" data-del-journal>Delete</button></article>';
+    }).join("") : "<p class=\"muted\">No journal entries yet.</p>";
+    $("#noteList").innerHTML = notes.length ? notes.map(function (e) {
+      return '<article class="entry" data-note="' + escapeHtml(e.id) + '"><h4>' + escapeHtml(e.title || "Untitled") +
+        "</h4><p style=\"white-space:pre-wrap\">" + escapeHtml(e.body || "") + "</p>" +
+        '<button type="button" class="btn btn-sm btn-danger" data-del-note>Delete</button></article>';
+    }).join("") : "<p class=\"muted\">No notes yet.</p>";
+  }
+
+  /* ---------- items / upgrades ---------- */
+  function allItems() {
+    return ITEMS.concat(state.customItems || []);
+  }
+
+  function slotMeta(id) {
+    return DATA.slots.find(function (s) { return s.id === id; }) || { id: id, label: id, slot: id };
+  }
+  function slotBase(id) {
+    var m = slotMeta(id);
+    return m.slot || m.id;
+  }
+
+  function itemFitsSlot(item, slotId) {
+    var base = slotBase(slotId);
+    if (base === "ranged") {
+      return item.slot === "ranged" || item.slot === "relic";
+    }
+    if (base === "mainhand") return item.slot === "mainhand" || item.slot === "onehand" || item.slot === "twohand";
+    if (base === "offhand") return item.slot === "offhand" || item.slot === "onehand";
+    return item.slot === base;
+  }
+
+  function profFor(cls) { return DATA.proficiencies[cls] || null; }
+
+  function canUseTypeAtLevel(item, character, windowPts) {
+    var p = profFor(character.class);
+    if (!p) return true;
+    var lvl = (character.level || 1) + (windowPts || 0);
+    if (item.classes && item.classes.length && item.classes.indexOf(character.class) === -1) return false;
+    if (ARMOR.indexOf(item.type) !== -1) {
+      if (p.armor.indexOf(item.type) === -1) return false;
+      if (item.type === "plate" && lvl < (p.plateAt || 40)) return false;
+      if (item.type === "mail" && lvl < (p.mailAt || 1)) return false;
+    }
+    if (item.type === "shield") return !!p.shield;
+    if (RELICS.indexOf(item.type) !== -1) return p.relic === item.type;
+    if (item.type === "held") return true;
+    if (WEAPONS.indexOf(item.type) !== -1) {
+      if (p.weapons.indexOf(item.type) === -1 && item.type !== "held") return false;
+      if (item.slot === "twohand") {
+        if (!p.twoHand) return false;
+        if (p.noTwoHandMace && item.type === "mace") return false;
+        if (p.oneHandOnly && item.type !== "staff") return false;
+      }
+    }
+    return true;
+  }
+
+  function preferredArmorTypes(character, windowPts) {
+    var p = profFor(character.class);
+    var lvl = (character.level || 1) + (windowPts || 0);
+    if (!p) return ARMOR;
+    if (p.armor.indexOf("plate") !== -1 && lvl >= (p.plateAt || 40)) return ["plate"];
+    if (p.armor.indexOf("mail") !== -1 && lvl >= (p.mailAt || 1)) return ["mail"];
+    if (p.armor.indexOf("leather") !== -1) return ["leather"];
+    return ["cloth"];
+  }
+
+  function canEquipInSlot(item, character, slotId, windowPts) {
+    if (!itemFitsSlot(item, slotId)) return false;
+    if (!canUseTypeAtLevel(item, character, windowPts)) return false;
+    var p = profFor(character.class);
+    var base = slotBase(slotId);
+    if (base === "offhand") {
+      var isWeapon = WEAPONS.indexOf(item.type) !== -1 && item.type !== "shield" && item.type !== "held" && RELICS.indexOf(item.type) === -1;
+      if (isWeapon && (!p || !p.dualWield)) return false;
+    }
+    if (base === "ranged" && item.slot === "relic") {
+      return p && p.relic && item.type === p.relic;
+    }
+    if (base === "ranged" && item.slot === "ranged" && p && p.relic && !item.type) {
+      /* ok */
+    }
+    return true;
+  }
+
+  function weightsFor() {
+    var c = ch();
+    var byClass = DATA.statWeights[c.class] || {};
+    return byClass[c.spec] || byClass[Object.keys(byClass)[0]] || { ilvl: 1 };
+  }
+
+  function itemScore(item, weights) {
+    var w = weights || weightsFor();
+    var s = item.stats || {};
+    var score = 0;
+    Object.keys(s).forEach(function (k) {
+      if (typeof s[k] === "number" && w[k]) score += s[k] * w[k];
+    });
+    if (item.weapon && item.weapon.dps && w.dps) score += item.weapon.dps * w.dps;
+    if (item.itemLevel && w.ilvl) score += item.itemLevel * w.ilvl;
+    return score;
+  }
+
+  function formatStats(item) {
+    var s = item.stats || {};
+    var parts = [];
+    var labels = { str: "Str", agi: "Agi", sta: "Sta", int: "Int", spi: "Spi", ap: "AP", rap: "RAP", fap: "Feral AP",
+      crit: "Crit%", hit: "Hit%", spellCrit: "Spell Crit%", spellHit: "Spell Hit%", sp: "Spell Dmg", healing: "Healing",
+      mp5: "Mp5", hp5: "Hp5", defense: "Defense", dodge: "Dodge%", parry: "Parry%", blockChance: "Block%",
+      blockValue: "Block value", block: "Block", armor: "Armor", spFire: "Fire dmg", spFrost: "Frost dmg",
+      spShadow: "Shadow dmg", spNature: "Nature dmg", spArcane: "Arcane dmg", spHoly: "Holy dmg", spellPen: "Spell Pen" };
+    Object.keys(labels).forEach(function (k) {
+      if (s[k]) parts.push("+" + s[k] + " " + labels[k]);
+    });
+    if (item.weapon) {
+      parts.unshift((item.weapon.min || "?") + "–" + (item.weapon.max || "?") + "  (" + (item.weapon.dps || "?") + " dps, " + (item.weapon.speed || "?") + "s)");
+    }
+    (item.effects || []).forEach(function (e) { parts.push(e); });
+    return parts.join(" · ");
+  }
+
+  function equippedTwoHand() {
+    var mh = state.equipment.mainhand;
+    return mh && mh.slot === "twohand";
+  }
+
+  function renderItems() {
+    var c = ch();
+    $("#upgradeContext").textContent = c.class ? ("for " + (c.name || "your") + " level " + c.level + " " + c.spec + " " + c.class) : "";
+    var doll = $("#paperDoll");
+    doll.innerHTML = DATA.slots.map(function (s) {
+      var it = state.equipment[s.id];
+      var blocked = s.id === "offhand" && equippedTwoHand();
+      var name = blocked ? "Occupied by two-hand" : (it ? it.name : "Empty");
+      var q = it ? qualityClass(it.quality) : "";
+      return '<button type="button" class="slot-btn' + (it || blocked ? "" : " empty") + '" data-equip-slot="' + s.id + '">' +
+        '<div class="slot-name">' + escapeHtml(s.label) + "</div>" +
+        '<div class="item-name ' + q + '">' + escapeHtml(name) + "</div>" +
+        (it && it.itemLevel ? '<div class="muted" style="font-size:11px">ilvl ' + it.itemLevel + (it.reqLevel ? " · req " + it.reqLevel : "") + "</div>" : "") +
+        "</button>";
+    }).join("");
+
+    var sel = $("#upgradeSlot");
+    var cur = sel.value || "all";
+    sel.innerHTML = '<option value="all">All slots</option>' + DATA.slots.map(function (s) {
+      return '<option value="' + s.id + '">' + escapeHtml(s.label) + "</option>";
+    }).join("");
+    sel.value = cur;
+    renderUpgrades();
+  }
+
+  function otherUniqueEquipped(item, slotId) {
+    if (!item || !item.unique) return false;
+    return Object.keys(state.equipment).some(function (k) {
+      if (k === slotId) return false;
+      var e = state.equipment[k];
+      return e && (e.id === item.id || e.name === item.name);
+    });
+  }
+
+  function upgradesFor(slotId) {
+    var c = ch();
+    var current = state.equipment[slotId];
+    if (slotId === "offhand" && equippedTwoHand()) return { blocked: true, at: [], soon: [] };
+    var curScore = current ? itemScore(current) : 0;
+    var at = [];
+    var soon = [];
+    allItems().forEach(function (item) {
+      if (otherUniqueEquipped(item, slotId)) return;
+      var req = item.reqLevel || 0;
+      var atLevel = req <= (c.level || 1);
+      var soonOk = !atLevel && req <= (c.level || 1) + LEVEL_WINDOW;
+      if (!atLevel && !soonOk) return;
+      var windowPts = atLevel ? 0 : LEVEL_WINDOW;
+      if (!canEquipInSlot(item, c, slotId, windowPts)) return;
+      if (ARMOR.indexOf(item.type) !== -1) {
+        var pref = preferredArmorTypes(c, windowPts);
+        if (pref.indexOf(item.type) === -1) return;
+      }
+      // Don't recommend the exact item already equipped in this slot
+      if (current && current.id === item.id && !item.custom) return;
+      if (current && current.name === item.name && current.source === item.source) return;
+      var score = itemScore(item);
+      if (current && score <= curScore + 0.05) return;
+      var rec = { item: item, score: score, delta: score - curScore, atLevel: atLevel, req: req };
+      if (atLevel) at.push(rec); else soon.push(rec);
+    });
+    at.sort(function (a, b) { return b.score - a.score; });
+    soon.sort(function (a, b) { return b.score - a.score; });
+    // Closest upgrade = smallest positive delta among at-level, also expose best
+    var closest = at.slice().sort(function (a, b) { return a.delta - b.delta; })[0];
+    return { blocked: false, at: at.slice(0, 8), soon: soon.slice(0, 4), closest: closest, currentScore: curScore };
+  }
+
+  function renderUpgrades() {
+    var focus = $("#upgradeSlot").value || "all";
+    var slots = focus === "all" ? DATA.slots.map(function (s) { return s.id; }) : [focus];
+    var html = "";
+    slots.forEach(function (slotId) {
+      var u = upgradesFor(slotId);
+      var label = slotMeta(slotId).label;
+      html += "<h4 style=\"margin:12px 0 6px\">" + escapeHtml(label) + "</h4>";
+      var cur = state.equipment[slotId];
+      if (cur) html += '<p class="muted" style="margin:0 0 6px">Currently: <span class="' + qualityClass(cur.quality) + '">' + escapeHtml(cur.name) + "</span></p>";
+      if (u.blocked) {
+        html += "<p class=\"muted\">Your two-handed weapon occupies this slot.</p>";
+        return;
+      }
+      if (!u.at.length && !u.soon.length) {
+        html += "<p class=\"muted\">No upgrades found in the starter database for this slot at your level (or soon). Add a custom item if Forever has something new.</p>";
+        return;
+      }
+      var compact = focus === "all";
+      var atList = compact ? u.at.slice(0, 2) : u.at;
+      var soonList = compact ? u.soon.slice(0, 1) : u.soon;
+      if (u.closest) {
+        html += upgradeCard(u.closest, true);
+        atList.forEach(function (r) {
+          if (r.item.id === u.closest.item.id) return;
+          html += upgradeCard(r, false);
+        });
+      } else {
+        atList.forEach(function (r) { html += upgradeCard(r, false); });
+      }
+      soonList.forEach(function (r) { html += upgradeCard(r, false); });
+    });
+    $("#upgradeList").innerHTML = html;
+  }
+
+  function upgradeCard(rec, isClosest) {
+    var it = rec.item;
+    var badge = rec.atLevel
+      ? '<span class="badge at-level">at your level</span>'
+      : '<span class="badge soon">soon · req ' + rec.req + "</span>";
+    if (isClosest && rec.atLevel) badge += ' <span class="badge at-level">closest upgrade</span>';
+    return '<div class="upgrade ' + (rec.atLevel ? "at-level" : "soon") + '">' +
+      badge + ' <span class="item-name ' + qualityClass(it.quality) + '">' + escapeHtml(it.name) + "</span>" +
+      '<div class="muted" style="font-size:12px">ilvl ' + (it.itemLevel || "?") +
+      (it.type ? " · " + it.type : "") + (it.slotLabel ? " · " + it.slotLabel : "") +
+      " · score " + rec.score.toFixed(1) + (rec.delta ? " (+" + rec.delta.toFixed(1) + ")" : "") + "</div>" +
+      (formatStats(it) ? '<div class="item-stats">' + escapeHtml(formatStats(it)) + "</div>" : "") +
+      '<div class="item-source">How to get it: ' + escapeHtml(it.source || "Unknown") +
+      (it.sourceType ? " (" + it.sourceType + ")" : "") +
+      (it.custom ? " · custom / Forever" : "") + "</div></div>";
+  }
+
+  function openEquipPicker(slotId) {
+    var cur = state.equipment[slotId];
+    var label = slotMeta(slotId).label;
+    openModal(
+      "<h3>Equip — " + escapeHtml(label) + "</h3>" +
+      (cur ? "<p>Currently: <span class=\"" + qualityClass(cur.quality) + "\">" + escapeHtml(cur.name) + "</span></p>" : "<p class=\"muted\">Nothing equipped.</p>") +
+      '<label class="field">Search the database<input type="search" id="equipSearch" placeholder="Item name"></label>' +
+      '<div id="equipResults" style="max-height:240px;overflow:auto;margin:8px 0"></div>' +
+      '<div class="row-actions">' +
+      (cur ? '<button type="button" class="btn btn-danger" id="btnUnequip">Unequip</button>' : "") +
+      '<button type="button" class="btn" data-close>Close</button></div>'
+    );
+    var run = function () {
+      var q = ($("#equipSearch").value || "").toLowerCase();
+      var hits = allItems().filter(function (it) {
+        if (!itemFitsSlot(it, slotId)) return false;
+        if (!canEquipInSlot(it, ch(), slotId, LEVEL_WINDOW)) return false;
+        return !q || it.name.toLowerCase().indexOf(q) !== -1;
+      }).sort(function (a, b) { return (b.itemLevel || 0) - (a.itemLevel || 0); }).slice(0, 40);
+      $("#equipResults").innerHTML = hits.length ? hits.map(function (it) {
+        return '<button type="button" class="slot-btn" data-pick-item="' + escapeHtml(String(it.id)) + '" style="margin:4px 0">' +
+          '<div class="item-name ' + qualityClass(it.quality) + '">' + escapeHtml(it.name) + "</div>" +
+          '<div class="muted" style="font-size:11px">ilvl ' + (it.itemLevel || "?") + " · req " + (it.reqLevel || 0) +
+          " · " + escapeHtml(it.source || "") + "</div></button>";
+      }).join("") : "<p class=\"muted\">No matching items you can use in this slot.</p>";
+    };
+    $("#equipSearch").addEventListener("input", run);
+    $("#equipResults").addEventListener("click", function (e) {
+      var btn = e.target.closest("[data-pick-item]");
+      if (!btn) return;
+      var id = btn.getAttribute("data-pick-item");
+      var item = allItems().find(function (it) { return String(it.id) === id; });
+      if (!item) return;
+      state.equipment[slotId] = item;
+      if (item.slot === "twohand") state.equipment.offhand = null;
+      save();
+      closeModal();
+      renderItems();
+      toast("Equipped " + item.name);
+    });
+    var uneq = $("#btnUnequip");
+    if (uneq) uneq.addEventListener("click", function () {
+      delete state.equipment[slotId];
+      save();
+      closeModal();
+      renderItems();
+    });
+    run();
+  }
+
+  function openCustomItemForm() {
+    var slotOpts = ["head","neck","shoulder","back","chest","wrist","hands","waist","legs","feet","finger","trinket","mainhand","offhand","onehand","twohand","ranged","relic"].map(function (s) {
+      return "<option value=\"" + s + "\">" + s + "</option>";
+    }).join("");
+    var typeOpts = ["cloth","leather","mail","plate","misc","sword","axe","mace","dagger","staff","polearm","fist","bow","gun","crossbow","wand","thrown","shield","held","idol","totem","libram"].map(function (s) {
+      return "<option value=\"" + s + "\">" + s + "</option>";
+    }).join("");
+    var qOpts = ["poor","common","uncommon","rare","epic","legendary"].map(function (s) {
+      return "<option value=\"" + s + "\"" + (s === "rare" ? " selected" : "") + ">" + s + "</option>";
+    }).join("");
+    openModal(
+      "<h3>Add a custom item</h3>" +
+      "<p class=\"muted\">Use this for Forever-only gear or anything missing from the Classic Era starter database. It is saved in this browser and included in Export.</p>" +
+      '<form id="customItemForm" class="form-grid">' +
+      '<label class="field">Name<input name="name" required></label>' +
+      '<label class="field">Slot<select name="slot">' + slotOpts + "</select></label>" +
+      '<label class="field">Armor / weapon type<select name="type">' + typeOpts + "</select></label>" +
+      '<label class="field">Quality<select name="quality">' + qOpts + "</select></label>" +
+      '<label class="field">Required level<input type="number" name="reqLevel" min="0" max="60" value="60"></label>' +
+      '<label class="field">Item level<input type="number" name="itemLevel" min="1" value="60"></label>' +
+      '<label class="field">Source / how to get it<input name="source" placeholder="Boss, quest, crafted…"></label>' +
+      '<label class="field">Class limit (blank = all)<input name="classes" placeholder="Warrior, Paladin"></label>' +
+      '<label class="field">Stats (e.g. str 12, sta 10, crit 1, sp 22)<input name="stats" placeholder="str 12, ap 20, crit 1"></label>' +
+      "</form>" +
+      '<div class="row-actions"><button type="button" class="btn btn-primary" id="btnSaveCustom">Save to database</button>' +
+      '<button type="button" class="btn" data-close>Cancel</button></div>'
+    );
+    $("#btnSaveCustom").addEventListener("click", function () {
+      var f = $("#customItemForm");
+      var name = f.name.value.trim();
+      if (!name) { toast("Name is required"); return; }
+      var stats = {};
+      String(f.stats.value || "").split(",").forEach(function (part) {
+        var m = part.trim().match(/^([a-zA-Z]+)\s+(-?\d+(?:\.\d+)?)$/);
+        if (m) stats[m[1]] = Number(m[2]);
+      });
+      var classes = f.classes.value.trim() ? f.classes.value.split(",").map(function (s) { return s.trim(); }).filter(Boolean) : null;
+      var item = {
+        id: uid("custom"),
+        name: name,
+        slot: f.slot.value,
+        slotLabel: f.slot.value,
+        type: f.type.value,
+        quality: f.quality.value,
+        reqLevel: parseInt(f.reqLevel.value, 10) || 0,
+        itemLevel: parseInt(f.itemLevel.value, 10) || null,
+        stats: stats,
+        source: f.source.value.trim() || "Custom (Forever)",
+        sourceType: "custom",
+        custom: true
+      };
+      if (classes) item.classes = classes;
+      state.customItems.push(item);
+      save();
+      closeModal();
+      renderItems();
+      toast("Added " + name + " to your database");
+    });
+  }
+
+  /* ---------- talents ---------- */
+  function talentClassData() {
+    var pack = talentPack();
+    var name = ch().class;
+    return pack.find(function (c) { return c.name === name; }) || pack[0];
+  }
+
+  function pointsAvailable() {
+    var lvl = ch().level || 1;
+    return Math.max(0, Math.min(51, lvl - 9));
+  }
+  function treeMap(treeName) {
+    var store = talentStore();
+    if (!store.trees) store.trees = {};
+    if (!store.trees[treeName]) store.trees[treeName] = {};
+    return store.trees[treeName];
+  }
+  function talentRank(treeName, id) {
+    return (treeMap(treeName)[String(id)] || 0);
+  }
+  function treeSpent(treeName) {
+    var m = treeMap(treeName);
+    return Object.keys(m).reduce(function (s, k) { return s + (m[k] || 0); }, 0);
+  }
+  function totalSpent() {
+    var data = talentClassData();
+    if (!data) return 0;
+    return data.trees.reduce(function (s, t) { return s + treeSpent(t.name); }, 0);
+  }
+
+  function canAddPoint(tree, talent) {
+    if (totalSpent() >= pointsAvailable()) return false;
+    var rank = talentRank(tree.name, talent.id);
+    if (rank >= talent.maxRank) return false;
+    if (treeSpent(tree.name) < (talent.reqPoints || 0)) return false;
+    if (talent.prereq) {
+      if (talentRank(tree.name, talent.prereq.id) < talent.prereq.rank) return false;
+    }
+    return true;
+  }
+
+  function canRemovePoint(tree, talent) {
+    var rank = talentRank(tree.name, talent.id);
+    if (rank <= 0) return false;
+    var next = JSON.parse(JSON.stringify(talentStore().trees));
+    if (!next[tree.name]) next[tree.name] = {};
+    next[tree.name][String(talent.id)] = rank - 1;
+    if (next[tree.name][String(talent.id)] <= 0) delete next[tree.name][String(talent.id)];
+    var spentAfter = Object.keys(next[tree.name] || {}).reduce(function (s, k) { return s + (next[tree.name][k] || 0); }, 0);
+    for (var i = 0; i < tree.talents.length; i++) {
+      var t = tree.talents[i];
+      var r = (next[tree.name] && next[tree.name][String(t.id)]) || 0;
+      if (r <= 0) continue;
+      if (spentAfter < (t.reqPoints || 0)) return false;
+      if (t.prereq) {
+        var pr = (next[tree.name] && next[tree.name][String(t.prereq.id)]) || 0;
+        if (pr < t.prereq.rank) return false;
+      }
+    }
+    return true;
+  }
+
+  function addPoint(tree, talent) {
+    if (!canAddPoint(tree, talent)) return;
+    var m = treeMap(tree.name);
+    m[String(talent.id)] = talentRank(tree.name, talent.id) + 1;
+    state.talents.class = ch().class;
+    save();
+  }
+  function removePoint(tree, talent) {
+    if (!canRemovePoint(tree, talent)) return;
+    var m = treeMap(tree.name);
+    var r = talentRank(tree.name, talent.id) - 1;
+    if (r <= 0) delete m[String(talent.id)];
+    else m[String(talent.id)] = r;
+    save();
+  }
+
+  function resetTree(treeName) {
+    var store = talentStore();
+    if (store.trees) delete store.trees[treeName];
+    save();
+  }
+  function resetAllTalents() {
+    talentStore().trees = {};
+    state.talents.class = ch().class;
+    save();
+  }
+
+  function applyBuild(build, opts) {
+    opts = opts || {};
+    if (build.class !== ch().class) {
+      if (build.class !== ch().class) {
+        state.character.class = build.class;
+        var specs = DATA.specs[build.class] || [];
+        if (specs.indexOf(state.character.spec) === -1) state.character.spec = specs[0] || "";
+      }
+    }
+    state.talents.class = build.class;
+    talentStore().trees = {};
+    var data = talentPack().find(function (c) { return c.name === build.class; });
+    var avail = pointsAvailable();
+    var spent = 0;
+    data.trees.forEach(function (tree) {
+      var planned = build.trees[tree.name] || {};
+      var talents = tree.talents.slice().sort(function (a, b) { return a.row - b.row || a.col - b.col; });
+      var guard = 0;
+      var added = true;
+      while (added && spent < avail && guard++ < 400) {
+        added = false;
+        for (var i = 0; i < talents.length; i++) {
+          var t = talents[i];
+          var want = planned[String(t.id)] || planned[t.id] || 0;
+          var have = talentRank(tree.name, t.id);
+          if (have >= want) continue;
+          if (!canAddPoint(tree, t)) continue;
+          addPoint(tree, t);
+          spent++;
+          added = true;
+          if (spent >= avail) break;
+        }
+      }
+    });
+    save();
+  }
+
+  function setTalentMode(mode) {
+    normalizeTalents();
+    state.talents.mode = mode === "classic" ? "classic" : "forever";
+    if (state.talents.mode === "classic") state.talents.activeSpec = "primary";
+    save();
+    renderTalents();
+  }
+
+  function setActiveSpec(which) {
+    normalizeTalents();
+    if (which === "secondary" && !dualSpecUnlocked()) {
+      toast("Dual Specialization unlocks at level 40.");
+      return;
+    }
+    state.talents.activeSpec = which === "secondary" ? "secondary" : "primary";
+    save();
+    renderTalents();
+  }
+
+  function renderTalents() {
+    normalizeTalents();
+    if (state.talents.class && state.talents.class !== ch().class) {
+      var mode = talentMode();
+      var spec = state.talents.activeSpec || "primary";
+      state.talents = emptyTalentState(ch().class);
+      state.talents.mode = mode;
+      state.talents.activeSpec = spec;
+    }
+    var data = talentClassData();
+    var avail = pointsAvailable();
+    var spent = totalSpent();
+    var counts = data.trees.map(function (t) { return treeSpent(t.name); });
+    var mode = talentMode();
+    var meta = TALENT_META || {};
+
+    var modeBar = $("#talentModeBar");
+    if (modeBar) {
+      var unlocked = dualSpecUnlocked();
+      var spec = state.talents.activeSpec || "primary";
+      modeBar.innerHTML =
+        '<div class="mode-toggle" role="group" aria-label="Talent data source">' +
+        '<button type="button" class="btn btn-sm' + (mode === "forever" ? " btn-primary" : "") + '" data-talent-mode="forever">WoW: Forever</button>' +
+        '<button type="button" class="btn btn-sm' + (mode === "classic" ? " btn-primary" : "") + '" data-talent-mode="classic">Classic Era (reference)</button>' +
+        "</div>" +
+        (mode === "forever" ? (
+          '<div class="mode-toggle" role="group" aria-label="Dual specialization">' +
+          '<button type="button" class="btn btn-sm' + (spec !== "secondary" ? " btn-primary" : "") + '" data-talent-spec="primary">Primary</button>' +
+          '<button type="button" class="btn btn-sm' + (spec === "secondary" ? " btn-primary" : "") + '"' +
+          (unlocked ? "" : " disabled") + ' data-talent-spec="secondary">Secondary' +
+          (unlocked ? "" : " (lvl 40)") + "</button></div>"
+        ) : "") +
+        (meta.build ? '<span class="muted">Client ' + escapeHtml(meta.build) + " · " + (meta.talentCount || 467) + " talents</span>" : "");
+    }
+
+    $("#talentPoints").innerHTML = (ch().class || "") + " · " + counts.join(" / ") +
+      " · <strong>" + (avail - spent) + "</strong> of " + avail + " remaining (level " + (ch().level || 1) + ")" +
+      (mode === "forever" && unlocked ? " · " + (spec === "secondary" ? "Secondary" : "Primary") + " spec" : "");
+
+    var srcNote = $("#buildSource");
+    if (mode === "classic") {
+      srcNote.innerHTML = "<strong>Classic Era trees are for reference only.</strong> WoW: Forever uses reworked talent trees. These older 1.12 builds are not valid in Forever.";
+    } else {
+      srcNote.innerHTML = escapeHtml(window.WOW_TALENT_BUILD_SOURCE || "") +
+        (meta.credit ? " " + escapeHtml(meta.credit) : "");
+    }
+
+    $("#talentTrees").innerHTML = data.trees.map(function (tree, idx) {
+      var cells = "";
+      for (var row = 1; row <= 7; row++) {
+        for (var col = 1; col <= 4; col++) {
+          var t = tree.talents.find(function (x) { return x.row === row && x.col === col; });
+          if (!t) { cells += "<div></div>"; continue; }
+          var rank = talentRank(tree.name, t.id);
+          var locked = rank === 0 && !canAddPoint(tree, t);
+          var cls = "talent";
+          if (rank > 0) cls += " has-points";
+          if (rank >= t.maxRank) cls += " maxed";
+          if (locked) cls += " locked";
+          var desc = (t.ranks && t.ranks[Math.max(0, rank ? rank - 1 : 0)]) || "";
+          var next = (t.ranks && t.ranks[rank]) ? "<br><em>Next: " + escapeHtml(t.ranks[rank]) + "</em>" : "";
+          var req = t.prereq ? "<br>Requires " + t.prereq.rank + " in " + escapeHtml((tree.talents.find(function (x) { return x.id === t.prereq.id; }) || {}).name || "prereq") : "";
+          cells += '<button type="button" class="' + cls + '" data-tree="' + idx + '" data-talent="' + t.id +
+            '" title="' + escapeHtml(t.name) + '"><span class="t-name">' + escapeHtml(t.name) +
+            '</span><span class="t-rank">' + rank + "/" + t.maxRank + "</span>" +
+            '<div class="talent-tip"><strong>' + escapeHtml(t.name) + "</strong> · Rank " + rank + "/" + t.maxRank +
+            "<br>" + escapeHtml(desc) + next + req + "</div></button>";
+        }
+      }
+      return '<div class="talent-tree" data-tree-idx="' + idx + '"><h3>' + escapeHtml(tree.name) +
+        " <span>" + treeSpent(tree.name) + "</span> <button type=\"button\" class=\"btn btn-sm\" data-reset-tree=\"" +
+        escapeHtml(tree.name) + "\">Reset</button></h3><div class=\"talent-grid\">" + cells + "</div></div>";
+    }).join("");
+
+    var classBuilds = talentBuilds().filter(function (b) { return b.class === ch().class; });
+    var listTitle = $("#buildListTitle");
+    if (listTitle) listTitle.textContent = mode === "classic" ? "Classic Era reference builds" : "Published Forever builds";
+    if (!classBuilds.length) {
+      $("#buildList").innerHTML = mode === "classic"
+        ? "<p class=\"muted\">No Classic Era reference builds loaded.</p>"
+        : "<p class=\"muted\">No popular Forever builds published yet for this class.</p>";
+    } else {
+      $("#buildList").innerHTML = classBuilds.map(function (b) {
+        var cite = b.sourceLabel || (mode === "classic" ? "Classic Era reference — not for Forever" : "");
+        var via = b.via ? "<div class=\"muted\" style=\"font-size:11px;margin-top:4px\">" + escapeHtml(b.via) + "</div>" : "";
+        var link = b.sourceUrl ? ' · <span class="muted">' + escapeHtml(b.sourceName || "source") + "</span>" : "";
+        return '<button type="button" class="btn build-card" data-load-build="' + escapeHtml(b.id) + '">' +
+          '<div class="role">' + escapeHtml(b.role || "") + " · " + escapeHtml(b.points) + "</div>" +
+          "<strong>" + escapeHtml(b.name) + "</strong><p>" + escapeHtml(b.summary || "") + "</p>" +
+          (cite ? '<div class="build-cite">' + escapeHtml(cite) + "</div>" : "") + via + "</button>";
+      }).join("");
+    }
+
+    var sb = $("#savedBuilds");
+    var cur = sb.value;
+    var mine = (state.savedTalentBuilds || []).filter(function (b) {
+      return b.class === ch().class && (b.mode || "forever") === mode;
+    });
+    sb.innerHTML = '<option value="">Saved builds…</option>' + mine.map(function (b) {
+      var tag = b.specSlot === "secondary" ? " (2nd)" : "";
+      return '<option value="' + escapeHtml(b.id) + '">' + escapeHtml(b.name) + tag + "</option>";
+    }).join("");
+    if (cur) sb.value = cur;
+  }
+
+  /* ---------- export / import ---------- */
+  function exportData() {
+    var payload = {
+      app: "Forever Tracker",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      data: state
+    };
+    var blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    var a = document.createElement("a");
+    var name = (ch().name || "character").replace(/\s+/g, "_");
+    a.href = URL.createObjectURL(blob);
+    a.download = "forever-tracker-" + name + ".json";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+    toast("Exported backup JSON");
+  }
+
+  function importData(file) {
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var parsed = JSON.parse(reader.result);
+        var data = parsed.data || parsed;
+        var base = defaultState();
+        Object.keys(base).forEach(function (k) {
+          if (data[k] != null) base[k] = data[k];
+        });
+        state = base;
+        save();
+        renderTab(activeTab);
+        toast("Imported backup");
+      } catch (e) {
+        toast("Import failed: " + (e.message || e));
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  /* ---------- events ---------- */
+  /* ---------- leveling route (hand-picked RestedXP + OpenXP) ---------- */
+  var LEVELING_SCHEMA = 2;
+  var LEVELING_RACE_TOKEN = {
+    "Undead": "Scourge",
+    "Night Elf": "NightElf",
+    "High Order Skyborne": "Skyborne",
+    "Windshaper Skyborne": "Skyborne"
+  };
+  var LEVELING_IGNORE = {
+    NONE:1, MALE:1, FEMALE:1, SOD:1, SOM:1, ERA:1, FOREVER:1, CLASSIC:1,
+    TBC:1, WOTLK:1, CATA:1, DF:1, RETAIL:1, MOP:1, ENUS:1, ENG:1
+  };
+
+  function defaultLeveling() {
+    return {
+      schema: LEVELING_SCHEMA,
+      follow: true,
+      race: "Undead",
+      source: "combined",
+      variant: "speedrun",
+      hideDone: false,
+      minLevel: 1,
+      maxLevel: 60,
+      byChar: {},
+      migrated: false
+    };
+  }
+
+  function levelingPack() { return window.WOW_LEVELING || {}; }
+
+  function normalizeLeveling() {
+    if (!state.leveling) state.leveling = defaultLeveling();
+    var L = state.leveling;
+    if (L.schema !== LEVELING_SCHEMA) {
+      L.byChar = {};
+      L.schema = LEVELING_SCHEMA;
+      L.migrated = true;
+    }
+    if (L.follow == null) L.follow = true;
+    if (!L.race) L.race = (ch().race || "Undead");
+    if (!L.source) L.source = (levelingPack().meta && levelingPack().meta.defaultSource) || "combined";
+    if (!L.variant) L.variant = "speedrun";
+    if (L.hideDone == null) L.hideDone = false;
+    if (L.minLevel == null) L.minLevel = 1;
+    if (L.maxLevel == null) L.maxLevel = 60;
+    if (L.includeNewZones == null) L.includeNewZones = true;
+    if (!L.byChar) L.byChar = {};
+  }
+
+  function levelingCharKey() {
+    var c = ch();
+    var L = state.leveling || {};
+    var race = L.race || c.race || "Undead";
+    var src = L.source || "combined";
+    var vari = L.variant || "speedrun";
+    return (c.name || "unnamed") + "|" + race + "|" + src + "|" + vari;
+  }
+
+  function levelingProgress() {
+    normalizeLeveling();
+    var key = levelingCharKey();
+    if (!state.leveling.byChar[key]) state.leveling.byChar[key] = { done: {}, skipped: {}, notes: {} };
+    return state.leveling.byChar[key];
+  }
+
+  function factionOfRace(race) {
+    var pack = levelingPack();
+    var r = (pack.races || DATA.races || []).find(function (x) { return x.name === race; });
+    return (r && r.faction) || "Horde";
+  }
+
+  function levelingRaceToken(race) {
+    return LEVELING_RACE_TOKEN[race] || race;
+  }
+
+  function levelingApplies(text, race, className, faction) {
+    if (!text) return true;
+    var raceTok = levelingRaceToken(race);
+    function parse(inner) {
+      inner = inner.replace(/(!?)\(\s*(.*?)\s*\)/g, function (_, op, m) {
+        var ok = parse(m);
+        return (ok !== (op === "!")) ? className : "NULL";
+      });
+      var alts = inner.split("/");
+      for (var a = 0; a < alts.length; a++) {
+        var v = true;
+        var tokens = alts[a].match(/!?[\w\d]+/g) || [];
+        for (var i = 0; i < tokens.length; i++) {
+          var entry = tokens[i];
+          var neg = false;
+          if (entry.charAt(0) === "!") { entry = entry.slice(1); neg = true; }
+          if (entry === "Undead") entry = "Scourge";
+          var upper = entry.toUpperCase();
+          if (upper === "DK") upper = "DEATHKNIGHT";
+          var ident;
+          if (LEVELING_IGNORE[upper]) ident = true;
+          else ident = (upper === (className || "").toUpperCase() || entry === raceTok || entry === faction || upper === "FOREVER");
+          v = neg ? !ident : ident;
+          if (!v) break;
+        }
+        if (v) return true;
+      }
+      return false;
+    }
+    return parse(text);
+  }
+
+  function coordLabel(src) {
+    var pack = levelingPack();
+    var map = (pack.coordLabels) || {};
+    if (src && map[src]) {
+      var cls = (src === "missing" || src === "world-unconverted") ? "missing" : src;
+      return { cls: cls, text: map[src] };
+    }
+    if (src === "forever") return { cls: "forever", text: "Forever-verified" };
+    if (src === "classic") return { cls: "classic", text: "Classic coords" };
+    if (src === "guide" || src === "guide-world") return { cls: "forever", text: map[src] || "From the guide" };
+    return { cls: "missing", text: map.missing || "Coords missing" };
+  }
+
+  function pickLevelingRoute() {
+    var pack = levelingPack();
+    var L = state.leveling;
+    var race = L.race;
+    var cls = ch().class || "Warrior";
+    var src = L.source || "combined";
+    var vari = L.variant || "speedrun";
+    if (vari === "mageaoe" && cls !== "Mage") vari = "speedrun";
+    var routes = pack.routes || {};
+    var keys = [
+      src + "|" + vari + "|" + race + "|" + cls,
+      src + "|" + vari + "|" + race
+    ];
+    for (var i = 0; i < keys.length; i++) {
+      if (routes[keys[i]]) return routes[keys[i]];
+    }
+    return null;
+  }
+
+  function includeAddonChapters() {
+    var L = state.leveling || {};
+    return L.includeNewZones !== false && (L.source || "combined") === "combined";
+  }
+
+  function isAddonChapterKey(key, chp) {
+    if (key && key.indexOf("addon||") === 0) return true;
+    return !!(chp && chp.source === "addon");
+  }
+
+  function overlapChapterKeys(rec) {
+    var names = {};
+    ((rec && rec.addonSplices) || []).forEach(function (s) {
+      (s.overlaps || []).forEach(function (n) { names[n] = true; });
+    });
+    var keys = [];
+    ((rec && rec.chapters) || []).forEach(function (k) {
+      if (k.indexOf("addon||") === 0) return;
+      var name = k.indexOf("||") >= 0 ? k.split("||").slice(1).join("||") : k;
+      if (names[name]) keys.push(k);
+    });
+    return keys;
+  }
+
+  function overlapStepIds(rec) {
+    var pack = levelingPack();
+    var chapters = pack.chapters || {};
+    var ids = [];
+    overlapChapterKeys(rec).forEach(function (k) {
+      var chp = chapters[k];
+      if (!chp) return;
+      (chp.steps || []).forEach(function (row, i) {
+        ids.push(row[11] || (k + ":" + i));
+      });
+    });
+    return ids;
+  }
+
+  function overlapsAreSkipped(rec, prog) {
+    var ids = overlapStepIds(rec);
+    if (!ids.length || !prog) return false;
+    for (var i = 0; i < ids.length; i++) {
+      if (!prog.skipped[ids[i]]) return false;
+    }
+    return true;
+  }
+
+  function expandLevelingSteps() {
+    var pack = levelingPack();
+    var rec = pickLevelingRoute();
+    if (!rec) return [];
+    var chapters = pack.chapters || {};
+    var names = pack.questNames || {};
+    var race = state.leveling.race;
+    var faction = factionOfRace(race);
+    var cls = ch().class || "Warrior";
+    var showAddon = includeAddonChapters();
+    var out = [];
+    var list = rec.chapters || [];
+    for (var ci = 0; ci < list.length; ci++) {
+      var key = list[ci];
+      if (key.indexOf("__handoff__") === 0 || (rec.handoffAt != null && ci === rec.handoffAt && (ci === 0 || (list[ci - 1] || "").indexOf("__handoff__") === -1))) {
+        if (rec.handoffAt != null && ci === rec.handoffAt && key.indexOf("__handoff__") !== 0) {
+          out.push({
+            index: out.length, k: "note", z: "OpenXP 21-60", lv: 21, title: "RestedXP free route ends — continuing with OpenXP",
+            detail: "The public RestedXP Forever route stops around level 21 (Alliance) or 22 (Horde). The rest of this path is OpenXP's 21–60 community route, kept in the authors' order.",
+            sid: "handoff:" + rec.race, tags: "handoff", race: race, chapter: "OpenXP 21-60"
+          });
+        }
+        if (key.indexOf("__handoff__") === 0) continue;
+      }
+      var chp = chapters[key];
+      if (!chp) continue;
+      if (!showAddon && isAddonChapterKey(key, chp)) continue;
+      var steps = chp.steps || [];
+      for (var i = 0; i < steps.length; i++) {
+        var row = steps[i];
+        var when = row[9] || "";
+        if (when && !levelingApplies(when, race, cls, faction)) continue;
+        var kind = row[0], zone = row[1], lv = row[2], title = row[3], detail = row[4];
+        var x = row[5], y = row[6], ss = row[7], q = row[8] || [], tags = row[10] || "", sid = row[11];
+        if (title && title.indexOf("Do this until:") === 0 && x != null) {
+          title = "Go to " + Number(x).toFixed(1) + ", " + Number(y).toFixed(1) + (zone ? " (" + zone + ")" : "");
+        }
+        var qn = [];
+        for (var qi = 0; qi < q.length; qi++) {
+          var nm = names[String(q[qi])];
+          qn.push(nm ? (nm + " (" + q[qi] + ")") : ("Quest " + q[qi]));
+        }
+        if (qn.length && title && title.indexOf("Talk to") === 0) {
+          detail = (qn.join("; ") + (detail ? ". " + detail : ""));
+        }
+        var bits = [];
+        if (tags && tags.indexOf("optional") !== -1) bits.push("Optional.");
+        if (tags && tags.indexOf("hardcore") !== -1) bits.push("Hardcore.");
+        if (tags && tags.indexOf("softcore") !== -1) bits.push("Softcore.");
+        if (tags && tags.indexOf("sticky") !== -1) bits.push("Keep doing this alongside later steps.");
+        if (detail) bits.push(detail);
+        if (x != null) bits.push("At " + Number(x).toFixed(1) + ", " + Number(y).toFixed(1) + (zone ? " in " + zone : "") + ".");
+        out.push({
+          index: out.length, k: kind, z: zone || chp.name, lv: lv || 1,
+          title: title || kind, detail: bits.join(" "),
+          sx: x, sy: y, ss: ss, q: q, qn: qn, tags: tags, sid: sid || (key + ":" + i),
+          chapter: chp.name, race: race
+        });
+      }
+    }
+    return out;
+  }
+
+  function stepVisible(step, cls, prog, L) {
+    var lv = step.lv || 1;
+    if (lv < (L.minLevel || 1) || lv > (L.maxLevel || 60)) return false;
+    if (L.hideDone && (prog.done[step.sid] || prog.skipped[step.sid])) return false;
+    return true;
+  }
+
+  function renderLeveling() {
+    normalizeLeveling();
+    var root = $("#levelingRoot");
+    if (!root) return;
+    var pack = levelingPack();
+    var L = state.leveling;
+    if (L.follow) L.race = ch().race || L.race || "Undead";
+    var race = L.race;
+    var rec = pickLevelingRoute();
+    var prog = levelingProgress();
+    var cls = ch().class;
+    var steps = expandLevelingSteps();
+    var visible = steps.filter(function (s) { return stepVisible(s, cls, prog, L); });
+    var allForCount = steps.filter(function (s) {
+      var lv = s.lv || 1;
+      return lv >= (L.minLevel || 1) && lv <= (L.maxLevel || 60);
+    });
+    var doneN = allForCount.filter(function (s) { return prog.done[s.sid] || prog.skipped[s.sid]; }).length;
+    var pct = allForCount.length ? Math.round(doneN / allForCount.length * 100) : 0;
+    var current = null;
+    visible.forEach(function (s) {
+      if (!current && !prog.done[s.sid] && !prog.skipped[s.sid]) current = s;
+    });
+
+    var raceOpts = (pack.races || DATA.races || []).map(function (r) {
+      var name = r.name || r;
+      var fac = r.faction || factionOfRace(name);
+      return "<option value=\"" + escapeHtml(name) + "\"" + (name === race ? " selected" : "") + ">" + escapeHtml(name) + " (" + escapeHtml(fac) + ")</option>";
+    }).join("");
+
+    var srcOpts = (pack.sources || []).map(function (s) {
+      return "<option value=\"" + s.id + "\"" + (s.id === L.source ? " selected" : "") + ">" + escapeHtml(s.label) + "</option>";
+    }).join("");
+    var varOpts = (pack.variants || []).filter(function (v) {
+      return !v.class || v.class === cls;
+    }).map(function (v) {
+      return "<option value=\"" + v.id + "\"" + (v.id === L.variant ? " selected" : "") + ">" + escapeHtml(v.label) + "</option>";
+    }).join("");
+
+    var banner = "<div class=\"route-banner\">";
+    banner += "<p><strong>Routes.</strong> " + escapeHtml((pack.meta && pack.meta.attribution) || "") + " Licensed under <strong>CC BY-NC-SA 4.0</strong> for personal non-commercial local use. Combined (the default) uses the current public RestedXP free Forever speedrun or dungeon guide through about level 21 (Alliance) or 22 (Horde), then hands off to OpenXP's 21–60 route, keeping each author's order. OpenXP's own 1–22 files are older copies of RestedXP (forked 2026-11-07); the combined path prefers the newer RestedXP early chapters.</p>";
+    if ((L.source || "combined") === "combined") {
+      banner += "<p><strong>New Forever zones.</strong> Combined also includes optional Forever Tracker add-on chapters (auto-optimized, not RestedXP/OpenXP) for Riverglades (35–45), Shen'dralas (38–45), and Mount Hyjal (55–60). They are built from already-fetched local quest data; nothing was invented. Use the <em>Include new zones</em> toggle (on by default). OpenXP chapters that share those level bands stay in the route — skip them with the overlapping-chapters button if you want to run only the new zones in that range.</p>";
+    }
+    if (L.migrated) banner += "<p class=\"less-tested\">Progress from the previous all-quests auto-route was reset because the steps changed. Checkboxes now follow these hand-picked guides.</p>";
+    if (pack.meta && pack.meta.gaps && pack.meta.gaps.length) {
+      banner += "<p class=\"muted\"><strong>Flagged gaps (routes were not reordered):</strong> " + escapeHtml(pack.meta.gaps.filter(function(g){return !/paid RestedXP|LevelForge/.test(g);}).join(" ")) + "</p>";
+    }
+    banner += "</div>";
+
+    var curHtml = "";
+    if (current) {
+      curHtml = "<div class=\"card current-step\" id=\"levelingCurrent\"><div class=\"kicker\">Current step</div><h3>" +
+        escapeHtml(current.title) + "</h3><p class=\"muted\">" + escapeHtml((current.z || current.chapter || "") + " · level " + (current.lv || "?")) +
+        "</p><p>" + escapeHtml(current.detail || "") + "</p>" + stepTags(current) + "</div>";
+    } else if (allForCount.length) {
+      curHtml = "<div class=\"card current-step\"><div class=\"kicker\">Current step</div><h3>Route complete in this level range</h3><p class=\"muted\">Every visible step is done or skipped.</p></div>";
+    } else if (!rec) {
+      curHtml = "<div class=\"card current-step\"><div class=\"kicker\">Current step</div><h3>No route for this combination</h3><p class=\"muted\">Try Speedrun, or another race / source.</p></div>";
+    }
+
+    var toolbar = "<div class=\"route-toolbar\">" +
+      "<label class=\"field\">Race / faction<select id=\"levelingRace\">" + raceOpts + "</select></label>" +
+      "<label class=\"field check\"><input type=\"checkbox\" id=\"levelingFollow\"" + (L.follow ? " checked" : "") + "> Follow character race</label>" +
+      "<label class=\"field\">Route source<select id=\"levelingSource\">" + srcOpts + "</select></label>" +
+      "<label class=\"field\">Variant<select id=\"levelingVariant\">" + varOpts + "</select></label>" +
+      "<label class=\"field\">From level<input type=\"number\" id=\"levelingMin\" min=\"1\" max=\"60\" value=\"" + (L.minLevel || 1) + "\"></label>" +
+      "<label class=\"field\">To level<input type=\"number\" id=\"levelingMax\" min=\"1\" max=\"60\" value=\"" + (L.maxLevel || 60) + "\"></label>" +
+      "<label class=\"field check\"><input type=\"checkbox\" id=\"levelingHideDone\"" + (L.hideDone ? " checked" : "") + "> Hide completed / skipped</label>" +
+      ((L.source || "combined") === "combined" ? ("<label class=\"field check\"><input type=\"checkbox\" id=\"levelingIncludeNewZones\"" + (L.includeNewZones !== false ? " checked" : "") + "> Include new zones</label>") : "") +
+      ((L.source || "combined") === "combined" && rec && (rec.addonSplices || []).length ? ("<button type=\"button\" class=\"btn\" id=\"levelingSkipOverlap\"" + (L.includeNewZones === false ? " disabled" : "") + ">" + (overlapsAreSkipped(rec, prog) ? "Unskip overlapping OpenXP chapters" : "Skip overlapping OpenXP chapters") + "</button>") : "") +
+      "<button type=\"button\" class=\"btn\" id=\"levelingFromLevel\">From my level (" + (ch().level || 1) + ")</button>" +
+      "</div>";
+
+    var srcLabel = (pack.sources || []).reduce(function (a, s) { return s.id === (rec && rec.source || L.source) ? s.label : a; }, L.source || "");
+    var stats = "<div class=\"stat-row\">" +
+      "<div class=\"stat-pill\"><div class=\"kicker\">Progress</div><div class=\"value\">" + doneN + " / " + allForCount.length + " · " + pct + "%</div>" +
+      "<div class=\"progress" + (pct === 100 ? " done" : "") + "\" style=\"margin-top:8px\"><span style=\"width:" + pct + "%\"></span></div></div>" +
+      "<div class=\"stat-pill\"><div class=\"kicker\">Faction</div><div class=\"value\">" + escapeHtml(factionOfRace(race)) + "</div></div>" +
+      "<div class=\"stat-pill\"><div class=\"kicker\">Source</div><div class=\"value\" style=\"font-size:16px\">" + escapeHtml(srcLabel || (rec && rec.source) || "") + "</div></div>" +
+      "</div>";
+
+    var zonesHtml = "";
+    if (!rec) {
+      zonesHtml = "<p class=\"muted\">No route is embedded for this race / source / variant.</p>";
+    } else {
+      var groups = [];
+      var g = null;
+      visible.forEach(function (s) {
+        var zlabel = s.chapter || s.z;
+        if (!g || g.zone !== zlabel) {
+          g = { zone: zlabel, steps: [] };
+          groups.push(g);
+        }
+        g.steps.push(s);
+      });
+      groups.forEach(function (group) {
+        var zStepsAll = allForCount.filter(function (s) { return (s.chapter || s.z) === group.zone; });
+        var zDone = zStepsAll.filter(function (s) { return prog.done[s.sid] || prog.skipped[s.sid]; }).length;
+        var zpct = zStepsAll.length ? Math.round(zDone / zStepsAll.length * 100) : 0;
+        var lvMin = Math.min.apply(null, group.steps.map(function (s) { return s.lv || 1; }));
+        var lvMax = Math.max.apply(null, group.steps.map(function (s) { return s.lv || 1; }));
+        var isAddon = /Forever Tracker add-on/.test(group.zone || "");
+        zonesHtml += "<section class=\"zone-block" + (isAddon ? " addon-zone" : "") + "\" data-zone=\"" + escapeHtml(group.zone) + "\"" + (isAddon ? " data-addon=\"1\"" : "") + "><header><h3>" +
+          escapeHtml(group.zone) + "</h3><div class=\"muted\">Levels " + lvMin + "–" + lvMax + " · " + zDone + "/" + zStepsAll.length +
+          (isAddon ? " · Forever Tracker add-on (auto-optimized, not RestedXP/OpenXP)" : "") +
+          "</div></header><div class=\"progress" + (zpct === 100 ? " done" : "") + "\" style=\"margin-bottom:10px\"><span style=\"width:" + zpct + "%\"></span></div>";
+        group.steps.forEach(function (s) {
+          zonesHtml += renderLevelingStep(s, prog, current);
+        });
+        zonesHtml += "</section>";
+      });
+      if (!groups.length) zonesHtml = "<p class=\"muted\">No steps in this level range (or all hidden).</p>";
+    }
+
+    if (L.variant === "dungeon" && pack.dungeonSide) {
+      var side = pack.dungeonSide[factionOfRace(race)] || [];
+      if (side.length) {
+        zonesHtml += "<section class=\"zone-block\"><header><h3>OpenXP dungeon quest chapters</h3><div class=\"muted\">Standalone dungeon quest lists from OpenXP — not mixed into the leveling order.</div></header>";
+        side.forEach(function (key) {
+          var chp = (pack.chapters || {})[key];
+          if (!chp) return;
+          zonesHtml += "<p><strong>" + escapeHtml(chp.name) + "</strong> · " + chp.stepCount + " steps</p>";
+        });
+        zonesHtml += "</section>";
+      }
+    }
+
+    root.innerHTML = banner + toolbar + stats + curHtml + zonesHtml;
+  }
+
+  function stepTags(step) {
+    var html = "<div>";
+    var kindLabel = step.k === "quest" ? "Accept · objectives · turn in" : (step.k || "step");
+    html += "<span class=\"kind-tag\">" + escapeHtml(kindLabel) + "</span>";
+    if (step.tags && step.tags.indexOf("addon") !== -1) html += "<span class=\"kind-tag addon-tag\">Add-on</span>";
+    if (step.tags && step.tags.indexOf("unverified") !== -1) html += "<span class=\"src-tag missing\">Unverified</span>";
+    if (step.sx != null) {
+      var a = coordLabel(step.ss);
+      html += "<span class=\"coord-tag\">" + Number(step.sx).toFixed(1) + ", " + Number(step.sy).toFixed(1) + "</span>";
+      html += "<span class=\"src-tag " + a.cls + "\">" + escapeHtml(a.text) + "</span>";
+    } else if (step.ss === "world-unconverted") {
+      html += "<span class=\"src-tag missing\">World coords in the guide (not converted)</span>";
+    }
+    if (step.qn && step.qn.length) {
+      html += "<span class=\"muted\">" + escapeHtml(step.qn.join(" · ")) + "</span>";
+    }
+    html += "</div>";
+    return html;
+  }
+
+  function renderLevelingStep(step, prog, current) {
+    var done = !!prog.done[step.sid];
+    var skipped = !!prog.skipped[step.sid];
+    var note = prog.notes[step.sid] || "";
+    var cls = "route-step" + (done ? " done" : "") + (skipped ? " skipped" : "") + (current && current.sid === step.sid ? " is-current" : "");
+    var html = "<article class=\"" + cls + "\" data-sid=\"" + escapeHtml(step.sid) + "\">";
+    html += "<input type=\"checkbox\" class=\"step-done\" data-sid=\"" + escapeHtml(step.sid) + "\"" + (done ? " checked" : "") + " aria-label=\"Done: " + escapeHtml(step.title) + "\">";
+    html += "<div class=\"step-main\"><h4>" + escapeHtml(step.title) + "</h4>";
+    html += "<p class=\"muted\">" + escapeHtml((step.z || step.chapter || "") + (step.lv ? " · level " + step.lv : "") + (skipped ? " · skipped" : "")) + "</p>";
+    html += "<p>" + escapeHtml(step.detail || "") + "</p>" + stepTags(step) + "</div>";
+    html += "<div class=\"step-actions\"><button type=\"button\" class=\"btn step-skip\" data-sid=\"" + escapeHtml(step.sid) + "\">" +
+      (skipped ? "Unskip" : "Skip") + "</button></div>";
+    html += "<div class=\"step-notes\"><textarea class=\"step-note\" data-sid=\"" + escapeHtml(step.sid) + "\" placeholder=\"Notes for this step\">" + escapeHtml(note) + "</textarea></div>";
+    html += "</article>";
+    return html;
+  }
+
+  function bindLevelingOnce() {
+    var root = $("#levelingRoot");
+    if (!root || root.getAttribute("data-bound")) return;
+    root.setAttribute("data-bound", "1");
+    root.addEventListener("change", function (ev) {
+      var t = ev.target;
+      if (t.id === "levelingRace") {
+        state.leveling.follow = false;
+        state.leveling.race = t.value;
+        save(); renderLeveling();
+      } else if (t.id === "levelingSource") {
+        state.leveling.source = t.value;
+        save(); renderLeveling();
+      } else if (t.id === "levelingVariant") {
+        state.leveling.variant = t.value;
+        save(); renderLeveling();
+      } else if (t.id === "levelingFollow") {
+        state.leveling.follow = t.checked;
+        if (t.checked) state.leveling.race = ch().race || state.leveling.race;
+        save(); renderLeveling();
+      } else if (t.id === "levelingHideDone") {
+        state.leveling.hideDone = t.checked;
+        save(); renderLeveling();
+      } else if (t.id === "levelingIncludeNewZones") {
+        state.leveling.includeNewZones = t.checked;
+        save(); renderLeveling();
+      } else if (t.id === "levelingMin" || t.id === "levelingMax") {
+        state.leveling.minLevel = Math.max(1, Math.min(60, parseInt($("#levelingMin").value, 10) || 1));
+        state.leveling.maxLevel = Math.max(1, Math.min(60, parseInt($("#levelingMax").value, 10) || 60));
+        if (state.leveling.minLevel > state.leveling.maxLevel) state.leveling.maxLevel = state.leveling.minLevel;
+        save(); renderLeveling();
+      } else if (t.classList.contains("step-done")) {
+        var prog = levelingProgress();
+        if (t.checked) prog.done[t.getAttribute("data-sid")] = true;
+        else delete prog.done[t.getAttribute("data-sid")];
+        save(); renderLeveling();
+      } else if (t.classList.contains("step-note")) {
+        var prog2 = levelingProgress();
+        var sid = t.getAttribute("data-sid");
+        if (t.value.trim()) prog2.notes[sid] = t.value;
+        else delete prog2.notes[sid];
+        save();
+      }
+    });
+    root.addEventListener("click", function (ev) {
+      var btn = ev.target.closest("button");
+      if (!btn) return;
+      if (btn.id === "levelingFromLevel") {
+        state.leveling.minLevel = ch().level || 1;
+        state.leveling.maxLevel = 60;
+        save(); renderLeveling();
+      } else if (btn.id === "levelingSkipOverlap") {
+        var rec2 = pickLevelingRoute();
+        var prog3 = levelingProgress();
+        var ids = overlapStepIds(rec2);
+        var allSkipped = overlapsAreSkipped(rec2, prog3);
+        ids.forEach(function (sid) {
+          if (allSkipped) delete prog3.skipped[sid];
+          else prog3.skipped[sid] = true;
+        });
+        save(); renderLeveling();
+      } else if (btn.classList.contains("step-skip")) {
+        var prog = levelingProgress();
+        var sid = btn.getAttribute("data-sid");
+        if (prog.skipped[sid]) delete prog.skipped[sid];
+        else prog.skipped[sid] = true;
+        save(); renderLeveling();
+      }
+    });
+  }
+
+
+  function bind() {
+    $all(".tabs [data-tab]").forEach(function (b) {
+      b.addEventListener("click", function () { showTab(b.getAttribute("data-tab")); });
+    });
+    $("#characterForm").addEventListener("input", onCharacterChange);
+    $("#characterForm").addEventListener("change", onCharacterChange);
+    bindLevelingOnce();
+
+    $("#goalSearch").addEventListener("input", renderGoals);
+    document.addEventListener("click", function (e) {
+      var f = e.target.closest && e.target.closest(".goal-filter");
+      if (f) {
+        goalFilter = f.getAttribute("data-filter");
+        renderGoals();
+        return;
+      }
+      var gs = e.target.getAttribute && e.target.getAttribute("data-goal-status");
+      if (gs) {
+        var card = e.target.closest("[data-goal]");
+        var id = card.getAttribute("data-goal");
+        if (!state.goals[id]) state.goals[id] = {};
+        state.goals[id].status = gs;
+        state.goals[id].progress = gs === "done" ? 100 : gs === "in-progress" ? 40 : 0;
+        save(); renderGoals();
+        return;
+      }
+      if (e.target.getAttribute && e.target.getAttribute("data-goal-del")) {
+        var id2 = e.target.closest("[data-goal]").getAttribute("data-goal");
+        state.customGoals = state.customGoals.filter(function (g) { return g.id !== id2; });
+        delete state.goals[id2];
+        save(); renderGoals();
+        return;
+      }
+    });
+    document.addEventListener("input", function (e) {
+      if (e.target.getAttribute && e.target.getAttribute("data-goal-notes") != null) {
+        var id = e.target.closest("[data-goal]").getAttribute("data-goal");
+        if (!state.goals[id]) state.goals[id] = {};
+        state.goals[id].notes = e.target.value;
+        save();
+      }
+    });
+    $("#btnAddGoal").addEventListener("click", function () {
+      openModal("<h3>Add a custom goal</h3>" +
+        '<label class="field">Name<input id="cgName"></label>' +
+        '<label class="field">Notes<textarea id="cgNotes"></textarea></label>' +
+        '<div class="row-actions"><button type="button" class="btn btn-primary" id="cgSave">Add</button>' +
+        '<button type="button" class="btn" data-close>Cancel</button></div>');
+      $("#cgSave").addEventListener("click", function () {
+        var name = $("#cgName").value.trim();
+        if (!name) return toast("Name required");
+        state.customGoals.push({ id: uid("goal"), name: name, notes: $("#cgNotes").value.trim() });
+        save(); closeModal(); renderGoals();
+      });
+    });
+
+    $("#btnAddGold").addEventListener("click", function () {
+      var f = $("#goldForm");
+      var copper = toCopper(f.g.value, f.s.value, f.c.value);
+      if (!copper) return toast("Enter an amount");
+      if ($("#goldSpend").checked) copper = -copper;
+      state.goldLog.push({ id: uid("gold"), date: f.date.value || todayISO(), copper: copper, note: f.note.value.trim() });
+      f.g.value = 0; f.s.value = 0; f.c.value = 0; f.note.value = "";
+      save(); renderGold();
+    });
+    document.addEventListener("click", function (e) {
+      var id = e.target.getAttribute && e.target.getAttribute("data-del-gold");
+      if (id) {
+        state.goldLog = state.goldLog.filter(function (x) { return x.id !== id; });
+        save(); renderGold();
+      }
+    });
+
+    $("#btnAddProf").addEventListener("click", function () {
+      var unused = DATA.professions.filter(function (n) {
+        return !state.professions.some(function (p) { return p.name === n; });
+      });
+      if (!unused.length) return toast("All professions are already listed");
+      openModal("<h3>Add profession</h3><label class=\"field\">Profession<select id=\"profName\">" +
+        unused.map(function (n) { return "<option>" + n + "</option>"; }).join("") +
+        "</select></label><label class=\"field\">Skill (0–300)<input type=\"number\" id=\"profSkill\" min=\"0\" max=\"300\" value=\"1\"></label>" +
+        '<div class="row-actions"><button type="button" class="btn btn-primary" id="profSave">Add</button>' +
+        '<button type="button" class="btn" data-close>Cancel</button></div>');
+      $("#profSave").addEventListener("click", function () {
+        state.professions.push({ id: uid("prof"), name: $("#profName").value, skill: Math.max(0, Math.min(300, parseInt($("#profSkill").value, 10) || 0)) });
+        save(); closeModal(); renderGold();
+      });
+    });
+    document.addEventListener("click", function (e) {
+      if (e.target.getAttribute && e.target.getAttribute("data-del-prof") != null) {
+        var id = e.target.closest("[data-prof]").getAttribute("data-prof");
+        state.professions = state.professions.filter(function (p) { return p.id !== id; });
+        save(); renderGold();
+      }
+      if (e.target.getAttribute && e.target.getAttribute("data-del-craft") != null) {
+        var idc = e.target.closest("[data-craft]").getAttribute("data-craft");
+        state.crafting = state.crafting.filter(function (p) { return p.id !== idc; });
+        save(); renderGold();
+      }
+    });
+    document.addEventListener("input", function (e) {
+      if (e.target.getAttribute && e.target.getAttribute("data-prof-skill") != null) {
+        var id = e.target.closest("[data-prof]").getAttribute("data-prof");
+        var p = state.professions.find(function (x) { return x.id === id; });
+        if (p) { p.skill = Math.max(0, Math.min(300, parseInt(e.target.value, 10) || 0)); save(); renderProfessions(); }
+      }
+      if (e.target.getAttribute && e.target.getAttribute("data-mat-have") != null) {
+        var card = e.target.closest("[data-craft]");
+        var rec = state.crafting.find(function (x) { return x.id === card.getAttribute("data-craft"); });
+        var idx = parseInt(e.target.closest("[data-mat]").getAttribute("data-mat"), 10);
+        if (rec && rec.mats[idx]) { rec.mats[idx].have = Math.max(0, parseInt(e.target.value, 10) || 0); save(); renderCrafting(); }
+      }
+    });
+    $("#btnAddCraft").addEventListener("click", function () {
+      var f = $("#craftForm");
+      var recipe = f.recipe.value.trim();
+      if (!recipe) return toast("Enter a recipe name");
+      var mats = String(f.mats.value || "").split(",").map(function (part) {
+        var m = part.trim().match(/^(.*?)(?:\s*x\s*|\s+)(\d+)$/i);
+        if (m) return { name: m[1].trim(), qty: parseInt(m[2], 10), have: 0 };
+        if (part.trim()) return { name: part.trim(), qty: 1, have: 0 };
+        return null;
+      }).filter(Boolean);
+      state.crafting.push({ id: uid("craft"), recipe: recipe, mats: mats });
+      f.recipe.value = ""; f.mats.value = "";
+      save(); renderCrafting();
+    });
+
+    $("#btnAddJournal").addEventListener("click", function () {
+      var f = $("#journalForm");
+      if (!(f.title.value.trim() || f.body.value.trim())) return toast("Write a title or entry");
+      state.journal.push({ id: uid("j"), date: f.date.value || todayISO(), title: f.title.value.trim(), body: f.body.value.trim() });
+      f.title.value = ""; f.body.value = "";
+      save(); renderNotes();
+    });
+    $("#btnAddNote").addEventListener("click", function () {
+      var f = $("#noteForm");
+      if (!(f.title.value.trim() || f.body.value.trim())) return toast("Write a title or note");
+      state.notes.push({ id: uid("n"), title: f.title.value.trim(), body: f.body.value.trim(), updated: new Date().toISOString() });
+      f.title.value = ""; f.body.value = "";
+      save(); renderNotes();
+    });
+    $("#notesSearch").addEventListener("input", renderNotes);
+    document.addEventListener("click", function (e) {
+      if (e.target.getAttribute && e.target.getAttribute("data-del-journal") != null) {
+        var id = e.target.closest("[data-journal]").getAttribute("data-journal");
+        state.journal = state.journal.filter(function (x) { return x.id !== id; });
+        save(); renderNotes();
+      }
+      if (e.target.getAttribute && e.target.getAttribute("data-del-note") != null) {
+        var idn = e.target.closest("[data-note]").getAttribute("data-note");
+        state.notes = state.notes.filter(function (x) { return x.id !== idn; });
+        save(); renderNotes();
+      }
+    });
+
+    $("#btnAddCustomItem").addEventListener("click", openCustomItemForm);
+    $("#btnClearGear").addEventListener("click", function () {
+      if (!confirm("Clear all equipped items?")) return;
+      state.equipment = {};
+      save(); renderItems();
+    });
+    $("#upgradeSlot").addEventListener("change", renderUpgrades);
+    document.addEventListener("click", function (e) {
+      var slot = e.target.closest && e.target.closest("[data-equip-slot]");
+      if (slot && $("#tab-items").classList.contains("active")) {
+        openEquipPicker(slot.getAttribute("data-equip-slot"));
+      }
+    });
+
+    document.addEventListener("click", function (e) {
+      var modeBtn = e.target.closest && e.target.closest("[data-talent-mode]");
+      if (modeBtn) { setTalentMode(modeBtn.getAttribute("data-talent-mode")); return; }
+      var specBtn = e.target.closest && e.target.closest("[data-talent-spec]");
+      if (specBtn && !specBtn.disabled) { setActiveSpec(specBtn.getAttribute("data-talent-spec")); }
+    });
+    $("#btnTalentReset").addEventListener("click", function () { resetAllTalents(); renderTalents(); });
+    $("#btnTalentResetTree").addEventListener("click", function () {
+      var data = talentClassData();
+      var t = data.trees[talentFocusTree];
+      if (t) resetTree(t.name);
+      renderTalents();
+    });
+    $("#btnTalentSave").addEventListener("click", function () {
+      openModal("<h3>Save talent build</h3><label class=\"field\">Name<input id=\"tbName\" placeholder=\"My fury 17/34\"></label>" +
+        '<div class="row-actions"><button type="button" class="btn btn-primary" id="tbSave">Save</button>' +
+        '<button type="button" class="btn" data-close>Cancel</button></div>');
+      $("#tbSave").addEventListener("click", function () {
+        var name = $("#tbName").value.trim() || ("Build " + (state.savedTalentBuilds.length + 1));
+        state.savedTalentBuilds.push({
+          id: uid("tb"),
+          name: name,
+          class: ch().class,
+          mode: talentMode(),
+          specSlot: state.talents.activeSpec || "primary",
+          trees: JSON.parse(JSON.stringify(talentStore().trees || {}))
+        });
+        save(); closeModal(); renderTalents(); toast("Saved " + name);
+      });
+    });
+    $("#btnTalentLoad").addEventListener("click", function () {
+      var id = $("#savedBuilds").value;
+      var b = (state.savedTalentBuilds || []).find(function (x) { return x.id === id; });
+      if (!b) return toast("Pick a saved build");
+      if (b.mode) state.talents.mode = b.mode;
+      if (b.specSlot) state.talents.activeSpec = b.specSlot;
+      state.talents.class = b.class;
+      talentStore().trees = JSON.parse(JSON.stringify(b.trees || {}));
+      save(); renderTalents();
+    });
+    $("#btnTalentDelete").addEventListener("click", function () {
+      var id = $("#savedBuilds").value;
+      if (!id) return;
+      state.savedTalentBuilds = state.savedTalentBuilds.filter(function (x) { return x.id !== id; });
+      save(); renderTalents();
+    });
+    document.addEventListener("click", function (e) {
+      var rt = e.target.getAttribute && e.target.getAttribute("data-reset-tree");
+      if (rt) { resetTree(rt); renderTalents(); return; }
+      var lb = e.target.closest && e.target.closest("[data-load-build]");
+      if (lb) {
+        var build = talentBuilds().find(function (x) { return x.id === lb.getAttribute("data-load-build"); });
+        if (build) { applyBuild(build); renderChrome(); renderTalents(); toast("Loaded " + build.name); }
+        return;
+      }
+      var cell = e.target.closest && e.target.closest(".talent[data-talent]");
+      if (cell && $("#tab-talents").classList.contains("active") && e.button === 0) {
+        var data = talentClassData();
+        var tree = data.trees[parseInt(cell.getAttribute("data-tree"), 10)];
+        talentFocusTree = parseInt(cell.getAttribute("data-tree"), 10);
+        var tal = tree.talents.find(function (t) { return String(t.id) === cell.getAttribute("data-talent"); });
+        if (tal) { addPoint(tree, tal); renderTalents(); }
+      }
+    });
+    document.addEventListener("contextmenu", function (e) {
+      var cell = e.target.closest && e.target.closest(".talent[data-talent]");
+      if (cell && $("#tab-talents").classList.contains("active")) {
+        e.preventDefault();
+        var data = talentClassData();
+        var tree = data.trees[parseInt(cell.getAttribute("data-tree"), 10)];
+        talentFocusTree = parseInt(cell.getAttribute("data-tree"), 10);
+        var tal = tree.talents.find(function (t) { return String(t.id) === cell.getAttribute("data-talent"); });
+        if (tal) { removePoint(tree, tal); renderTalents(); }
+      }
+    });
+
+    $("#btnExport").addEventListener("click", exportData);
+    $("#btnImport").addEventListener("click", function () { $("#importFile").click(); });
+    $("#importFile").addEventListener("change", function () {
+      if (this.files && this.files[0]) importData(this.files[0]);
+      this.value = "";
+    });
+  }
+
+  /* ---------- init ---------- */
+  function init() {
+    load();
+    bind();
+    renderCharacter();
+    var hash = (location.hash || "").replace("#", "");
+    var q = "";
+    try { q = new URLSearchParams(location.search).get("tab") || ""; } catch (e) {}
+    var start = q || hash;
+    var valid = ["character","goals","gold","notes","items","talents","leveling"];
+    showTab(valid.indexOf(start) !== -1 ? start : "character");
+  }
+
+  window.ForeverApp = {
+    getState: function () { return state; },
+    setState: function (s) { state = s; save(); },
+    save: save,
+    load: load,
+    showTab: showTab,
+    allItems: allItems,
+    itemScore: itemScore,
+    canEquipInSlot: canEquipInSlot,
+    upgradesFor: upgradesFor,
+    pointsAvailable: pointsAvailable,
+    totalSpent: totalSpent,
+    applyBuild: applyBuild,
+    setTalentMode: setTalentMode,
+    setActiveSpec: setActiveSpec,
+    talentMode: talentMode,
+    formatGold: formatGold,
+    goldTotal: goldTotal,
+    toCopper: toCopper,
+    renderLeveling: renderLeveling,
+    levelingProgress: levelingProgress,
+    expandLevelingSteps: expandLevelingSteps,
+    levelingCharKey: levelingCharKey,
+    includeAddonChapters: includeAddonChapters,
+    overlapChapterKeys: overlapChapterKeys
+  };
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+  else init();
+})();

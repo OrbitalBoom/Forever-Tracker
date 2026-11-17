@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Forever Tracker — Classic Era companion</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="site-header">
+      <div class="crest" aria-hidden="true">W</div>
+      <div class="brand">
+        <h1>Forever Tracker</h1>
+        <p class="tag">Classic Era character companion</p>
+      </div>
+      <div class="char-chip" id="charChip">Set up your character</div>
+      <div class="header-actions">
+        <button type="button" class="btn" id="btnExport">Export JSON</button>
+        <button type="button" class="btn" id="btnImport">Import JSON</button>
+        <input type="file" id="importFile" accept="application/json,.json" hidden>
+      </div>
+    </header>
+
+    <nav class="tabs" role="tablist">
+      <button type="button" role="tab" aria-selected="true" data-tab="character">Character</button>
+      <button type="button" role="tab" aria-selected="false" data-tab="goals">Goals</button>
+      <button type="button" role="tab" aria-selected="false" data-tab="gold">Gold &amp; Professions</button>
+      <button type="button" role="tab" aria-selected="false" data-tab="notes">Notes &amp; Journal</button>
+      <button type="button" role="tab" aria-selected="false" data-tab="items">Items &amp; Upgrades</button>
+      <button type="button" role="tab" aria-selected="false" data-tab="leveling">Leveling Route</button>
+      <button type="button" role="tab" aria-selected="false" data-tab="talents">Talents</button>
+    </nav>
+
+    <main class="stage">
+      <!-- Character -->
+      <section class="panel active" id="tab-character" role="tabpanel">
+        <h2>Character</h2>
+        <p class="lede">Your name, class, and level drive the upgrade finder, talent points, leveling route, and goal suggestions. You can change any of this later.</p>
+        <form id="characterForm" class="form-grid">
+          <label class="field">Name
+            <input type="text" name="name" maxlength="24" placeholder="Your character" autocomplete="off">
+          </label>
+          <label class="field">Race
+            <select name="race"></select>
+          </label>
+          <label class="field">Class
+            <select name="class"></select>
+          </label>
+          <label class="field">Spec
+            <select name="spec"></select>
+          </label>
+          <label class="field">Level
+            <input type="number" name="level" min="1" max="60" value="1">
+          </label>
+        </form>
+        <p class="muted" id="classHint" style="margin-top:12px"></p>
+      </section>
+
+      <!-- Goals -->
+      <section class="panel" id="tab-goals" role="tabpanel">
+        <h2>Goals</h2>
+        <p class="lede">Track Classic Era dungeons (Ragefire Chasm through Scholomance and Stratholme), raids through Naxxramas, notable mounts, and milestone “achievements.” Add your own for Forever-specific content.</p>
+        <div class="filter-bar">
+          <button type="button" class="btn btn-sm goal-filter" data-filter="all">All</button>
+          <button type="button" class="btn btn-sm goal-filter" data-filter="dungeon">Dungeons</button>
+          <button type="button" class="btn btn-sm goal-filter" data-filter="raid">Raids</button>
+          <button type="button" class="btn btn-sm goal-filter" data-filter="mount">Mounts</button>
+          <button type="button" class="btn btn-sm goal-filter" data-filter="achievement">Milestones</button>
+          <button type="button" class="btn btn-sm goal-filter" data-filter="custom">Custom</button>
+          <input type="search" id="goalSearch" placeholder="Search goals…">
+          <button type="button" class="btn btn-primary btn-sm" id="btnAddGoal">Add custom goal</button>
+        </div>
+        <div class="stat-row" id="goalSummary"></div>
+        <div id="goalLists"></div>
+      </section>
+
+      <!-- Gold & professions -->
+      <section class="panel" id="tab-gold" role="tabpanel">
+        <h2>Gold &amp; Professions</h2>
+        <p class="lede">Log gold in g / s / c (100 copper = 1 silver, 100 silver = 1 gold). The running total and chart update as you add entries. Professions cap at 300 in Classic Era.</p>
+        <div class="stat-row" id="goldSummary"></div>
+        <canvas class="chart" id="goldChart" width="1100" height="180" aria-label="Gold over time"></canvas>
+        <form id="goldForm" class="form-grid">
+          <label class="field">Date
+            <input type="date" name="date" required>
+          </label>
+          <label class="field">Gold
+            <input type="number" name="g" min="0" step="1" value="0">
+          </label>
+          <label class="field">Silver
+            <input type="number" name="s" min="0" max="99" step="1" value="0">
+          </label>
+          <label class="field">Copper
+            <input type="number" name="c" min="0" max="99" step="1" value="0">
+          </label>
+          <label class="field">Source / note
+            <input type="text" name="note" placeholder="Auction, raid, farm…">
+          </label>
+        </form>
+        <div class="row-actions">
+          <button type="button" class="btn btn-primary" id="btnAddGold">Add gold entry</button>
+          <label class="muted" style="display:flex;align-items:center;gap:6px">
+            <input type="checkbox" id="goldSpend"> This is a spend (subtract)
+          </label>
+        </div>
+        <div class="table-wrap" style="margin-top:16px">
+          <table class="data" id="goldTable"></table>
+        </div>
+
+        <h3>Professions</h3>
+        <div id="professions" class="card-grid"></div>
+        <div class="row-actions">
+          <button type="button" class="btn" id="btnAddProf">Add profession</button>
+        </div>
+
+        <h3>Crafting list</h3>
+        <p class="muted">Track a recipe, its materials, and how many you still need.</p>
+        <form id="craftForm" class="form-grid">
+          <label class="field">Recipe
+            <input type="text" name="recipe" placeholder="Lionheart Helm">
+          </label>
+          <label class="field">Materials (name x qty, comma-separated)
+            <input type="text" name="mats" placeholder="Arcanite Bar x 8, Thorium Bar x 12">
+          </label>
+        </form>
+        <div class="row-actions">
+          <button type="button" class="btn btn-primary" id="btnAddCraft">Add recipe</button>
+        </div>
+        <div id="craftList" style="margin-top:12px"></div>
+      </section>
+
+      <!-- Notes & journal -->
+      <section class="panel" id="tab-notes" role="tabpanel">
+        <h2>Notes &amp; Journal</h2>
+        <p class="lede">A dated adventure journal plus a free-form notes and guides section. Both are searchable.</p>
+        <div class="filter-bar">
+          <input type="search" id="notesSearch" placeholder="Search notes and journal…">
+        </div>
+        <div class="split">
+          <div>
+            <h3>Adventure journal</h3>
+            <form id="journalForm">
+              <label class="field">Date
+                <input type="date" name="date" required>
+              </label>
+              <label class="field">Title
+                <input type="text" name="title" placeholder="First clear of UBRS">
+              </label>
+              <label class="field">Entry
+                <textarea name="body" placeholder="What happened, who dropped what, attunement notes…"></textarea>
+              </label>
+              <div class="row-actions">
+                <button type="button" class="btn btn-primary" id="btnAddJournal">Add entry</button>
+              </div>
+            </form>
+            <div id="journalList"></div>
+          </div>
+          <div>
+            <h3>Notes &amp; guides</h3>
+            <form id="noteForm">
+              <label class="field">Title
+                <input type="text" name="title" placeholder="Pre-raid bis list, farm route…">
+              </label>
+              <label class="field">Body
+                <textarea name="body" placeholder="Paste a guide, write a checklist, leave yourself a reminder."></textarea>
+              </label>
+              <div class="row-actions">
+                <button type="button" class="btn btn-primary" id="btnAddNote">Add note</button>
+              </div>
+            </form>
+            <div id="noteList"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Items -->
+      <section class="panel" id="tab-items" role="tabpanel">
+        <h2>Items &amp; upgrade finder</h2>
+        <p class="lede">List what you have equipped (or owned) by slot. The finder suggests the closest upgrades from an embedded Classic Era database, filtered by your class proficiency and level, and tells you how to get them. Add Forever-only items to the database yourself.</p>
+        <div class="filter-bar">
+          <button type="button" class="btn btn-primary btn-sm" id="btnAddCustomItem">Add custom item to database</button>
+          <button type="button" class="btn btn-sm" id="btnClearGear">Clear all equipped</button>
+        </div>
+        <div class="gear-layout">
+          <div>
+            <h3>Equipped</h3>
+            <div class="paper-doll" id="paperDoll"></div>
+          </div>
+          <div>
+            <h3>Upgrades <span class="muted" id="upgradeContext"></span></h3>
+            <div class="filter-bar">
+              <label class="field" style="min-width:180px">Focus slot
+                <select id="upgradeSlot"><option value="all">All slots</option></select>
+              </label>
+            </div>
+            <div id="upgradeList" class="upgrade-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Leveling Route -->
+      <section class="panel" id="tab-leveling" role="tabpanel">
+        <h2>Leveling Route</h2>
+        <p class="lede">Hand-picked 1–60 routes for every race and both factions, from the public RestedXP Forever guides (free through ~21–22) and OpenXP (through 60). Choose a source and a Speedrun or Dungeon variant. Checkboxes, notes, and skip stay in this browser, per character.</p>
+        <div id="levelingRoot"></div>
+      </section>
+
+      <!-- Talents -->
+      <section class="panel" id="tab-talents" role="tabpanel">
+        <h2>Talents</h2>
+        <p class="lede">WoW: Forever talent calculator (reworked trees, client 1.60.1). Your first point is at level 10 and you have 51 points at 60. Milestone 1-point talents sit at 11, 16, 21, and 31 points in a tree; there is no 41-point talent. Each row still needs 5 points in that tree, and some talents have prerequisites. Left-click to add a point, right-click to remove. Dual Specialization unlocks at level 40. A Classic Era (reference) toggle keeps the old 1.12 trees for comparison.</p>
+        <div class="talent-toolbar" id="talentModeBar"></div>
+        <div class="talent-toolbar">
+          <button type="button" class="btn btn-sm" id="btnTalentReset">Reset all</button>
+          <button type="button" class="btn btn-sm" id="btnTalentResetTree">Reset current tree</button>
+          <button type="button" class="btn btn-sm" id="btnTalentSave">Save this build…</button>
+          <select id="savedBuilds" style="min-width:180px"><option value="">Saved builds…</option></select>
+          <button type="button" class="btn btn-sm" id="btnTalentLoad">Load</button>
+          <button type="button" class="btn btn-sm btn-danger" id="btnTalentDelete">Delete saved</button>
+          <div class="talent-points" id="talentPoints"></div>
+        </div>
+        <div id="talentTrees" class="talent-trees"></div>
+        <h3 id="buildListTitle">Published Forever builds</h3>
+        <p class="build-note" id="buildSource"></p>
+        <div id="buildList" class="builds"></div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      Works entirely offline from this folder — double-click <strong>index.html</strong>.
+      All data stays in this browser (localStorage) unless you export a JSON backup.
+      Item stats are Classic Era; Forever-only gear can be added as custom items.
+    </footer>
+  </div>
+
+  <div class="modal-back" id="modalBack" hidden>
+    <div class="modal" id="modal" role="dialog" aria-modal="true"></div>
+  </div>
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/items.js"></script>
+  <script src="js/talents.js"></script>
+  <script src="js/leveling-data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

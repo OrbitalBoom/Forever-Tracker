@@ -1,0 +1,1524 @@
+{
+  "zones": {
+    "Mount Hyjal": {
+      "Horde": {
+        "faction": "Horde",
+        "verified": 13,
+        "unverified": 120,
+        "steps": 139,
+        "travel": {
+          "label": "Forever Tracker add-on (auto-optimized, not RestedXP/OpenXP)",
+          "verified": 13,
+          "unverified": 120,
+          "questCount": 133,
+          "steps": 139,
+          "naiveTravel": 382.3,
+          "optimizedTravel": 191.2,
+          "travelReducedPct": 50.0,
+          "window": [
+            55,
+            60
+          ],
+          "bands": [
+            {
+              "band": [
+                55,
+                57
+              ],
+              "verified": 6,
+              "first": "Grain of Memory",
+              "firstLevel": 57,
+              "levels": [
+                57
+              ],
+              "naiveTravel": 233.3,
+              "optimizedTravel": 138.9,
+              "travelReducedPct": 40.5
+            },
+            {
+              "band": [
+                58,
+                60
+              ],
+              "verified": 7,
+              "first": "Flags of Our Forebears",
+              "firstLevel": 59,
+              "levels": [
+                58,
+                59,
+                60
+              ],
+              "naiveTravel": 104.7,
+              "optimizedTravel": 52.2,
+              "travelReducedPct": 50.1
+            }
+          ],
+          "maxAhead": 0,
+          "violations": []
+        },
+        "bands": [
+          {
+            "band": [
+              55,
+              57
+            ],
+            "verified": 6,
+            "first": "Grain of Memory",
+            "firstLevel": 57,
+            "levels": [
+              57
+            ],
+            "naiveTravel": 233.3,
+            "optimizedTravel": 138.9,
+            "travelReducedPct": 40.5
+          },
+          {
+            "band": [
+              58,
+              60
+            ],
+            "verified": 7,
+            "first": "Flags of Our Forebears",
+            "firstLevel": 59,
+            "levels": [
+              58,
+              59,
+              60
+            ],
+            "naiveTravel": 104.7,
+            "optimizedTravel": 52.2,
+            "travelReducedPct": 50.1
+          }
+        ],
+        "keys": [
+          "addon||Mount Hyjal 55-57 (Horde)",
+          "addon||Mount Hyjal 58-60 (Horde)",
+          "addon||Mount Hyjal unverified (Horde)"
+        ],
+        "violations": [],
+        "questIdsVerified": [
+          97000,
+          96830,
+          94782,
+          90854,
+          92609,
+          96616,
+          91794,
+          95026,
+          96999,
+          92592,
+          95248,
+          92446,
+          96998
+        ],
+        "questIdsUnverified": [
+          90487,
+          91770,
+          92009,
+          95766,
+          95569,
+          92594,
+          91755,
+          94479,
+          92008,
+          95611,
+          91754,
+          95568,
+          92328,
+          93759,
+          92959,
+          93406,
+          93747,
+          96796,
+          95320,
+          95380,
+          93952,
+          93825,
+          94504,
+          93834,
+          96666,
+          91923,
+          95319,
+          93826,
+          93828,
+          93615,
+          91697,
+          95317,
+          97119,
+          92111,
+          93617,
+          96262,
+          96979,
+          97001,
+          93831,
+          95318,
+          95316,
+          90647,
+          95769,
+          96978,
+          93830,
+          93833,
+          97007,
+          92500,
+          96435,
+          96322,
+          95379,
+          96255,
+          96131,
+          92100,
+          91698,
+          96550,
+          96957,
+          95107,
+          93567,
+          90865,
+          96296,
+          96931,
+          92147,
+          92101,
+          93197,
+          95108,
+          91696,
+          96145,
+          92102,
+          93551,
+          92011,
+          93832,
+          92317,
+          92171,
+          96252,
+          96939,
+          96930,
+          96321,
+          95378,
+          93773,
+          93269,
+          93510,
+          93827,
+          96964,
+          96025,
+          92335,
+          96959,
+          97010,
+          92017,
+          97009,
+          92169,
+          92960,
+          91883,
+          95793,
+          96971,
+          96991,
+          95273,
+          93407,
+          93547,
+          96302,
+          93444,
+          93422,
+          93521,
+          93584,
+          96003,
+          92329,
+          97490,
+          96561,
+          96303,
+          97006,
+          96301,
+          99670,
+          92016,
+          96558,
+          93127,
+          92533,
+          92833,
+          93848,
+          96983,
+          92521
+        ]
+      },
+      "Alliance": {
+        "faction": "Alliance",
+        "verified": 21,
+        "unverified": 119,
+        "steps": 146,
+        "travel": {
+          "label": "Forever Tracker add-on (auto-optimized, not RestedXP/OpenXP)",
+          "verified": 21,
+          "unverified": 119,
+          "questCount": 140,
+          "steps": 146,
+          "naiveTravel": 657.4,
+          "optimizedTravel": 227.4,
+          "travelReducedPct": 65.4,
+          "window": [
+            55,
+            60
+          ],
+          "bands": [
+            {
+              "band": [
+                55,
+                57
+              ],
+              "verified": 13,
+              "first": "Area Denial Skunks",
+              "firstLevel": 56,
+              "levels": [
+                55,
+                56,
+                57
+              ],
+              "naiveTravel": 476.2,
+              "optimizedTravel": 144.4,
+              "travelReducedPct": 69.7
+            },
+            {
+              "band": [
+                58,
+                60
+              ],
+              "verified": 8,
+              "first": "Avalanche of Corruption",
+              "firstLevel": 59,
+              "levels": [
+                58,
+                59
+              ],
+              "naiveTravel": 201.2,
+              "optimizedTravel": 83.0,
+              "travelReducedPct": 58.7
+            }
+          ],
+          "maxAhead": 0,
+          "violations": []
+        },
+        "bands": [
+          {
+            "band": [
+              55,
+              57
+            ],
+            "verified": 13,
+            "first": "Area Denial Skunks",
+            "firstLevel": 56,
+            "levels": [
+              55,
+              56,
+              57
+            ],
+            "naiveTravel": 476.2,
+            "optimizedTravel": 144.4,
+            "travelReducedPct": 69.7
+          },
+          {
+            "band": [
+              58,
+              60
+            ],
+            "verified": 8,
+            "first": "Avalanche of Corruption",
+            "firstLevel": 59,
+            "levels": [
+              58,
+              59
+            ],
+            "naiveTravel": 201.2,
+            "optimizedTravel": 83.0,
+            "travelReducedPct": 58.7
+          }
+        ],
+        "keys": [
+          "addon||Mount Hyjal 55-57 (Alliance)",
+          "addon||Mount Hyjal 58-60 (Alliance)",
+          "addon||Mount Hyjal unverified (Alliance)"
+        ],
+        "violations": [],
+        "questIdsVerified": [
+          92015,
+          92014,
+          96992,
+          92433,
+          95027,
+          95218,
+          90750,
+          93383,
+          92064,
+          92702,
+          96559,
+          91881,
+          96833,
+          92593,
+          96494,
+          96529,
+          90702,
+          96077,
+          92449,
+          91688,
+          92591
+        ],
+        "questIdsUnverified": [
+          90487,
+          91770,
+          92009,
+          95766,
+          95569,
+          92594,
+          91755,
+          94479,
+          92008,
+          95611,
+          91754,
+          95568,
+          92328,
+          93759,
+          92959,
+          93406,
+          93747,
+          96796,
+          95320,
+          95380,
+          92189,
+          93952,
+          93825,
+          94504,
+          93834,
+          96666,
+          91923,
+          95319,
+          93826,
+          93828,
+          91564,
+          93615,
+          91697,
+          95317,
+          92111,
+          93617,
+          96262,
+          92094,
+          96979,
+          93831,
+          95318,
+          95316,
+          90647,
+          96978,
+          93830,
+          93833,
+          92500,
+          96435,
+          96322,
+          95379,
+          96255,
+          96131,
+          92100,
+          91698,
+          96550,
+          96957,
+          95107,
+          93567,
+          90865,
+          96296,
+          96931,
+          92147,
+          92101,
+          93197,
+          95108,
+          91696,
+          96145,
+          92102,
+          93551,
+          92011,
+          93832,
+          92317,
+          92171,
+          96252,
+          96939,
+          96930,
+          96321,
+          95378,
+          93773,
+          93269,
+          93510,
+          93827,
+          96964,
+          96025,
+          92335,
+          96959,
+          97010,
+          92017,
+          97009,
+          92169,
+          92960,
+          91883,
+          95793,
+          96971,
+          96991,
+          96676,
+          95273,
+          93407,
+          93547,
+          96302,
+          93444,
+          93422,
+          93521,
+          93584,
+          96003,
+          92329,
+          97490,
+          96561,
+          96303,
+          96301,
+          99670,
+          92016,
+          96558,
+          93127,
+          92533,
+          92833,
+          93848,
+          96983,
+          92521
+        ]
+      }
+    },
+    "Riverglades": {
+      "Horde": {
+        "faction": "Horde",
+        "verified": 59,
+        "unverified": 37,
+        "steps": 104,
+        "travel": {
+          "label": "Forever Tracker add-on (auto-optimized, not RestedXP/OpenXP)",
+          "verified": 59,
+          "unverified": 37,
+          "questCount": 96,
+          "steps": 104,
+          "naiveTravel": 824.7,
+          "optimizedTravel": 271.6,
+          "travelReducedPct": 67.1,
+          "window": [
+            35,
+            45
+          ],
+          "bands": [
+            {
+              "band": [
+                35,
+                37
+              ],
+              "verified": 5,
+              "first": "A Gift From Our Enemies",
+              "firstLevel": 36,
+              "levels": [
+                36
+              ],
+              "naiveTravel": 38.4,
+              "optimizedTravel": 19.8,
+              "travelReducedPct": 48.3
+            },
+            {
+              "band": [
+                38,
+                40
+              ],
+              "verified": 21,
+              "first": "A Feast for Buzzards",
+              "firstLevel": 38,
+              "levels": [
+                38,
+                39,
+                40
+              ],
+              "naiveTravel": 166.0,
+              "optimizedTravel": 74.9,
+              "travelReducedPct": 54.9
+            },
+            {
+              "band": [
+                41,
+                43
+              ],
+              "verified": 26,
+              "first": "Paletusk Harvesting",
+              "firstLevel": 41,
+              "levels": [
+                41,
+                42,
+                43
+              ],
+              "naiveTravel": 460.4,
+              "optimizedTravel": 92.7,
+              "travelReducedPct": 79.9
+            },
+            {
+              "band": [
+                44,
+                45
+              ],
+              "verified": 5,
+              "first": "Carving a Path",
+              "firstLevel": 44,
+              "levels": [
+                44,
+                45
+              ],
+              "naiveTravel": 149.1,
+              "optimizedTravel": 42.1,
+              "travelReducedPct": 71.8
+            },
+            {
+              "band": [
+                46,
+                47
+              ],
+              "verified": 2,
+              "first": "Bring Me His Head",
+              "firstLevel": 46,
+              "levels": [
+                46
+              ],
+              "naiveTravel": 42.1,
+              "optimizedTravel": 42.1,
+              "travelReducedPct": 0.0
+            }
+          ],
+          "maxAhead": 0,
+          "violations": []
+        },
+        "bands": [
+          {
+            "band": [
+              35,
+              37
+            ],
+            "verified": 5,
+            "first": "A Gift From Our Enemies",
+            "firstLevel": 36,
+            "levels": [
+              36
+            ],
+            "naiveTravel": 38.4,
+            "optimizedTravel": 19.8,
+            "travelReducedPct": 48.3
+          },
+          {
+            "band": [
+              38,
+              40
+            ],
+            "verified": 21,
+            "first": "A Feast for Buzzards",
+            "firstLevel": 38,
+            "levels": [
+              38,
+              39,
+              40
+            ],
+            "naiveTravel": 166.0,
+            "optimizedTravel": 74.9,
+            "travelReducedPct": 54.9
+          },
+          {
+            "band": [
+              41,
+              43
+            ],
+            "verified": 26,
+            "first": "Paletusk Harvesting",
+            "firstLevel": 41,
+            "levels": [
+              41,
+              42,
+              43
+            ],
+            "naiveTravel": 460.4,
+            "optimizedTravel": 92.7,
+            "travelReducedPct": 79.9
+          },
+          {
+            "band": [
+              44,
+              45
+            ],
+            "verified": 5,
+            "first": "Carving a Path",
+            "firstLevel": 44,
+            "levels": [
+              44,
+              45
+            ],
+            "naiveTravel": 149.1,
+            "optimizedTravel": 42.1,
+            "travelReducedPct": 71.8
+          },
+          {
+            "band": [
+              46,
+              47
+            ],
+            "verified": 2,
+            "first": "Bring Me His Head",
+            "firstLevel": 46,
+            "levels": [
+              46
+            ],
+            "naiveTravel": 42.1,
+            "optimizedTravel": 42.1,
+            "travelReducedPct": 0.0
+          }
+        ],
+        "keys": [
+          "addon||Riverglades 35-37 (Horde)",
+          "addon||Riverglades 38-40 (Horde)",
+          "addon||Riverglades 41-43 (Horde)",
+          "addon||Riverglades 44-45 (Horde)",
+          "addon||Riverglades 46-47 (Horde)",
+          "addon||Riverglades unverified (Horde)"
+        ],
+        "violations": [],
+        "questIdsVerified": [
+          94480,
+          93786,
+          93787,
+          93976,
+          95062,
+          96103,
+          94532,
+          96104,
+          94533,
+          96107,
+          96108,
+          96109,
+          94535,
+          93788,
+          94483,
+          95951,
+          95955,
+          94481,
+          94727,
+          95420,
+          95417,
+          95418,
+          95602,
+          95601,
+          97884,
+          95163,
+          95162,
+          95183,
+          94556,
+          96026,
+          94669,
+          94670,
+          94733,
+          94739,
+          94962,
+          94964,
+          94734,
+          94737,
+          94668,
+          95424,
+          95428,
+          95425,
+          94672,
+          94680,
+          94744,
+          95033,
+          95992,
+          95882,
+          96105,
+          95427,
+          95431,
+          95432,
+          94745,
+          94748,
+          95278,
+          94965,
+          95063,
+          94768,
+          95433
+        ],
+        "questIdsUnverified": [
+          96063,
+          95982,
+          98426,
+          95326,
+          95121,
+          95327,
+          94961,
+          94963,
+          95312,
+          95472,
+          95322,
+          95295,
+          96067,
+          95296,
+          95383,
+          95321,
+          95325,
+          95118,
+          95792,
+          95261,
+          95934,
+          95294,
+          95293,
+          95260,
+          95267,
+          95181,
+          95120,
+          95254,
+          95936,
+          95288,
+          95119,
+          95123,
+          95165,
+          95122,
+          95124,
+          93971,
+          95331
+        ]
+      },
+      "Alliance": {
+        "faction": "Alliance",
+        "verified": 73,
+        "unverified": 37,
+        "steps": 118,
+        "travel": {
+          "label": "Forever Tracker add-on (auto-optimized, not RestedXP/OpenXP)",
+          "verified": 73,
+          "unverified": 37,
+          "questCount": 110,
+          "steps": 118,
+          "naiveTravel": 1709.3,
+          "optimizedTravel": 614.0,
+          "travelReducedPct": 64.1,
+          "window": [
+            35,
+            45
+          ],
+          "bands": [
+            {
+              "band": [
+                35,
+                37
+              ],
+              "verified": 6,
+              "first": "Love Thy Neighbor",
+              "firstLevel": 37,
+              "levels": [
+                36,
+                37
+              ],
+              "naiveTravel": 192.0,
+              "optimizedTravel": 112.3,
+              "travelReducedPct": 41.5
+            },
+            {
+              "band": [
+                38,
+                40
+              ],
+              "verified": 45,
+              "first": "Drink Up!",
+              "firstLevel": 38,
+              "levels": [
+                38,
+                39,
+                40
+              ],
+              "naiveTravel": 797.8,
+              "optimizedTravel": 153.5,
+              "travelReducedPct": 80.8
+            },
+            {
+              "band": [
+                41,
+                43
+              ],
+              "verified": 10,
+              "first": "Upstream Contamination",
+              "firstLevel": 42,
+              "levels": [
+                41,
+                42,
+                43
+              ],
+              "naiveTravel": 196.0,
+              "optimizedTravel": 109.4,
+              "travelReducedPct": 44.2
+            },
+            {
+              "band": [
+                44,
+                45
+              ],
+              "verified": 7,
+              "first": "The Western Front",
+              "firstLevel": 44,
+              "levels": [
+                44,
+                45
+              ],
+              "naiveTravel": 303.6,
+              "optimizedTravel": 130.3,
+              "travelReducedPct": 57.1
+            },
+            {
+              "band": [
+                46,
+                47
+              ],
+              "verified": 5,
+              "first": "Dying Wish",
+              "firstLevel": 47,
+              "levels": [
+                46,
+                47
+              ],
+              "naiveTravel": 214.9,
+              "optimizedTravel": 108.5,
+              "travelReducedPct": 49.5
+            }
+          ],
+          "maxAhead": 0,
+          "violations": []
+        },
+        "bands": [
+          {
+            "band": [
+              35,
+              37
+            ],
+            "verified": 6,
+            "first": "Love Thy Neighbor",
+            "firstLevel": 37,
+            "levels": [
+              36,
+              37
+            ],
+            "naiveTravel": 192.0,
+            "optimizedTravel": 112.3,
+            "travelReducedPct": 41.5
+          },
+          {
+            "band": [
+              38,
+              40
+            ],
+            "verified": 45,
+            "first": "Drink Up!",
+            "firstLevel": 38,
+            "levels": [
+              38,
+              39,
+              40
+            ],
+            "naiveTravel": 797.8,
+            "optimizedTravel": 153.5,
+            "travelReducedPct": 80.8
+          },
+          {
+            "band": [
+              41,
+              43
+            ],
+            "verified": 10,
+            "first": "Upstream Contamination",
+            "firstLevel": 42,
+            "levels": [
+              41,
+              42,
+              43
+            ],
+            "naiveTravel": 196.0,
+            "optimizedTravel": 109.4,
+            "travelReducedPct": 44.2
+          },
+          {
+            "band": [
+              44,
+              45
+            ],
+            "verified": 7,
+            "first": "The Western Front",
+            "firstLevel": 44,
+            "levels": [
+              44,
+              45
+            ],
+            "naiveTravel": 303.6,
+            "optimizedTravel": 130.3,
+            "travelReducedPct": 57.1
+          },
+          {
+            "band": [
+              46,
+              47
+            ],
+            "verified": 5,
+            "first": "Dying Wish",
+            "firstLevel": 47,
+            "levels": [
+              46,
+              47
+            ],
+            "naiveTravel": 214.9,
+            "optimizedTravel": 108.5,
+            "travelReducedPct": 49.5
+          }
+        ],
+        "keys": [
+          "addon||Riverglades 35-37 (Alliance)",
+          "addon||Riverglades 38-40 (Alliance)",
+          "addon||Riverglades 41-43 (Alliance)",
+          "addon||Riverglades 44-45 (Alliance)",
+          "addon||Riverglades 46-47 (Alliance)",
+          "addon||Riverglades unverified (Alliance)"
+        ],
+        "violations": [],
+        "questIdsVerified": [
+          95330,
+          95156,
+          94999,
+          95148,
+          95147,
+          95059,
+          95957,
+          95988,
+          95983,
+          94924,
+          94925,
+          94928,
+          95064,
+          95066,
+          95426,
+          95984,
+          94614,
+          94615,
+          94617,
+          94618,
+          94992,
+          94857,
+          94678,
+          94679,
+          94923,
+          94861,
+          94842,
+          94843,
+          94931,
+          95642,
+          95643,
+          94829,
+          94858,
+          96081,
+          96082,
+          96083,
+          95184,
+          94613,
+          95329,
+          94877,
+          94881,
+          94879,
+          95943,
+          96009,
+          95561,
+          95913,
+          95961,
+          95603,
+          95613,
+          95615,
+          96084,
+          96085,
+          95991,
+          95912,
+          95986,
+          96125,
+          94884,
+          95562,
+          96015,
+          95219,
+          95975,
+          94886,
+          94894,
+          94907,
+          94888,
+          94889,
+          94927,
+          96126,
+          94892,
+          94890,
+          94891,
+          94887,
+          94893
+        ],
+        "questIdsUnverified": [
+          96063,
+          95982,
+          95326,
+          95121,
+          95327,
+          94961,
+          94963,
+          95312,
+          95472,
+          94885,
+          95322,
+          95295,
+          96067,
+          95296,
+          95383,
+          95321,
+          95325,
+          95118,
+          95792,
+          95261,
+          95934,
+          95294,
+          95293,
+          95260,
+          95267,
+          95120,
+          95254,
+          95935,
+          95288,
+          95119,
+          95123,
+          95165,
+          95122,
+          95124,
+          94926,
+          95331,
+          94832
+        ]
+      }
+    },
+    "Shen'dralas": {
+      "Horde": {
+        "faction": "Horde",
+        "verified": 1,
+        "unverified": 35,
+        "steps": 39,
+        "travel": {
+          "label": "Forever Tracker add-on (auto-optimized, not RestedXP/OpenXP)",
+          "verified": 1,
+          "unverified": 35,
+          "questCount": 36,
+          "steps": 39,
+          "naiveTravel": 0,
+          "optimizedTravel": 0,
+          "travelReducedPct": null,
+          "window": [
+            38,
+            45
+          ],
+          "bands": [
+            {
+              "band": [
+                41,
+                43
+              ],
+              "verified": 1,
+              "first": "Checking Things Out",
+              "firstLevel": 43,
+              "levels": [
+                43
+              ],
+              "naiveTravel": 0,
+              "optimizedTravel": 0,
+              "travelReducedPct": null
+            }
+          ],
+          "maxAhead": 0,
+          "violations": []
+        },
+        "bands": [
+          {
+            "band": [
+              41,
+              43
+            ],
+            "verified": 1,
+            "first": "Checking Things Out",
+            "firstLevel": 43,
+            "levels": [
+              43
+            ],
+            "naiveTravel": 0,
+            "optimizedTravel": 0,
+            "travelReducedPct": null
+          }
+        ],
+        "keys": [
+          "addon||Shen'dralas 41-43 (Horde)",
+          "addon||Shen'dralas unverified (Horde)"
+        ],
+        "violations": [],
+        "questIdsVerified": [
+          93122
+        ],
+        "questIdsUnverified": [
+          93041,
+          93035,
+          93034,
+          92894,
+          93037,
+          96010,
+          92873,
+          93062,
+          92847,
+          92893,
+          93450,
+          93451,
+          93058,
+          93546,
+          96060,
+          93016,
+          99257,
+          93066,
+          93341,
+          93125,
+          93072,
+          99258,
+          93394,
+          96018,
+          93188,
+          92914,
+          93129,
+          93362,
+          93594,
+          93574,
+          93609,
+          93606,
+          93568,
+          93601,
+          93644
+        ]
+      },
+      "Alliance": {
+        "faction": "Alliance",
+        "verified": 3,
+        "unverified": 35,
+        "steps": 42,
+        "travel": {
+          "label": "Forever Tracker add-on (auto-optimized, not RestedXP/OpenXP)",
+          "verified": 3,
+          "unverified": 35,
+          "questCount": 38,
+          "steps": 42,
+          "naiveTravel": 136.0,
+          "optimizedTravel": 68.0,
+          "travelReducedPct": 50.0,
+          "window": [
+            38,
+            45
+          ],
+          "bands": [
+            {
+              "band": [
+                38,
+                40
+              ],
+              "verified": 2,
+              "first": "Valley of Bones",
+              "firstLevel": 40,
+              "levels": [
+                40
+              ],
+              "naiveTravel": 68.0,
+              "optimizedTravel": 68.0,
+              "travelReducedPct": 0.0
+            },
+            {
+              "band": [
+                41,
+                43
+              ],
+              "verified": 1,
+              "first": "Mountain of Bones",
+              "firstLevel": 42,
+              "levels": [
+                42
+              ],
+              "naiveTravel": 0.0,
+              "optimizedTravel": 0.0,
+              "travelReducedPct": null
+            }
+          ],
+          "maxAhead": 0,
+          "violations": []
+        },
+        "bands": [
+          {
+            "band": [
+              38,
+              40
+            ],
+            "verified": 2,
+            "first": "Valley of Bones",
+            "firstLevel": 40,
+            "levels": [
+              40
+            ],
+            "naiveTravel": 68.0,
+            "optimizedTravel": 68.0,
+            "travelReducedPct": 0.0
+          },
+          {
+            "band": [
+              41,
+              43
+            ],
+            "verified": 1,
+            "first": "Mountain of Bones",
+            "firstLevel": 42,
+            "levels": [
+              42
+            ],
+            "naiveTravel": 0.0,
+            "optimizedTravel": 0.0,
+            "travelReducedPct": null
+          }
+        ],
+        "keys": [
+          "addon||Shen'dralas 38-40 (Alliance)",
+          "addon||Shen'dralas 41-43 (Alliance)",
+          "addon||Shen'dralas unverified (Alliance)"
+        ],
+        "violations": [],
+        "questIdsVerified": [
+          92841,
+          92846,
+          92844
+        ],
+        "questIdsUnverified": [
+          93041,
+          93035,
+          93034,
+          92894,
+          93037,
+          96010,
+          92873,
+          93062,
+          92847,
+          92893,
+          93450,
+          93451,
+          93058,
+          93546,
+          96060,
+          93016,
+          99257,
+          93066,
+          93341,
+          93125,
+          93072,
+          99258,
+          93394,
+          96018,
+          93188,
+          92914,
+          93129,
+          93362,
+          93594,
+          93574,
+          93609,
+          93606,
+          93568,
+          93601,
+          93644
+        ],
+        "openxpStubIds": [
+          92841,
+          92844,
+          93034,
+          93035,
+          93037
+        ],
+        "extraVsOpenXP": 34
+      }
+    }
+  },
+  "gaps": [
+    "forever-quests and ForeverDB have no records for these zones, so there are no preQuestSingle / preQuestGroup / exclusiveTo / turn-in coordinates from those dumps.",
+    "Zephras list tags (data-also=chain) are too loose to treat as a prerequisite graph and were not used as chains.",
+    "Many quests have no faction tag (especially Shen'dralas and Mount Hyjal); those are optional/unverified at the end of each chapter.",
+    "Turn-in and objective coordinates were not in the local snapshot; only pickup/giver points (and published flight points) are shown.",
+    "A Riverglades level-58 outlier and Hyjal entries with no level are in the unverified list."
+  ],
+  "splicesExample": {
+    "combined|speedrun|Undead": [
+      {
+        "zone": "Riverglades",
+        "after": "34-36 Stranglethorn Vale",
+        "key": "addon||Riverglades 35-37 (Horde)",
+        "keys": [
+          "addon||Riverglades 35-37 (Horde)",
+          "addon||Riverglades 38-40 (Horde)",
+          "addon||Riverglades 41-43 (Horde)",
+          "addon||Riverglades 44-45 (Horde)",
+          "addon||Riverglades 46-47 (Horde)",
+          "addon||Riverglades unverified (Horde)"
+        ],
+        "overlaps": [
+          "36-37 Arathi Highlands",
+          "36-37 Desolace",
+          "37-38 Dustwallow Marsh",
+          "38-39 Arathi Highlands",
+          "38-39 Badlands",
+          "38-39 Swamp of Sorrows",
+          "39-40 Stranglethorn Vale"
+        ],
+        "window": [
+          35,
+          39
+        ],
+        "questWindow": [
+          35,
+          45
+        ]
+      },
+      {
+        "zone": "Shen'dralas",
+        "after": "39-40 Desolace",
+        "key": "addon||Shen'dralas 41-43 (Horde)",
+        "keys": [
+          "addon||Shen'dralas 41-43 (Horde)",
+          "addon||Shen'dralas unverified (Horde)"
+        ],
+        "overlaps": [
+          "40-41 Thunder Bluff",
+          "40-41 Stranglethorn Vale",
+          "41-42 Badlands",
+          "41-42 Feralas",
+          "41-42 Dustwallow Marsh",
+          "42-43 Feralas",
+          "43-44 Orgrimmar",
+          "43-44 Undercity",
+          "43-44 Stranglethorn Vale",
+          "43-44 Swamp of Sorrows"
+        ],
+        "window": [
+          40,
+          43
+        ],
+        "questWindow": [
+          38,
+          45
+        ]
+      },
+      {
+        "zone": "Mount Hyjal",
+        "after": "54-55 Winterspring",
+        "key": "addon||Mount Hyjal 55-57 (Horde)",
+        "keys": [
+          "addon||Mount Hyjal 55-57 (Horde)",
+          "addon||Mount Hyjal 58-60 (Horde)",
+          "addon||Mount Hyjal unverified (Horde)"
+        ],
+        "overlaps": [
+          "55-56 Silithus",
+          "58-59 Winterspring",
+          "58-59 Silithus",
+          "58-59 Eastern Plaguelands",
+          "59-60 Orgrimmar"
+        ],
+        "window": [
+          55,
+          60
+        ],
+        "questWindow": [
+          55,
+          60
+        ]
+      }
+    ],
+    "combined|speedrun|Human": [
+      {
+        "zone": "Riverglades",
+        "after": "34-35 Stranglethorn Vale",
+        "key": "addon||Riverglades 35-37 (Alliance)",
+        "keys": [
+          "addon||Riverglades 35-37 (Alliance)",
+          "addon||Riverglades 38-40 (Alliance)",
+          "addon||Riverglades 41-43 (Alliance)",
+          "addon||Riverglades 44-45 (Alliance)",
+          "addon||Riverglades 46-47 (Alliance)",
+          "addon||Riverglades unverified (Alliance)"
+        ],
+        "overlaps": [
+          "35-36 Stormwind City",
+          "35-36 Badlands",
+          "35-36 Desolace",
+          "36-37 Dustwallow Marsh",
+          "37-38 Arathi Highlands",
+          "37-38 Swamp of Sorrows",
+          "37-38 Stranglethorn Vale",
+          "38-39 Dustwallow Marsh",
+          "38-39 Badlands",
+          "38-39 Arathi Highlands",
+          "39-40 Stranglethorn Vale"
+        ],
+        "window": [
+          35,
+          39
+        ],
+        "questWindow": [
+          35,
+          45
+        ]
+      },
+      {
+        "zone": "Shen'dralas",
+        "after": "40-41 Shen'dralas",
+        "key": "addon||Shen'dralas 38-40 (Alliance)",
+        "keys": [
+          "addon||Shen'dralas 38-40 (Alliance)",
+          "addon||Shen'dralas 41-43 (Alliance)",
+          "addon||Shen'dralas unverified (Alliance)"
+        ],
+        "overlaps": [
+          "40-41 Shen'dralas",
+          "40-41 Ironforge",
+          "40-41 Hillsbrad/Alterac",
+          "41-42 Feralas",
+          "41-42 Stranglethorn Vale",
+          "42-43 Feralas",
+          "42-43 Tanaris",
+          "43-44 Stranglethorn Vale"
+        ],
+        "window": [
+          40,
+          43
+        ],
+        "questWindow": [
+          38,
+          45
+        ]
+      },
+      {
+        "zone": "Mount Hyjal",
+        "after": "54-55 Winterspring",
+        "key": "addon||Mount Hyjal 55-57 (Alliance)",
+        "keys": [
+          "addon||Mount Hyjal 55-57 (Alliance)",
+          "addon||Mount Hyjal 58-60 (Alliance)",
+          "addon||Mount Hyjal unverified (Alliance)"
+        ],
+        "overlaps": [
+          "55-56 Darnassus",
+          "55-56 Silithus",
+          "56-57 Western Plaguelands",
+          "56-57 Winterspring",
+          "58-59 Silithus",
+          "58-59 Burning Steppes",
+          "58-59 Eastern Plaguelands",
+          "59-60 Ironforge",
+          "59-60 Stormwind City"
+        ],
+        "window": [
+          55,
+          60
+        ],
+        "questWindow": [
+          55,
+          60
+        ]
+      }
+    ]
+  }
+}
