@@ -360,7 +360,19 @@ canvas.chart {
   box-shadow: var(--shadow);
   pointer-events: none;
 }
-.talent:hover .talent-tip { display: block; }
+.talent .talent-tip { display: none !important; }
+#talentTipFloat {
+  display: none;
+  position: fixed; left: 0; top: 0; transform: none;
+  width: 260px; max-width: calc(100vw - 16px); z-index: 1000;
+  background: #0e0b08; color: var(--ink);
+  border: 1px solid var(--gold);
+  border-radius: 4px; padding: 8px 10px;
+  text-align: left; font-size: 12px; line-height: 1.4;
+  box-shadow: var(--shadow);
+  pointer-events: none;
+}
+#talentTipFloat strong { color: var(--gold-2); font-size: 13px; }
 .talent-tip strong { color: var(--gold-2); font-size: 13px; }
 .builds { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; margin-top: 8px; }
 .build-card { text-align: left; width: 100%; }

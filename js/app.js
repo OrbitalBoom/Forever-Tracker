@@ -1084,7 +1084,7 @@
           var next = (t.ranks && t.ranks[rank]) ? "<br><em>Next: " + escapeHtml(t.ranks[rank]) + "</em>" : "";
           var req = t.prereq ? "<br>Requires " + t.prereq.rank + " in " + escapeHtml((tree.talents.find(function (x) { return x.id === t.prereq.id; }) || {}).name || "prereq") : "";
           cells += '<button type="button" class="' + cls + '" data-tree="' + idx + '" data-talent="' + t.id +
-            '" title="' + escapeHtml(t.name) + '"><span class="t-name">' + escapeHtml(t.name) +
+            '" aria-label="' + escapeHtml(t.name) + '"><span class="t-name">' + escapeHtml(t.name) +
             '</span><span class="t-rank">' + rank + "/" + t.maxRank + "</span>" +
             '<div class="talent-tip"><strong>' + escapeHtml(t.name) + "</strong> · Rank " + rank + "/" + t.maxRank +
             "<br>" + escapeHtml(desc) + next + req + "</div></button>";
@@ -1959,4 +1959,54 @@
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
+
+  // Floating talent tooltip: fixed-position on <body> so it is never clipped; flips below and clamps to viewport.
+  (function () {
+    var tip = null;
+    function ensure() {
+      if (!tip) { tip = document.createElement("div"); tip.id = "talentTipFloat"; document.body.appendChild(tip); }
+      return tip;
+    }
+    function hide() { if (tip) tip.style.display = "none"; }
+    function show(cell) {
+      var src = cell.querySelector(".talent-tip");
+      if (!src) return hide();
+      var el = ensure();
+      el.innerHTML = src.innerHTML;
+      el.style.display = "block";
+      var r = cell.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight, m = 8;
+      var vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
+      var left = r.left + r.width / 2 - w / 2;
+      left = Math.max(m, Math.min(left, vw - w - m));
+      var top = r.top - h - m;
+      if (top < m) top = r.bottom + m;
+      if (top + h > vh - m) top = Math.max(m, vh - h - m);
+      el.style.left = left + "px"; el.style.top = top + "px";
+    }
+    function refresh(cell) {
+      setTimeout(function () {
+        var fresh = document.querySelector('.talent[data-tree="' + cell.dataset.tree + '"][data-talent="' + cell.dataset.talent + '"]');
+        if (fresh) show(fresh); else hide();
+      }, 0);
+    }
+    document.addEventListener("mouseover", function (e) {
+      var cell = e.target.closest && e.target.closest(".talent[data-talent]");
+      if (cell) show(cell); else hide();
+    });
+    document.addEventListener("focusin", function (e) {
+      var cell = e.target.closest && e.target.closest(".talent[data-talent]");
+      if (cell) show(cell);
+    });
+    document.addEventListener("focusout", hide);
+    window.addEventListener("scroll", hide, true);
+    window.addEventListener("resize", hide);
+    document.addEventListener("click", function (e) {
+      var cell = e.target.closest && e.target.closest(".talent[data-talent]");
+      if (cell) refresh(cell);
+    });
+    document.addEventListener("contextmenu", function (e) {
+      var cell = e.target.closest && e.target.closest(".talent[data-talent]");
+      if (cell) refresh(cell);
+    });
+  })();
 })();
