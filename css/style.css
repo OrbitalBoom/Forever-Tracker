@@ -497,3 +497,29 @@ footer.site-footer {
 }
 .zone-block.addon-zone > header h3 { color: #c9d8ea; }
 .kind-tag.addon-tag { color: #8cb4d8; }
+
+/* ---------- profession guide ---------- */
+.prof-guide { margin-top: 8px; }
+.pg-toolbar { align-items: flex-end; flex-wrap: wrap; }
+.pg-opts { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 8px 0; font-size: .92rem; color: var(--ink-dim); }
+.pg-opts label.check, .prof-guide label.check { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.pg-price { margin: 6px 0 10px; }
+.pg-sub { display: flex; gap: 8px; margin: 10px 0 14px; }
+.pg-steps { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 18px; }
+.pg-step { display: flex; gap: 10px; align-items: flex-start; }
+.pg-step .step-main h4 { margin: 0 0 4px; font-size: 1rem; }
+.pg-step .step-main p { margin: 0; font-size: .9rem; color: var(--ink-dim); }
+.pg-range { display: inline-block; min-width: 70px; color: var(--gold-2); font-family: var(--ui); font-weight: 600; }
+.pg-gate { padding: 6px 10px; border-left: 3px solid var(--gold); background: var(--panel-2); color: var(--gold-2); font-size: .9rem; border-radius: 4px; }
+.sk { display: inline-block; padding: 0 6px; border-radius: 4px; font-size: .75rem; font-family: var(--ui); text-transform: uppercase; letter-spacing: .03em; border: 1px solid currentColor; vertical-align: middle; }
+.sk-orange { color: #ff8040; }
+.sk-yellow { color: #ffff00; }
+.sk-green { color: #40c040; }
+.sk-grey { color: #9d9d9d; }
+table.data th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+table.data th.sortable:hover { color: var(--gold-2); }
+.pg-roi td { vertical-align: top; }
+.pg-pos { color: var(--ok); }
+.pg-neg { color: var(--danger); }
+.pg-need { margin: 6px 0 16px; padding-left: 20px; line-height: 1.6; }
+table.data tfoot th { text-align: left; }

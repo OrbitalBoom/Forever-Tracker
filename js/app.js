@@ -96,7 +96,8 @@
       customItems: [],
       talents: emptyTalentState("Warrior"),
       savedTalentBuilds: [],
-      leveling: defaultLeveling()
+      leveling: defaultLeveling(),
+      profGuide: {}
     };
   }
 
@@ -406,6 +407,7 @@
     if (!form.date.value) form.date.value = todayISO();
     $("#goldSummary").innerHTML = pill("Running total", formatGold(goldTotal()));
     drawGoldChart();
+    if (window.ProfGuide) { try { window.ProfGuide.render(); } catch (e) { console.error(e); } }
     var rows = state.goldLog.slice().sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });
     var html = "<thead><tr><th>Date</th><th>Amount</th><th>Source</th><th></th></tr></thead><tbody>";
     if (!rows.length) html += "<tr><td colspan=\"4\" class=\"muted\">No entries yet.</td></tr>";
@@ -1767,7 +1769,7 @@
       if (e.target.getAttribute && e.target.getAttribute("data-prof-skill") != null) {
         var id = e.target.closest("[data-prof]").getAttribute("data-prof");
         var p = state.professions.find(function (x) { return x.id === id; });
-        if (p) { p.skill = Math.max(0, Math.min(300, parseInt(e.target.value, 10) || 0)); save(); renderProfessions(); }
+        if (p) { p.skill = Math.max(0, Math.min(300, parseInt(e.target.value, 10) || 0)); save(); renderProfessions(); if (window.ProfGuide) window.ProfGuide.render(); }
       }
       if (e.target.getAttribute && e.target.getAttribute("data-mat-have") != null) {
         var card = e.target.closest("[data-craft]");
@@ -1960,7 +1962,8 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
 
-  // Floating talent tooltip: fixed-position on <body> so it is never clipped; flips below and clamps to viewport.
+  // Floating talent tooltip: lives on <body> with fixed positioning so it is never
+  // clipped by the scrollable tree container; flips below and clamps to the viewport.
   (function () {
     var tip = null;
     function ensure() {
@@ -1983,12 +1986,6 @@
       if (top + h > vh - m) top = Math.max(m, vh - h - m);
       el.style.left = left + "px"; el.style.top = top + "px";
     }
-    function refresh(cell) {
-      setTimeout(function () {
-        var fresh = document.querySelector('.talent[data-tree="' + cell.dataset.tree + '"][data-talent="' + cell.dataset.talent + '"]');
-        if (fresh) show(fresh); else hide();
-      }, 0);
-    }
     document.addEventListener("mouseover", function (e) {
       var cell = e.target.closest && e.target.closest(".talent[data-talent]");
       if (cell) show(cell); else hide();
@@ -2002,11 +1999,17 @@
     window.addEventListener("resize", hide);
     document.addEventListener("click", function (e) {
       var cell = e.target.closest && e.target.closest(".talent[data-talent]");
-      if (cell) refresh(cell);
+      if (cell) setTimeout(function () {
+        var fresh = document.querySelector('.talent[data-tree="' + cell.dataset.tree + '"][data-talent="' + cell.dataset.talent + '"]');
+        if (fresh) show(fresh); else hide();
+      }, 0);
     });
     document.addEventListener("contextmenu", function (e) {
       var cell = e.target.closest && e.target.closest(".talent[data-talent]");
-      if (cell) refresh(cell);
+      if (cell) setTimeout(function () {
+        var fresh = document.querySelector('.talent[data-tree="' + cell.dataset.tree + '"][data-talent="' + cell.dataset.talent + '"]');
+        if (fresh) show(fresh); else hide();
+      }, 0);
     });
   })();
 })();

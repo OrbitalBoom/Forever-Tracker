@@ -1,0 +1,68 @@
+# Refreshes WoW: Forever auction prices (US, Normal ruleset, Horde AH) for the
+# Professions tab. Publishes data/prices.json + data/prices.js to the
+# `prices-data` branch as a single force-pushed commit, so main's history does
+# not grow and the site's own deploys are untouched. The site reads the file
+# from raw.githubusercontent.com and falls back to the copy in main.
+name: Refresh auction prices
+
+on:
+  schedule:
+    - cron: "23 * * * *"   # hourly; Blizzard publishes a new snapshot about once an hour
+  workflow_dispatch: {}
+  push:                    # run once right after this workflow or the price script changes
+    branches: [main]
+    paths:
+      - ".github/workflows/prices.yml"
+      - "tools/prices/**"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: prices
+  cancel-in-progress: false
+
+jobs:
+  prices:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Decide whether to run
+        id: gate
+        env:
+          BLIZZARD_CLIENT_ID: ${{ secrets.BLIZZARD_CLIENT_ID }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          # With Blizzard credentials: every hour. Without them (fan-site
+          # fallback): every 3 hours, to keep the load on that site small.
+          if [ -n "$BLIZZARD_CLIENT_ID" ] || [ "$EVENT" != "schedule" ] || [ $(( $(date -u +%H) % 3 )) -eq 0 ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Fetch prices
+        if: steps.gate.outputs.run == 'true'
+        env:
+          BLIZZARD_CLIENT_ID: ${{ secrets.BLIZZARD_CLIENT_ID }}
+          BLIZZARD_CLIENT_SECRET: ${{ secrets.BLIZZARD_CLIENT_SECRET }}
+          PRICE_FALLBACK: ${{ vars.PRICE_FALLBACK || 'on' }}
+        run: python3 tools/prices/fetch_prices.py .
+
+      - name: Publish to prices-data branch
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          set -e
+          test -s data/prices.json || { echo "no prices.json"; exit 1; }
+          mkdir -p /tmp/out && cp data/prices.json data/prices.js /tmp/out/
+          cd /tmp/out
+          git init -q -b prices-data
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add prices.json prices.js
+          git commit -q -m "Auction prices $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" prices-data

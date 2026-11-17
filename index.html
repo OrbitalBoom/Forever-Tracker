@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Forever Tracker — Classic Era companion</title>
-  <link rel="stylesheet" href="css/style.css?v=20261117b">
+  <link rel="stylesheet" href="css/style.css?v=20261117c">
 </head>
 <body>
   <div class="app">
@@ -113,6 +113,10 @@
         <div class="row-actions">
           <button type="button" class="btn" id="btnAddProf">Add profession</button>
         </div>
+
+        <h3>Profession guide</h3>
+        <p class="muted">The cheapest path from your skill to 300, and what pays to craft at any skill, using WoW: Forever recipes and US Normal Horde auction prices. Your skill syncs with the professions above.</p>
+        <div id="profGuide" class="prof-guide"></div>
 
         <h3>Crafting list</h3>
         <p class="muted">Track a recipe, its materials, and how many you still need.</p>
@@ -239,10 +243,13 @@
   </div>
   <div class="toast" id="toast" hidden></div>
 
-  <script src="js/data.js?v=20261117b"></script>
-  <script src="js/items.js?v=20261117b"></script>
-  <script src="js/talents.js?v=20261117b"></script>
-  <script src="js/leveling-data.js?v=20261117b"></script>
-  <script src="js/app.js?v=20261117b"></script>
+  <script src="js/data.js?v=20261117c"></script>
+  <script src="js/items.js?v=20261117c"></script>
+  <script src="js/talents.js?v=20261117c"></script>
+  <script src="js/leveling-data.js?v=20261117c"></script>
+  <script src="js/app.js?v=20261117c"></script>
+  <script src="js/professions-data.js?v=20261117c"></script>
+  <script src="data/prices.js?v=20261117c"></script>
+  <script src="js/professions.js?v=20261117c"></script>
 </body>
 </html>
