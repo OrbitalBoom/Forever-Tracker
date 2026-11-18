@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Build Forever Tracker add-on chapters for new zones missing from RestedXP/OpenXP.
 
-Uses already-fetched local data only (Zephras list + zone pages, forever-quests, ForeverDB).
+Uses already-fetched local data only (Zephras list + zone pages, forever-quests, ForeverDB,
+and a local NorgannonDB checkout for quest starters/finishers, prerequisites and NPC spawns).
 Does not invent quests or coordinates. Personal non-commercial local use.
 """
 from __future__ import annotations
@@ -13,9 +14,22 @@ from collections import defaultdict
 from html import unescape
 from pathlib import Path
 
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import norgannondb  # noqa: E402
+
 SRC = Path("/tmp/wowdata/quests")
 LEVELING_JS = Path("/workspace/wow-forever/js/leveling-data.js")
 STATS = Path("/workspace/wow-forever/tools/addon-zone-stats.json")
+
+NORG_DIR = SRC / "NorgannonDB" / "data"  # git clone https://github.com/zmarotrix/NorgannonDB (GPL-3.0)
+ZONE_AREA = {"Riverglades": 16591, "Shen'dralas": 16651, "Mount Hyjal": 616}
+PLACEHOLDER_RE = re.compile(r"^\s*(reuse\s*me|<.*>|\[?unused\]?|nyi|placeholder)\s*$", re.I)
+NORG_META = {}
+
+ZEPHRAS_BUILD = "1.60.1.70959"
+ZEPHRAS_DATE = "2026-11-18"
 
 HUB_RADIUS = 6.0  # map %; pickups this close are batched
 
@@ -221,7 +235,121 @@ def merge_quests():
                 master[qid].setdefault("pre", [])
                 master[qid].setdefault("exclusiveTo", [])
                 master[qid].setdefault("requiredLevel", None)
+    apply_norgannondb(master)
     return master
+
+
+def _spawn_points(rec):
+    sp = (rec or {}).get("spawns") or {}
+    out = []
+    if isinstance(sp, dict):
+        for area, pts in sp.items():
+            for pt in pts or []:
+                if isinstance(pt, list) and len(pt) >= 2 and pt[0] is not None and pt[0] >= 0:
+                    out.append((int(area), round(float(pt[0]), 1), round(float(pt[1]), 1)))
+    return out
+
+
+def _pick_point(points, area, near=None):
+    inz = [p for p in points if p[0] == area]
+    if inz:
+        if near:
+            inz.sort(key=lambda p: math.hypot(p[1] - near[0], p[2] - near[1]))
+        return inz[0], True
+    return (points[0], False) if points else (None, False)
+
+
+def _entity_points(ref, npcs, objects):
+    """[(name, [(area, x, y), ...]), ...] for starters/finishers {npcs=[...], objects=[...]}."""
+    out = []
+    ref = ref if isinstance(ref, dict) else {}
+    for nid in ref.get("npcs") or []:
+        r = npcs.get(nid)
+        if r:
+            out.append((r.get("name"), _spawn_points(r)))
+    for oid in ref.get("objects") or []:
+        r = objects.get(oid)
+        if r:
+            out.append((r.get("name"), _spawn_points(r)))
+    return out
+
+
+def apply_norgannondb(master):
+    """Cross-check the Zephras catalog with NorgannonDB (QuestieDB-based, GPL-3.0).
+
+    - Drops placeholder titles (REUSE ME, <UNUSED>...) and quests NorgannonDB marks hidden.
+    - Fills missing pickup coordinates from the starter's in-zone spawn.
+    - Detects quests whose starter stands outside the zone (breadcrumbs from capitals):
+      the pickup is shown in its real zone and kept out of the in-zone walking metric.
+    - Adds turn-in NPC/object and coordinates, prerequisites and exclusiveTo when listed.
+    Faction tags are NOT inferred from NPC reaction (it disagrees with Zephras tags too often).
+    """
+    if not (NORG_DIR / "quests.lua").exists():
+        print("NorgannonDB not found at", NORG_DIR, "- skipping cross-check")
+        return
+    quests = norgannondb.load_records(NORG_DIR / "quests.lua", set(master))
+    want_n, want_o = set(), set()
+    for q in quests.values():
+        for part in ("starters", "finishers"):
+            ref = q.get(part) if isinstance(q.get(part), dict) else {}
+            want_n |= set(ref.get("npcs") or [])
+            want_o |= set(ref.get("objects") or [])
+    npcs = norgannondb.load_records(NORG_DIR / "npcs.lua", want_n)
+    objects = norgannondb.load_records(NORG_DIR / "objects.lua", want_o)
+    zones = norgannondb.load_zone_names(NORG_DIR / "world.lua")
+    info = norgannondb.load_info(NORG_DIR / "info.lua")
+    stats = {"matched": 0, "dropped": [], "coordsFilled": [], "outside": [], "turnins": 0, "prereqs": 0}
+    for qid in list(master):
+        q = master[qid]
+        n = quests.get(qid)
+        if PLACEHOLDER_RE.match(q.get("name") or "") or (n and n.get("hidden") is True):
+            stats["dropped"].append({"id": qid, "name": q.get("name"), "why": "hidden in NorgannonDB" if n and n.get("hidden") is True else "placeholder title"})
+            del master[qid]
+            continue
+        if not n:
+            continue
+        stats["matched"] += 1
+        area = ZONE_AREA[q["zone"]]
+        starters = _entity_points(n.get("starters"), npcs, objects)
+        pts = [p for _, ps in starters for p in ps]
+        if pts:
+            pt, inz = _pick_point(pts, area, q.get("xy"))
+            if inz and not q.get("xy"):
+                q["xy"] = (pt[1], pt[2])
+                q["xy_src"] = "norgannondb"
+                if not q.get("giver"):
+                    q["giver"] = next((nm for nm, ps in starters if pt in ps), None)
+                stats["coordsFilled"].append(qid)
+            elif not inz:
+                giver = next((nm for nm, ps in starters if pt in ps), None)
+                q["outside"] = {"zone": zones.get(pt[0], "another zone"), "x": pt[1], "y": pt[2], "giver": giver}
+                q["xy"] = None
+                stats["outside"].append({"id": qid, "name": q["name"], "zone": q["outside"]["zone"]})
+        fin = _entity_points(n.get("finishers"), npcs, objects)
+        fpts = [(nm, p) for nm, ps in fin for p in ps]
+        if fpts:
+            inz = [fp for fp in fpts if fp[1][0] == area]
+            nm, p = (inz or fpts)[0]
+            q["turnin"] = {"name": nm, "zone": zones.get(p[0], "another zone"), "x": p[1], "y": p[2], "inZone": bool(inz)}
+            stats["turnins"] += 1
+        elif fin:
+            q["turnin"] = {"name": fin[0][0], "zone": None, "x": None, "y": None, "inZone": False}
+        pre = n.get("prerequisites") if isinstance(n.get("prerequisites"), dict) else {}
+        npre = [int(x) for x in (pre.get("all") or []) + (pre.get("any") or []) if str(x).lstrip("-").isdigit() and int(x) > 0]
+        if npre and not q.get("pre"):
+            q["pre"] = npre
+            stats["prereqs"] += 1
+        if n.get("exclusiveTo") and not q.get("exclusiveTo"):
+            q["exclusiveTo"] = list(n["exclusiveTo"])
+        if not q.get("level") and isinstance(n.get("level"), int) and n["level"] > 0:
+            q["level"] = n["level"]
+    NORG_META.update({
+        "version": info.get("generated"),
+        "sources": info.get("sources"),
+        "stats": stats,
+    })
+    print("NorgannonDB", info.get("generated"), "matched", stats["matched"], "dropped", len(stats["dropped"]),
+          "coordsFilled", len(stats["coordsFilled"]), "outside", len(stats["outside"]), "turnins", stats["turnins"], "prereqs", stats["prereqs"])
 
 
 def side_ok(side, faction):
@@ -373,14 +501,32 @@ def pack_chapter(name, zone, faction, steps, meta=None):
     }
 
 
+def _turnin_text(q):
+    t = q.get("turnin")
+    if not t or not t.get("name"):
+        return "Turn in (turn-in coordinates were not in the local data — use the quest giver if they take it back, or the in-game tracker)."
+    if t.get("x") is None:
+        return "Turn in to {}.".format(t["name"])
+    if t.get("inZone"):
+        return "Turn in to {} at {}, {}.".format(t["name"], t["x"], t["y"])
+    return "Turn in to {} in {} at {}, {}.".format(t["name"], t["zone"], t["x"], t["y"])
+
+
 def emit_quest_step(zone, q, prefix, start_lv, tags="addon|newzone"):
     xy = q.get("xy")
     x, y = (xy if xy else (None, None))
+    step_zone = zone
+    away = q.get("outside")
+    if away:
+        x, y, step_zone = away["x"], away["y"], away["zone"]
+    src = (q.get("xy_src") or "zephras-list") if xy else ("norgannondb" if away else "")
     bits = []
     if "unverified" in tags:
         if q.get("unverified_reasons"):
             bits.append("Unverified: " + "; ".join(q["unverified_reasons"]) + ".")
-        if q.get("giver") and xy:
+        if away:
+            bits.append("Starts outside {}: {} in {} at {}, {}.".format(zone, away.get("giver") or q.get("giver") or "the quest giver", away["zone"], away["x"], away["y"]))
+        elif q.get("giver") and xy:
             bits.append("Giver {} at {}, {}.".format(q["giver"], xy[0], xy[1]))
         elif q.get("giver"):
             bits.append("Giver {} (no coordinates).".format(q["giver"]))
@@ -388,23 +534,28 @@ def emit_quest_step(zone, q, prefix, start_lv, tags="addon|newzone"):
             bits.append("Listed side: {}.".format(q["side"]))
         if q.get("level"):
             bits.append("Quest level {}.".format(q["level"]))
+        if q.get("turnin") and q["turnin"].get("name"):
+            bits.append(_turnin_text(q))
     else:
         giver = q.get("giver")
-        if giver and xy:
+        if away:
+            bits.append("Pick this up in {} from {} at {}, {} (outside {}; grab it before you head here or on your next visit).".format(
+                away["zone"], away.get("giver") or giver or "the quest giver", x, y, zone))
+        elif giver and xy:
             bits.append("Accept from {} at {}, {}.".format(giver, x, y))
         elif xy:
             bits.append("Accept at {}, {}.".format(x, y))
         else:
             bits.append("Accept this quest.")
         bits.append("Do the objectives.")
-        bits.append("Turn in (turn-in coordinates were not in the local snapshot — use the quest giver if they take it back, or the in-game tracker).")
+        bits.append(_turnin_text(q))
         if q.get("level"):
             bits.append("Quest level {}.".format(q["level"]))
     return compact_step(
-        "quest", zone, q.get("level") or start_lv,
+        "quest", step_zone, q.get("level") or start_lv,
         q["name"],
         " ".join(bits),
-        x, y, "zephras-list" if xy else "",
+        x, y, src,
         [q["id"]],
         tags,
         prefix + "q:" + str(q["id"]),
@@ -440,7 +591,7 @@ def build_zone_chapters(zone, faction, quests, travel_text, start_lv):
     verified, unverified = [], []
     for q in quests:
         fac = side_ok(q.get("side"), faction)
-        has_xy = bool(q.get("xy"))
+        has_xy = bool(q.get("xy")) or bool(q.get("outside"))
         window_ok = in_window(q, lo, hi)
         reasons = []
         if fac is False:
@@ -476,7 +627,12 @@ def build_zone_chapters(zone, faction, quests, travel_text, start_lv):
         qs = by_band[b]
         if not qs:
             continue
+        # Pickups outside the zone (e.g. breadcrumbs from a capital) go first in the band
+        # and are left out of the in-zone walking metric.
+        away = sorted([q for q in qs if q.get("outside")], key=lambda q: (q.get("level") or 99, q["id"]))
+        qs = [q for q in qs if not q.get("outside")]
         ordered, _bnaive, _bopt = nn_order(qs, cur)
+        ordered = away + ordered
         band_opt = travel_length(ordered, cur)
         band_naive = travel_length(sorted(qs, key=lambda q: (q.get("level") or 99, q.get("name") or "", q["id"])), cur)
         band_results.append({
@@ -518,7 +674,7 @@ def build_zone_chapters(zone, faction, quests, travel_text, start_lv):
             steps.append(compact_step(
                 "note", zone, start_lv,
                 "{} — {}".format(zone, ADDON_LABEL),
-                "This chapter is an auto-optimized add-on built from local Forever quest data (already-fetched Zephras list and zone pages; forever-quests / ForeverDB had no records for this zone). Quests are grouped into 2–3 level bands so a step is not offered more than about two levels before its quest level; within each band a nearest-neighbor / same-hub batching heuristic is used on pickup coordinates. Prerequisites and exclusiveTo are applied only when present in the local catalog (none were found for these quests). Nothing here is a RestedXP or OpenXP route, and no quest or coordinate was invented.",
+                "This chapter is an auto-optimized add-on built from Forever quest data (Zephras quest list and zone pages, cross-checked with NorgannonDB, which builds on QuestieDB; forever-quests / ForeverDB had no records for this zone). Quests are grouped into 2–3 level bands so a step is not offered more than about two levels before its quest level; within each band a nearest-neighbor / same-hub batching heuristic is used on pickup coordinates, waiting on NorgannonDB prerequisites when both quests are in the chapter. Quests picked up outside the zone are listed first in their band, with their real zone. Turn-in NPCs and coordinates come from NorgannonDB where it lists them. Nothing here is a RestedXP or OpenXP route, and no quest or coordinate was invented.",
                 None, None, "", [], "addon|newzone", prefix + "intro",
             ))
             steps.append(compact_step(
@@ -758,6 +914,7 @@ def main():
     names = data.setdefault("questNames", {})
     names.update(quest_names)
     data.setdefault("coordLabels", {})["zephras-list"] = "Zephras list (already-fetched snapshot)"
+    data["coordLabels"]["norgannondb"] = "NorgannonDB (QuestieDB-based) spawn"
 
     splices = {}
     for rid, rec in data["routes"].items():
@@ -805,15 +962,19 @@ def main():
         "toggle": "includeNewZones",
         "defaultOn": True,
         "sources": [
-            "Already-fetched Zephras quest list and zone pages (build 1.60.1.70938 snapshot, 2026-11-17)",
+            "Zephras quest list and zone pages (build {} snapshot, {})".format(ZEPHRAS_BUILD, ZEPHRAS_DATE),
+            "NorgannonDB {} (GPL-3.0; QuestieDB {} Forever data): quest starters/finishers, NPC spawns, prerequisites, exclusiveTo".format(
+                NORG_META.get("version") or "?",
+                next((x.get("version") for x in (NORG_META.get("sources") or []) if x.get("name") == "QuestieDB"), "?")),
             "tyler3497/forever-quests and ForeverDB snapshot were checked; they have no Riverglades / Shen'dralas / Mount Hyjal records",
         ],
+        "norgannondb": NORG_META.get("stats"),
         "levelBands": LEVEL_BANDS,
         "gaps": [
-            "forever-quests and ForeverDB have no records for these zones, so there are no preQuestSingle / preQuestGroup / exclusiveTo / turn-in coordinates from those dumps.",
+            "forever-quests and ForeverDB have no records for these zones; prerequisites, exclusiveTo and turn-ins come from NorgannonDB where it lists them.",
             "Zephras list tags (data-also=chain) are too loose to treat as a prerequisite graph and were not used as chains.",
-            "Many quests have no faction tag (especially Shen'dralas and Mount Hyjal); those are optional/unverified at the end of each chapter.",
-            "Turn-in and objective coordinates were not in the local snapshot; only pickup/giver points (and published flight points) are shown.",
+            "Many quests have no faction tag (especially Shen'dralas and Mount Hyjal); those are optional/unverified at the end of each chapter. NorgannonDB has no race restriction on them either, and NPC reaction was not used to guess a side.",
+            "Objective coordinates are not shown; turn-in coordinates are shown only where NorgannonDB lists the turn-in NPC or object with a spawn.",
             "A Riverglades level-58 outlier and Hyjal entries with no level are in the unverified list.",
         ],
     }

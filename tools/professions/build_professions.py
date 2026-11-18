@@ -202,10 +202,16 @@ for name, args in lua_calls(os.path.join(core, "HiddenRecipes.lua")):
 
 # ---------- server-side hotfix overrides (Blizzard hotfix notes) ----------
 # Each entry is applied only if the client data still shows the old value.
-HOTFIX_URL = "https://news.blizzard.com/en-us/article/24315281/wow-forever-hotfixes-november-16-2026"
+HOTFIX_URL = "https://news.blizzard.com/en-us/article/24315281/wow-forever-hotfixes-november-17-2026"
 BAG_FIX = {  # recipe name -> (bolt item id, old count, new count)
     "Red Mageweave Bag": (4339, 4, 5), "Green Silk Pack": (4305, 4, 5), "Black Silk Pack": (4305, 5, 6),
     "Green Woolen Bag": (2997, 4, 5), "Red Woolen Bag": (2997, 4, 5),
+}
+# recipe name -> (profession id, source kinds, source note) for recipes the data has no source for
+SOURCE_FIX = {
+    # Nov 17, 2026: "The quest 'The Old Ways' now grants the Orcish War Leggings recipe via an item ...
+    # a replacement from Sumi inside the nearby blacksmithing hut once the quest is completed."
+    "Orcish War Leggings": (164, "q", "Quest: The Old Ways (replacement from Sumi after the quest)"),
 }
 applied_fixes = []
 
@@ -253,6 +259,10 @@ for pid, pname in PROFS.items():
         kinds = "".join(k for k in "tvqcd" if k in src)
         if acquire.get(sid) == 1:
             kinds = "a" + kinds  # learned automatically with the profession
+        fix_note = None
+        if name in SOURCE_FIX and SOURCE_FIX[name][0] == pid and not kinds:
+            kinds, fix_note = SOURCE_FIX[name][1], SOURCE_FIX[name][2]
+            applied_fixes.append("%s: source -> %s" % (name, fix_note))
         teach_item = r.get("itemId") or recipe_items.get(sid) or 0
         flags = 0
         if sid in borrowed: flags |= 1           # requiredSkill borrowed from Vanilla (unconfirmed)
@@ -285,6 +295,7 @@ for pid, pname in PROFS.items():
             "r": r.get("requiredSkill", 0), "g": reagents, "s": kinds,
             "ti": teach_item, "f": flags, "u": skillups.get(sid, 1),
         }
+        if fix_note: srcnpcs = [fix_note] + srcnpcs
         if srcnpcs: row["sn"] = srcnpcs[:3]
         if src.get("dn") or src.get("d"): row["dn"] = src.get("dn") or len(src.get("d", []))
         if cost is not None: row["vc"] = cost

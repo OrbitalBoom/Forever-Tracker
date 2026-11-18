@@ -479,7 +479,7 @@ footer.site-footer {
 }
 .src-tag.forever, .src-tag.guide, .src-tag.guide-world { color: #7dce8a; }
 .src-tag.classic { color: #c4b07a; }
-.src-tag.zephras-list { color: #8cb4d8; }
+.src-tag.zephras-list, .src-tag.norgannondb { color: #8cb4d8; }
 .src-tag.missing { color: var(--muted); }
 .kind-tag { color: var(--gold); }
 .step-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
