@@ -9,7 +9,23 @@ No server, no install, no internet required:
 1. Open the `wow-forever` folder.
 2. Double-click `index.html` (or open it in any modern browser).
 
-Everything is saved in **this browser’s localStorage**. Use **Export JSON** in the header to download a backup, and **Import JSON** to restore it on another computer or after clearing the browser.
+Your character is saved automatically in this browser as you type — there is no Save button for that.
+
+## Cloud save
+
+To also keep a copy in this GitHub repository (so it comes back if the browser clears its storage, or if you open the site on another computer):
+
+1. Click the **Cloud save** status in the header.
+2. Create a [fine-grained personal access token](https://github.com/settings/personal-access-tokens/new). Name it something like “Forever Tracker”, and set a long expiration.
+3. Under **Repository access**, choose **Only select repositories** and pick **Forever-Tracker**.
+4. Under **Permissions**, set **Contents** to **Read and write**. Leave everything else as it is.
+5. Generate the token, paste it into the Cloud save box, and click **Connect**.
+
+After that, changes are written automatically (a few seconds after you edit, and when you leave the tab) to `save.json` on a dedicated `save-data` branch. That branch is never merged into `main`, so a save will not rebuild the site or clash with the weekly data refresh. The token stays in this browser only and is never written into `save.json` or an exported backup file.
+
+A public copy of `save.json` can be read without a token, so a wiped browser can still restore your character. Connecting a token is only required to write updates. Because this repository is public, don’t put passwords or real-life personal information in your notes.
+
+**Export JSON** / **Import JSON** are under Cloud save → Backup file, if you want a file on this computer.
 
 ## Tabs
 

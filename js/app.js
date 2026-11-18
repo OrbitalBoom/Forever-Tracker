@@ -117,22 +117,47 @@
       var raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return;
       var parsed = JSON.parse(raw);
-      var base = defaultState();
-      Object.keys(base).forEach(function (k) {
-        if (parsed[k] != null) base[k] = parsed[k];
-      });
-      if (!base.character) base.character = defaultState().character;
-      state = base;
-      normalizeTalents();
-      normalizeLeveling();
+      applyStateObject(parsed, { persist: false, render: false, keepTimestamp: true });
     } catch (e) {
       console.warn("Could not load saved data", e);
     }
   }
 
+  function applyStateObject(parsed, opts) {
+    opts = opts || {};
+    var base = defaultState();
+    Object.keys(base).forEach(function (k) {
+      if (parsed[k] != null) base[k] = parsed[k];
+    });
+    if (!base.character) base.character = defaultState().character;
+    if (parsed.savedAt) base.savedAt = parsed.savedAt;
+    state = base;
+    normalizeTalents();
+    normalizeLeveling();
+    if (opts.persist !== false) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {
+        if (!opts.quiet) toast("Could not save to localStorage: " + (e.message || e));
+      }
+    }
+    if (opts.render !== false) {
+      renderTab(activeTab);
+      if (window.ProfGuide) { try { window.ProfGuide.render(); } catch (e) { console.error(e); } }
+    }
+  }
+
+  function applyLoadedState(data, savedAt) {
+    var parsed = data || {};
+    if (savedAt) parsed.savedAt = savedAt;
+    applyStateObject(parsed, { persist: true, render: true, keepTimestamp: true, quiet: true });
+  }
+
   function save() {
     try {
+      state.savedAt = new Date().toISOString();
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      if (window.CloudSave) window.CloudSave.schedule();
     } catch (e) {
       toast("Could not save to localStorage: " + (e.message || e));
     }
@@ -1153,13 +1178,8 @@
       try {
         var parsed = JSON.parse(reader.result);
         var data = parsed.data || parsed;
-        var base = defaultState();
-        Object.keys(base).forEach(function (k) {
-          if (data[k] != null) base[k] = data[k];
-        });
-        state = base;
+        applyStateObject(data, { persist: false, render: true });
         save();
-        renderTab(activeTab);
         toast("Imported backup");
       } catch (e) {
         toast("Import failed: " + (e.message || e));
@@ -1911,12 +1931,13 @@
       }
     });
 
-    $("#btnExport").addEventListener("click", exportData);
-    $("#btnImport").addEventListener("click", function () { $("#importFile").click(); });
-    $("#importFile").addEventListener("change", function () {
-      if (this.files && this.files[0]) importData(this.files[0]);
-      this.value = "";
-    });
+    var importFile = $("#importFile");
+    if (importFile) {
+      importFile.addEventListener("change", function () {
+        if (this.files && this.files[0]) importData(this.files[0]);
+        this.value = "";
+      });
+    }
   }
 
   /* ---------- init ---------- */
@@ -1930,13 +1951,25 @@
     var start = q || hash;
     var valid = ["character","goals","gold","notes","items","talents","leveling"];
     showTab(valid.indexOf(start) !== -1 ? start : "character");
+    try {
+      if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
+    } catch (e) {}
+    if (window.CloudSave) window.CloudSave.start();
   }
 
   window.ForeverApp = {
+    STORAGE_KEY: STORAGE_KEY,
     getState: function () { return state; },
     setState: function (s) { state = s; save(); },
     save: save,
     load: load,
+    applyLoadedState: applyLoadedState,
+    exportData: exportData,
+    importData: importData,
+    openModal: openModal,
+    closeModal: closeModal,
+    toast: toast,
+    renderTab: function () { renderTab(activeTab); },
     showTab: showTab,
     allItems: allItems,
     itemScore: itemScore,

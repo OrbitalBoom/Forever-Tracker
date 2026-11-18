@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Forever Tracker — Classic Era companion</title>
-  <link rel="stylesheet" href="css/style.css?v=20261118">
+  <link rel="stylesheet" href="css/style.css?v=20261118b">
 </head>
 <body>
   <div class="app">
@@ -16,8 +16,7 @@
       </div>
       <div class="char-chip" id="charChip">Set up your character</div>
       <div class="header-actions">
-        <button type="button" class="btn" id="btnExport">Export JSON</button>
-        <button type="button" class="btn" id="btnImport">Import JSON</button>
+        <button type="button" class="cloud-pill is-off" id="cloudSavePill" aria-haspopup="dialog" title="Click to connect cloud save">Not connected</button>
         <input type="file" id="importFile" accept="application/json,.json" hidden>
       </div>
     </header>
@@ -36,7 +35,7 @@
       <!-- Character -->
       <section class="panel active" id="tab-character" role="tabpanel">
         <h2>Character</h2>
-        <p class="lede">Your name, class, and level drive the upgrade finder, talent points, leveling route, and goal suggestions. You can change any of this later.</p>
+        <p class="lede">Your name, class, and level drive the upgrade finder, talent points, leveling route, and goal suggestions. Changes are saved automatically. You can change any of this later.</p>
         <form id="characterForm" class="form-grid">
           <label class="field">Name
             <input type="text" name="name" maxlength="24" placeholder="Your character" autocomplete="off">
@@ -206,7 +205,7 @@
       <!-- Leveling Route -->
       <section class="panel" id="tab-leveling" role="tabpanel">
         <h2>Leveling Route</h2>
-        <p class="lede">Hand-picked 1–60 routes for every race and both factions, from the public RestedXP Forever guides (free through ~21–22) and OpenXP (through 60). Choose a source and a Speedrun or Dungeon variant. Checkboxes, notes, and skip stay in this browser, per character.</p>
+        <p class="lede">Hand-picked 1–60 routes for every race and both factions, from the public RestedXP Forever guides (free through ~21–22) and OpenXP (through 60). Choose a source and a Speedrun or Dungeon variant. Checkboxes, notes, and skip are saved automatically, per character.</p>
         <div id="levelingRoot"></div>
       </section>
 
@@ -233,7 +232,7 @@
 
     <footer class="site-footer">
       Works entirely offline from this folder — double-click <strong>index.html</strong>.
-      All data stays in this browser (localStorage) unless you export a JSON backup.
+      Your character is saved automatically in this browser, and also to GitHub if you connect a token (Cloud save in the header).
       Item stats are Classic Era; Forever-only gear can be added as custom items.
     </footer>
   </div>
@@ -243,13 +242,14 @@
   </div>
   <div class="toast" id="toast" hidden></div>
 
-  <script src="js/data.js?v=20261118"></script>
-  <script src="js/items.js?v=20261118"></script>
-  <script src="js/talents.js?v=20261118"></script>
-  <script src="js/leveling-data.js?v=20261118"></script>
-  <script src="js/app.js?v=20261118"></script>
-  <script src="js/professions-data.js?v=20261118"></script>
-  <script src="data/prices.js?v=20261118"></script>
-  <script src="js/professions.js?v=20261118"></script>
+  <script src="js/data.js?v=20261118b"></script>
+  <script src="js/items.js?v=20261118b"></script>
+  <script src="js/talents.js?v=20261118b"></script>
+  <script src="js/leveling-data.js?v=20261118b"></script>
+  <script src="js/app.js?v=20261118b"></script>
+  <script src="js/cloud-save.js?v=20261118b"></script>
+  <script src="js/professions-data.js?v=20261118b"></script>
+  <script src="data/prices.js?v=20261118b"></script>
+  <script src="js/professions.js?v=20261118b"></script>
 </body>
 </html>
