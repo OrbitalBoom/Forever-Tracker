@@ -50,7 +50,7 @@
 window.GOLD_FARMS_META = {
   built: "2026-11-20",
   priceHouse: "US Normal Horde (house 114), same feed as the Profession guide",
-  disclaimer: "Gold per hour and gold per kill move with the Auction House. Per-kill figures use sourced drop chances × average stack size × this site’s current US Normal Horde AH market value, plus a sourced coin drop and grey vendor value when those exist. Gold/hour is shown when a source also published a kills/hour figure. Sourced snapshots are not promises. Nothing here is invented."
+  disclaimer: "Gold per hour and gold per kill move with the Auction House and with how fast you pull. Per-kill figures use sourced drop chances × average stack size × this site’s current US Normal Horde AH market value, plus a sourced coin drop and grey vendor value when those exist. When a source also published a kills/hour figure, that rate is used. Otherwise gold/hour is estimated as gold/kill × kills/min × 60, using a default of 2 kills/min (120/hour) for a typical solo at-level single-pull grind — the same “two kills a minute” ByteTavern uses, and in the 100–150/hour range Classic guides often cite (Conquest Capped assumes 100/hour). That estimate is marked with a ~ and does not change sourced rows. Sourced snapshots are not promises. Nothing here invents drop rates."
 };
 window.GOLD_FARMS = [
 

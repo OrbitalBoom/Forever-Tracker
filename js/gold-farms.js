@@ -1,5 +1,7 @@
 /* Gold Farming section. Reads window.GOLD_FARMS and the same PRICE_DATA
- * feed as the Profession guide. Does not invent drop rates or gold/hour. */
+ * feed as the Profession guide. Does not invent drop rates. Gold/hour without
+ * a published kill rate is estimated from gold/kill × a user-adjustable
+ * kills-per-minute assumption (default 2/min) and is labeled as an estimate. */
 (function () {
   var TYPE_LABEL = {
     mob: "Mob grind",
@@ -15,6 +17,10 @@
     { id: "instance", label: "Dungeon" }
   ];
   var TOP_N = 5;
+  var DEFAULT_KPM = 2;
+  var KPM_MIN = 0.5;
+  var KPM_MAX = 6;
+  var KPM_STEP = 0.5;
   var bound = false;
   var helpers = {};
   var expandedId = null;
@@ -74,7 +80,8 @@
       viewLevel: null,
       typeFilter: "all",
       favsOnly: false,
-      showAllGroups: false
+      showAllGroups: false,
+      killsPerMin: DEFAULT_KPM
     };
   }
   function prefs() {
@@ -123,6 +130,37 @@
       p.followLevel = false;
       p.viewLevel = n;
     }
+  }
+
+  function clampKpm(n) {
+    n = parseFloat(n);
+    if (isNaN(n)) n = DEFAULT_KPM;
+    n = Math.round(n / KPM_STEP) * KPM_STEP;
+    return Math.max(KPM_MIN, Math.min(KPM_MAX, n));
+  }
+  function killsPerMin() {
+    return clampKpm(prefs().killsPerMin);
+  }
+  function setKillsPerMin(n) {
+    prefs().killsPerMin = clampKpm(n);
+  }
+  function kpmLabel(n) {
+    return (Math.round(n * 10) / 10) % 1 === 0 ? String(Math.round(n)) : String(Math.round(n * 10) / 10);
+  }
+  // Global slider value, scaled by an optional sourced per-spot override.
+  function killsPerMinFor(spot) {
+    var user = killsPerMin();
+    var base = spot && spot.estimatedKillsPerMin != null ? Number(spot.estimatedKillsPerMin) : DEFAULT_KPM;
+    if (isNaN(base) || base <= 0) base = DEFAULT_KPM;
+    return Math.round(base * (user / DEFAULT_KPM) * 10) / 10;
+  }
+  function estimatedHourly(spot, live) {
+    live = live || liveOf(spot);
+    if (live.perKill == null) return null;
+    if (live.perHour != null) return null;
+    if (sourcedHourly(spot) != null) return null;
+    var kpm = killsPerMinFor(spot);
+    return { copper: Math.round(live.perKill * kpm * 60), kpm: kpm };
   }
 
   function priceOf(id) {
@@ -223,6 +261,10 @@
     }
     if (sourcedHr != null) {
       return { copper: sourcedHr, unit: "/hr", kind: "sourced", live: live };
+    }
+    var est = estimatedHourly(spot, live);
+    if (est) {
+      return { copper: est.copper, unit: "/hr", kind: "estimated", live: live, kpm: est.kpm };
     }
     if (live.perKill != null) {
       return { copper: live.perKill, unit: "/kill", kind: "live", live: live };
@@ -353,6 +395,14 @@
         '<button type="button" class="gf-step" id="gfLvlUp" aria-label="Higher level">+</button>' +
         reset +
       "</div>" +
+      '<div class="gf-level gf-kpm" role="group" aria-label="Kills per minute">' +
+        '<button type="button" class="gf-step" id="gfKpmDown" aria-label="Fewer kills per minute">−</button>' +
+        '<label class="gf-level-label">Kills/min ' +
+          '<input type="number" id="gfKpm" min="' + KPM_MIN + '" max="' + KPM_MAX +
+            '" step="' + KPM_STEP + '" value="' + kpmLabel(killsPerMin()) + '">' +
+        "</label>" +
+        '<button type="button" class="gf-step" id="gfKpmUp" aria-label="More kills per minute">+</button>' +
+      "</div>" +
       '<div class="gf-pills" role="group" aria-label="Farm type">' + pills + "</div>";
   }
 
@@ -382,8 +432,10 @@
       "<p>" + escapeHtml(meta.disclaimer ||
         "Gold per hour moves with the Auction House and with how fast you can pull. Sourced figures are snapshots, not promises. Live values are computed from current AH prices and the drop rates a source listed.") +
       "</p>" +
-      "<p>The big number is gold per hour when a source published a kills/hour figure and this site can price the drops. If there is no kill rate, the big number is gold per kill — chance × average stack × current AH price, plus a sourced coin drop and grey vendor value when those exist. " +
-      escapeHtml(priceStamp()) + ". Nothing here is invented.</p>" +
+      "<p>The big number is gold per hour. When a guide published a kills/hour figure, that rate is used and the row keeps its usual look. When there is gold per kill but no published kill rate, this site estimates gold/hour as gold/kill × kills/min × 60, marked with a ~ and an est. tag. " +
+      escapeHtml(priceStamp()) + ".</p>" +
+      "<p>The default is " + kpmLabel(DEFAULT_KPM) + " kills per minute (" + (DEFAULT_KPM * 60) +
+        "/hour) for a typical solo, at-level, single-pull grind. That matches ByteTavern’s “two kills a minute” linen-farm assumption and sits in the 100–150 kills/hour range Classic guides often use (Conquest Capped’s mid-level farms assume 100/hour). Pack, AoE, and slow elite camps will differ — use the Kills/min control, which is saved with your character. It does not change rows that already have a sourced kill rate. Nothing here invents drop rates.</p>" +
       "<p>Bug exploits, duplication, and other play that breaks Blizzard's terms of use are not listed.</p>";
     el.open = open;
   }
@@ -396,13 +448,22 @@
       if (!t) return;
       var step = t.closest && t.closest(".gf-step");
       if (step) {
-        var cur = viewLevel();
-        var next = step.id === "gfLvlDown" ? cur - 1 : cur + 1;
-        setViewLevel(next, false);
-        persist();
-        showAllRows = false;
-        refresh();
-        return;
+        if (step.id === "gfKpmDown" || step.id === "gfKpmUp") {
+          var nextK = killsPerMin() + (step.id === "gfKpmDown" ? -KPM_STEP : KPM_STEP);
+          setKillsPerMin(nextK);
+          persist();
+          refresh();
+          return;
+        }
+        if (step.id === "gfLvlDown" || step.id === "gfLvlUp") {
+          var cur = viewLevel();
+          var next = step.id === "gfLvlDown" ? cur - 1 : cur + 1;
+          setViewLevel(next, false);
+          persist();
+          showAllRows = false;
+          refresh();
+          return;
+        }
       }
       if (t.id === "gfUseMyLevel") {
         setViewLevel(charLevel(), true);
@@ -460,10 +521,16 @@
       }
     });
     root.addEventListener("change", function (e) {
-      if (e.target && e.target.id === "gfLevel") {
+      if (!e.target) return;
+      if (e.target.id === "gfLevel") {
         setViewLevel(e.target.value, false);
         persist();
         showAllRows = false;
+        refresh();
+      }
+      if (e.target.id === "gfKpm") {
+        setKillsPerMin(e.target.value);
+        persist();
         refresh();
       }
     });
@@ -552,10 +619,22 @@
         '<div class="muted">Computed from this site\'s ' + escapeHtml(priceStamp()) +
         " × sourced drop chances, at the source\'s " + live.kph + " kills/hour assumption.</div></div>");
     } else if (live.perKill != null) {
-      parts.push('<div class="gf-live"><span class="kicker">Gold per kill</span><strong>' +
-        goldShortHtml(live.perKill) + "/kill</strong>" +
-        '<div class="muted">Computed from this site\'s ' + escapeHtml(priceStamp()) +
-        " × sourced drop chances and average stacks, plus coin and vendor trash when those are sourced. No published kills/hour for this camp.</div></div>");
+      var est = estimatedHourly(spot, live);
+      if (est) {
+        parts.push('<div class="gf-live"><span class="kicker">Estimated gold per hour</span><strong>' +
+          '<span class="gf-approx">~</span>' + goldShortHtml(est.copper) + "/hr</strong>" +
+          '<div class="gf-formula">' + goldText(live.perKill, { compact: true }) + "/kill × " +
+            kpmLabel(est.kpm) + " kills/min × 60 = ~" + goldText(est.copper, { compact: true }) + "/hr</div>" +
+          '<div class="muted">Gold per kill uses this site\'s ' + escapeHtml(priceStamp()) +
+          " × sourced drop chances. No published kills/hour for this camp, so this hour figure uses the Kills/min control" +
+          (Math.abs(est.kpm - DEFAULT_KPM) < 1e-6 ? " (default " + kpmLabel(DEFAULT_KPM) + "/min)." : ".") +
+          "</div></div>");
+      } else {
+        parts.push('<div class="gf-live"><span class="kicker">Gold per kill</span><strong>' +
+          goldShortHtml(live.perKill) + "/kill</strong>" +
+          '<div class="muted">Computed from this site\'s ' + escapeHtml(priceStamp()) +
+          " × sourced drop chances and average stacks, plus coin and vendor trash when those are sourced.</div></div>");
+      }
     } else if (live.priced.length) {
       parts.push('<div class="gf-live"><span class="kicker">Live AH prices</span><strong>' +
         live.priced.length + " item" + (live.priced.length === 1 ? "" : "s") + " priced</strong>" +
@@ -629,7 +708,9 @@
     var lootLine = names.length ? names.slice(0, 3).join(", ") + (names.length > 3 ? "…" : "") : "See details for loot";
     var goldInner;
     if (h.copper != null) {
-      goldInner = "<strong>" + goldShortHtml(h.copper) + "</strong><span class=\"gf-est\">est. " + h.unit + "</span>";
+      var approx = h.kind === "estimated" ? '<span class="gf-approx">~</span>' : "";
+      var tag = h.kind === "estimated" ? "est. /hr" : ("est. " + h.unit);
+      goldInner = "<strong>" + approx + goldShortHtml(h.copper) + "</strong><span class=\"gf-est\">" + tag + "</span>";
       if (h.unit === "/hr" && h.live && h.live.perKill != null) {
         goldInner += '<span class="gf-kill-sub">' + goldText(h.live.perKill, { compact: true }) + "/kill</span>";
       }
@@ -733,6 +814,9 @@
     liveOf: liveOf,
     filtered: filtered,
     viewLevel: viewLevel,
-    headline: headline
+    headline: headline,
+    killsPerMin: killsPerMin,
+    estimatedHourly: estimatedHourly,
+    DEFAULT_KPM: DEFAULT_KPM
   };
 })();
