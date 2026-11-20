@@ -725,3 +725,40 @@ table.data th.sortable:hover { color: var(--gold-2); }
 .pg-neg { color: var(--danger); }
 .pg-need { margin: 6px 0 16px; padding-left: 20px; line-height: 1.6; }
 table.data tfoot th { text-align: left; }
+
+/* ---------- Gold farming ---------- */
+.gf-filters { margin-top: 8px; }
+.gf-filters .field.gf-inline { min-width: 0; }
+.gf-filters .field.gf-inline input[type="number"] { width: 4.2em; display: inline-block; }
+.gf-filters .field.gf-inline select { min-width: 10em; }
+.gf-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink);
+  font-size: 13px;
+}
+.gf-card { display: flex; flex-direction: column; gap: 8px; }
+.gf-card.is-fav { border-color: var(--gold); }
+.gf-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.gf-tag-forever { color: var(--ok); }
+.gf-tag-classic { color: var(--warn); }
+.gf-star {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ink-dim);
+  white-space: nowrap;
+}
+.gf-meta { font-size: 13px; color: var(--ink); }
+.gf-loot, .gf-sources { margin: 0; padding-left: 1.1em; }
+.gf-loot li, .gf-sources li { margin: 2px 0; }
+.gf-live, .gf-sourced, .gf-risk {
+  background: #120e0a;
+  border: 1px solid #3a2c18;
+  border-radius: 4px;
+  padding: 8px 10px;
+}
+.gf-live strong, .gf-sourced strong { color: var(--gold-2); font-size: 16px; display: block; }
+.gf-risk { border-left: 3px solid var(--warn); }

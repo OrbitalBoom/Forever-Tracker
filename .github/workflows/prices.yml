@@ -39,7 +39,7 @@ jobs:
         run: |
           # With Blizzard credentials: every hour. Without them (fan-site
           # fallback): every 3 hours, to keep the load on that site small.
-          if [ -n "$BLIZZARD_CLIENT_ID" ] || [ "$EVENT" != "schedule" ] || [ $(( $(date -u +%H) % 3 )) -eq 0 ]; then
+          if [ -n "$BLIZZARD_CLIENT_ID" ] || [ "$EVENT" != "schedule" ] || [ $(( 10#$(date -u +%H) % 3 )) -eq 0 ]; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"

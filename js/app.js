@@ -100,7 +100,9 @@
       talents: emptyTalentState("Warrior"),
       savedTalentBuilds: [],
       leveling: defaultLeveling(),
-      profGuide: {}
+      profGuide: {},
+      goldFarmFavs: [],
+      goldFarmPrefs: {}
     };
   }
 
@@ -436,6 +438,10 @@
     $("#goldSummary").innerHTML = pill("Running total", formatGold(goldTotal()));
     drawGoldChart();
     if (window.ProfGuide) { try { window.ProfGuide.render(); } catch (e) { console.error(e); } }
+    if (window.GoldFarms) {
+      try { window.GoldFarms.render(state, { save: save, formatGold: formatGold, escapeHtml: escapeHtml }); }
+      catch (e) { console.error(e); }
+    }
     var rows = state.goldLog.slice().sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });
     var html = "<thead><tr><th>Date</th><th>Amount</th><th>Source</th><th></th></tr></thead><tbody>";
     if (!rows.length) html += "<tr><td colspan=\"4\" class=\"muted\">No entries yet.</td></tr>";
@@ -2461,7 +2467,9 @@
     expandLevelingSteps: expandLevelingSteps,
     levelingCharKey: levelingCharKey,
     includeAddonChapters: includeAddonChapters,
-    overlapChapterKeys: overlapChapterKeys
+    overlapChapterKeys: overlapChapterKeys,
+    getState: function () { return state; },
+    save: save
   };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
