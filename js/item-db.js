@@ -1,6 +1,6 @@
 /* Item search, detail cards, and lazy loading for data/items/*.js */
 (function () {
-  var VERSION = "20261120f";
+  var VERSION = "20261120g";
   var ICON = "https://render.worldofwarcraft.com/forever-us/icons/56/{icon}.jpg";
   var loaded = false;
   var loading = null;
@@ -104,8 +104,30 @@
   }
 
   function priceOf(id) {
-    var p = window.PRICE_DATA && window.PRICE_DATA.items && window.PRICE_DATA.items[id];
+    if (window.priceEntry) return window.priceEntry(id);
+    var items = window.PRICE_DATA && window.PRICE_DATA.items;
+    var p = items && (items[id] || items[String(id)]);
+    if (p && Array.isArray(p)) p = { minBuyout: p[0], marketValue: p[1], quantity: p[2], soldPerDay: p.length > 3 ? p[3] : null };
     return p && (p.marketValue || p.minBuyout) ? p : null;
+  }
+  function isNotTradeable(it) {
+    if (!it) return false;
+    if (it.nt === 1 || it.cat === "quest") return true;
+    if (it.bind === "bop" || it.bind === "quest") return true;
+    return false;
+  }
+  function priceCell(id, itemHint) {
+    var p = priceOf(id);
+    if (p) {
+      var bits = '<strong>' + money(p.marketValue || p.minBuyout) + "</strong>";
+      if (p.minBuyout && p.marketValue && p.minBuyout !== p.marketValue) {
+        bits += '<span class="idb-price-min">min ' + money(p.minBuyout) + "</span>";
+      }
+      if (p.quantity != null) bits += '<span class="idb-price-qty">' + Number(p.quantity).toLocaleString() + " listed</span>";
+      return '<span class="idb-price">' + bits + "</span>";
+    }
+    if (isNotTradeable(itemHint)) return '<span class="idb-price is-na">Not tradeable</span>';
+    return '<span class="idb-price is-na">No current listings</span>';
   }
 
   function search(q, cat, limit) {
@@ -172,7 +194,8 @@
       return '<li><button type="button" class="idb-row" data-open-item="' + it.id + '">' +
         iconHtml(it.icon, it.q, it.n) +
         '<span class="idb-row-body"><span class="item-name ' + qClass(it.q) + '">' + esc(it.n) + "</span>" +
-        badge + '<span class="idb-row-sub">' + esc(sub.join(" · ")) + "</span></span></button></li>";
+        badge + '<span class="idb-row-sub">' + esc(sub.join(" · ")) + "</span></span>" +
+        priceCell(it.id, it) + "</button></li>";
     }).join("") + "</ul>";
   }
 
@@ -233,21 +256,26 @@
 
     var p = priceOf(item.id);
     var prices = window.PRICE_DATA || {};
-    var ahHtml = "<h4>Auction price</h4>";
+    var ahHtml = "<h4>Auction House</h4>";
     if (p) {
-      ahHtml += '<p class="idb-ah">' + money(p.marketValue || p.minBuyout) +
-        ' <span class="muted">market (US Normal Horde)</span>';
-      if (p.minBuyout && p.marketValue && p.minBuyout !== p.marketValue) {
-        ahHtml += ' · min ' + money(p.minBuyout);
+      ahHtml += '<p class="idb-ah"><strong class="idb-ah-main">' + money(p.marketValue || p.minBuyout) + "</strong>" +
+        ' <span class="muted">market</span>';
+      if (p.minBuyout != null) {
+        ahHtml += ' · min buyout ' + money(p.minBuyout);
       }
-      if (p.quantity != null) ahHtml += ' · ' + p.quantity.toLocaleString() + " listed";
-      ahHtml += '<br><span class="muted">Per item' +
-        (item.cat === "reagent" || item.cat === "consumable" ? " (value per unit)" : "") + ". ";
+      if (p.quantity != null) ahHtml += ' · ' + Number(p.quantity).toLocaleString() + " listed";
+      ahHtml += '<br><span class="muted">US Normal Horde, copper per item';
+      if (item.cat === "reagent" || item.cat === "consumable") ahHtml += " (value per unit)";
+      ahHtml += ". ";
       var ts = prices.updated || prices.fetched;
       if (ts) ahHtml += "Snapshot " + formatTs(ts) + ".";
       ahHtml += "</span></p>";
+    } else if (isNotTradeable(item)) {
+      ahHtml += '<p class="idb-ah is-na">Not tradeable</p>';
     } else {
-      ahHtml += '<p class="muted">No price in the current US Normal Horde snapshot (the feed lists profession and traded items; gear often is not posted).</p>';
+      ahHtml += '<p class="idb-ah is-na">No current listings</p>';
+      var ts = prices.updated || prices.fetched;
+      if (ts) ahHtml += '<p class="muted">US Normal Horde snapshot ' + formatTs(ts) + ".</p>";
     }
     if (item.sell) ahHtml += "<p>Vendor sell: " + money(item.sell) + "</p>";
 
@@ -424,6 +452,12 @@
   }
 
   bindGlobalLinks();
+  document.addEventListener("forever-prices", function () {
+    if (document.getElementById("tab-items") && document.getElementById("tab-items").classList.contains("active")) {
+      renderResults();
+      if (selected != null) open(selected);
+    }
+  });
 
   window.ItemDB = {
     ensure: ensure,

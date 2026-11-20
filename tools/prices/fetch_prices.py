@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Fetch WoW: Forever auction prices (US, Normal ruleset, Horde AH) for the
-Professions tab and write data/prices.json + data/prices.js.
+"""Fetch WoW: Forever auction prices (US, Normal ruleset, Horde AH) and write
+data/prices.json + data/prices.js.
 
 Source, in order of preference:
   1. Blizzard Battle.net Game Data API (official). Needs a free client from
@@ -9,16 +9,20 @@ Source, in order of preference:
        GET /data/wow/ruleset/{RULESET}/auctions/{HOUSE}?namespace=dynamic-forever-us
        GET /data/wow/ruleset/{RULESET}/auctions/{HOUSE}/commodities?namespace=dynamic-forever-us
      Ruleset 2 = Normal; house 114 = Normal Horde AH on US (see README).
+     Both endpoints are the full realm dump (one request each).
   2. Fallback when no credentials are set (and PRICE_FALLBACK != "off"):
      Forever Goblin (https://forevergoblin.trade), a free fan site that stores
-     the same hourly Blizzard API snapshots. One small request per run.
+     the same hourly Blizzard API snapshots. One request returns the whole
+     house: GET /api/m/{region}-{house}/prices
 
-Only items used by js/professions-data.js are kept, to keep the file small.
+Keeps every priced auction in the dump (not a profession-only id list). Output
+is compact: items[id] = [minBuyout, marketValue, quantity, soldPerDay?]. The
+page's JS accepts this schema (2) and the older object shape (schema 1).
 Exits non-zero and writes nothing if the fetch fails, so old prices are kept.
 
 Usage: python3 tools/prices/fetch_prices.py [site_root]
 """
-import base64, datetime, json, os, re, sys, urllib.request, urllib.error
+import base64, datetime, json, os, sys, urllib.request, urllib.error
 
 ROOT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), "..", "..")
 REGION = os.environ.get("PRICE_REGION", "us")
@@ -36,18 +40,6 @@ def get_json(url, headers=None, data=None, timeout=120):
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read().decode("utf-8")), dict(r.headers)
 
-def wanted_items():
-    path = os.path.join(ROOT, "js", "professions-data.js")
-    s = open(path, encoding="utf-8").read()
-    s = s[s.index("{"):s.rstrip().rindex("}") + 1]
-    wanted = set(int(k) for k in json.loads(s)["items"].keys())
-    # Also keep prices for the item database (reagents, consumables, and any listed gear).
-    idx = os.path.join(ROOT, "data", "items", "index.js")
-    if os.path.isfile(idx):
-        txt = open(idx, encoding="utf-8").read()
-        wanted.update(int(i) for i in re.findall(r'"id":(\d+)', txt))
-    return wanted
-
 def market_value(units):
     """units: list of (unit_price, qty). Average of the cheapest 15% of units
     (at least the cheapest listing), the same rule Forever Goblin documents."""
@@ -63,6 +55,14 @@ def market_value(units):
         if got >= take:
             break
     return int(round(acc / got))
+
+def compact_row(v):
+    """[minBuyout, marketValue, quantity, soldPerDay?] in copper / units."""
+    row = [int(v["minBuyout"] or 0), int(v["marketValue"]), int(v.get("quantity") or 0)]
+    spd = v.get("soldPerDay")
+    if spd is not None:
+        row.append(spd)
+    return row
 
 def from_blizzard(cid, secret):
     tok, _ = get_json("https://oauth.battle.net/token",
@@ -124,19 +124,22 @@ def main():
     except (urllib.error.URLError, KeyError, ValueError) as e:
         print("Price fetch failed: %r" % (e,), file=sys.stderr)
         return 1
-    want = wanted_items()
-    items = {str(k): v for k, v in sorted(res["items"].items()) if k in want and v.get("marketValue")}
+    items = {}
+    for k, v in sorted(res["items"].items(), key=lambda kv: int(kv[0])):
+        if not v.get("marketValue"):
+            continue
+        items[str(k)] = compact_row(v)
     if len(items) < 50:
         print("Only %d priced items; refusing to overwrite prices." % len(items), file=sys.stderr)
         return 1
     out = {
-        "schema": 1, "region": REGION.upper(), "ruleset": "Normal" if RULESET == 2 else str(RULESET),
+        "schema": 2, "region": REGION.upper(), "ruleset": "Normal" if RULESET == 2 else str(RULESET),
         "faction": "Horde", "house": HOUSE, "houseName": res["houseName"],
         "source": res["source"], "sourceUrl": res["sourceUrl"],
         "updated": res["updated"], "fetched": now_iso(),
         "units": "copper per single item",
-        "fields": {"minBuyout": "cheapest buyout", "marketValue": "average of the cheapest 15% of units listed",
-                   "quantity": "units listed", "soldPerDay": "estimated units sold per day (Forever Goblin only)"},
+        "fields": {"0": "minBuyout (cheapest buyout)", "1": "marketValue (average of the cheapest 15% of units listed)",
+                   "2": "quantity (units listed)", "3": "soldPerDay (Forever Goblin only, omitted when unknown)"},
         "items": items,
     }
     os.makedirs(os.path.join(ROOT, "data"), exist_ok=True)
@@ -145,7 +148,7 @@ def main():
         f.write(body + "\n")
     with open(os.path.join(ROOT, "data", "prices.js"), "w") as f:
         f.write("/* Auction prices snapshot; regenerated by tools/prices/fetch_prices.py */\nwindow.PRICE_DATA = " + body + ";\n")
-    print("Wrote %d prices from %s (snapshot %s)" % (len(items), res["source"], res["updated"]))
+    print("Wrote %d prices from %s (snapshot %s), %d bytes" % (len(items), res["source"], res["updated"], len(body)))
     return 0
 
 if __name__ == "__main__":

@@ -360,9 +360,11 @@
   }
 
   function priceOf(id) {
+    if (window.priceEntry) return window.priceEntry(id);
     var items = window.PRICE_DATA && window.PRICE_DATA.items;
-    var p = items && items[id];
-    return p && p.marketValue ? p : null;
+    var p = items && (items[id] || items[String(id)]);
+    if (p && Array.isArray(p)) p = { minBuyout: p[0], marketValue: p[1], quantity: p[2], soldPerDay: p.length > 3 ? p[3] : null };
+    return p && (p.marketValue || p.minBuyout) ? p : null;
   }
 
   function liveOf(spot) {

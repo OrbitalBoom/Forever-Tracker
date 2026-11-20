@@ -857,6 +857,8 @@ def main():
             idx["slot"] = rec["slot"]
         if rec["type"] and rec["cat"] == "gear":
             idx["typ"] = rec["type"]
+        if rec["cat"] == "quest" or rec.get("bind") in ("bop", "quest"):
+            idx["nt"] = 1
         index.append(idx)
 
         if rec["cat"] == "gear" and rec["slot"] and rec["slot"] not in ("shirt",):

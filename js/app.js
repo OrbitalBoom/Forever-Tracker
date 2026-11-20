@@ -810,6 +810,25 @@
     $("#upgradeList").innerHTML = html;
   }
 
+  function upgradeAhHtml(it) {
+    var p = window.priceEntry ? window.priceEntry(it.id) : null;
+    if (!p) return "";
+    var bits = "AH " + (function (c) {
+      if (c == null || isNaN(c)) return "—";
+      var n = Math.round(Math.abs(c)), g = Math.floor(n / 10000), s = Math.floor((n % 10000) / 100), cc = n % 100;
+      if (g) return g + "g " + s + "s";
+      if (s) return s + "s" + (cc ? " " + cc + "c" : "");
+      return cc + "c";
+    })(p.marketValue || p.minBuyout);
+    if (p.minBuyout && p.marketValue && p.minBuyout !== p.marketValue) bits += " · min " + (function (c) {
+      var n = Math.round(c), g = Math.floor(n / 10000), s = Math.floor((n % 10000) / 100), cc = n % 100;
+      if (g) return g + "g " + s + "s";
+      if (s) return s + "s" + (cc ? " " + cc + "c" : "");
+      return cc + "c";
+    })(p.minBuyout);
+    return '<div class="item-ah"><span class="badge buy-ah">Buy on AH</span> ' + escapeHtml(bits) +
+      (p.quantity != null ? " · " + Number(p.quantity).toLocaleString() + " listed" : "") + "</div>";
+  }
   function upgradeCard(rec, isClosest) {
     var it = rec.item;
     var badge = rec.atLevel
@@ -824,7 +843,7 @@
       (formatStats(it) ? '<div class="item-stats">' + escapeHtml(formatStats(it)) + "</div>" : "") +
       '<div class="item-source">How to get it: ' + escapeHtml(it.source || "Unknown") +
       (it.sourceType ? " (" + it.sourceType + ")" : "") +
-      (it.custom ? " · custom / Forever" : "") + "</div></div>";
+      (it.custom ? " · custom / Forever" : "") + "</div>" + upgradeAhHtml(it) + "</div>";
   }
 
   function openEquipPicker(slotId) {
@@ -2314,6 +2333,9 @@
       save(); renderItems();
     });
     $("#upgradeSlot").addEventListener("change", renderUpgrades);
+    document.addEventListener("forever-prices", function () {
+      if ($("#tab-items") && $("#tab-items").classList.contains("active")) renderItems();
+    });
     document.addEventListener("click", function (e) {
       var slot = e.target.closest && e.target.closest("[data-equip-slot]");
       if (slot && $("#tab-items").classList.contains("active")) {

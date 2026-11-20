@@ -1001,3 +1001,17 @@ table.data tfoot th { text-align: left; }
 .idb-facts li { margin: 2px 0; }
 .idb-links { font-size: 13px; }
 .gear-layout { margin-top: 8px; }
+
+.idb-row { justify-content: space-between; }
+.idb-price {
+  margin-left: auto; text-align: right; flex: 0 0 auto; min-width: 7em;
+  font-size: 13px; color: var(--gold-2);
+}
+.idb-price strong { display: block; font-family: var(--font); font-size: 18px; color: var(--gold-2); font-weight: 700; }
+.idb-price-min, .idb-price-qty { display: block; font-size: 11px; color: var(--muted); }
+.idb-price.is-na { color: var(--muted); font-size: 12px; font-style: italic; }
+.idb-ah { margin: 0 0 8px; font-size: 16px; }
+.idb-ah-main { font-family: var(--font); font-size: 22px; color: var(--gold-2); }
+.idb-ah.is-na { font-size: 15px; color: var(--muted); }
+.item-ah { margin-top: 4px; font-size: 13px; color: var(--gold-2); }
+.badge.buy-ah { color: var(--gold-2); border-color: var(--gold-dk); }

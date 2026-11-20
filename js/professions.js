@@ -14,6 +14,44 @@
   var REPO_DEFAULT = { owner: "OrbitalBoom", repo: "Forever-Tracker" };
 
   var prices = window.PRICE_DATA || null;
+
+  function expandPrice(raw) {
+    if (!raw) return null;
+    if (Array.isArray(raw)) {
+      return { minBuyout: raw[0], marketValue: raw[1], quantity: raw[2], soldPerDay: raw.length > 3 ? raw[3] : null };
+    }
+    return raw;
+  }
+  function normalizePriceData(data) {
+    if (!data || !data.items || data._norm) return data;
+    var src = data.items, out = {}, k, v;
+    for (k in src) {
+      if (!Object.prototype.hasOwnProperty.call(src, k)) continue;
+      v = expandPrice(src[k]);
+      if (v) out[k] = v;
+    }
+    data.items = out;
+    data._norm = true;
+    return data;
+  }
+  function applyPriceData(data) {
+    var n = normalizePriceData(data);
+    if (!n) return n;
+    prices = n;
+    window.PRICE_DATA = n;
+    try { document.dispatchEvent(new CustomEvent("forever-prices")); } catch (e) {}
+    return n;
+  }
+  window.normalizePriceData = normalizePriceData;
+  window.applyPriceData = applyPriceData;
+  window.priceEntry = function (id) {
+    var d = window.PRICE_DATA;
+    if (!d) return null;
+    if (!d._norm) normalizePriceData(d);
+    var p = d.items[id] || d.items[String(id)];
+    return p && (p.marketValue || p.minBuyout) ? p : null;
+  };
+  if (prices) applyPriceData(prices);
   var priceStatus = prices ? "bundled" : "none";
   var recipeById = {};
   var producers = {};          // profId -> itemId -> [recipes]
@@ -598,8 +636,11 @@
           if (nb !== best) { best = nb; changed = true; }
         }
       });
-      if (changed) { prices = best; priceStatus = "live"; }
-      else if (prices && priceStatus === "bundled" && res.some(Boolean)) priceStatus = "live";
+      if (changed) { applyPriceData(best); priceStatus = "live"; }
+      else if (prices && priceStatus === "bundled" && res.some(Boolean)) {
+        priceStatus = "live";
+        if (best && best !== prices) applyPriceData(newer(prices, best) || prices);
+      }
       if (rendered) render();
       if (manual && APP()) {
         var tEl = document.getElementById("toast");
