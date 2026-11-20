@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Forever Tracker — Classic Era companion</title>
-  <link rel="stylesheet" href="css/style.css?v=20261120g">
+  <link rel="stylesheet" href="css/style.css?v=20261120h">
 </head>
 <body>
   <div class="app">
@@ -184,40 +184,33 @@
       <!-- Items -->
       <section class="panel" id="tab-items" role="tabpanel">
         <h2>Items</h2>
-        <p class="lede">Search any item for its uses, where it drops or is sold, and live auction prices. Gear that is an upgrade for your character is marked so you can equip it on the paper doll below.</p>
-        <label class="field idb-search">Search
-          <input type="search" id="itemSearch" placeholder="Wool Cloth, a wand, a quest key…" autocomplete="off">
-        </label>
-        <div class="gf-pills idb-filters" id="itemFilters">
-          <button type="button" class="gf-pill is-on" data-item-filter="all">All</button>
-          <button type="button" class="gf-pill" data-item-filter="gear">Gear</button>
-          <button type="button" class="gf-pill" data-item-filter="reagent">Reagents</button>
-          <button type="button" class="gf-pill" data-item-filter="consumable">Consumables</button>
-          <button type="button" class="gf-pill" data-item-filter="quest">Quest</button>
+        <p class="lede">Click a slot on the paper doll to see upgrades you can use at your level. Search the item database below for uses, sources, and auction prices.</p>
+        <div class="doll-stage">
+          <div class="paper-doll" id="paperDoll"></div>
         </div>
-        <div id="itemResults"></div>
-        <div id="itemDetail" hidden></div>
-        <h3>Equipped and upgrades</h3>
-        <p class="muted">The finder uses the same database, filtered by your class proficiency and level (items up to 3 levels ahead are marked “soon”). Add a custom item if something is missing.</p>
-        <div class="filter-bar">
-          <button type="button" class="btn btn-primary btn-sm" id="btnAddCustomItem">Add custom item to database</button>
+        <div id="slotPanel" class="slot-panel" hidden></div>
+        <div class="doll-actions">
           <button type="button" class="btn btn-sm" id="btnClearGear">Clear all equipped</button>
         </div>
-        <div class="gear-layout">
-          <div>
-            <h3>Equipped</h3>
-            <div class="paper-doll" id="paperDoll"></div>
+        <details class="idb-fold" id="itemDatabase">
+          <summary>Item database</summary>
+          <p class="muted">Search any item for its uses, where it drops or is sold, and live auction prices. Gear that is an upgrade for your character is marked so you can equip it.</p>
+          <label class="field idb-search">Search
+            <input type="search" id="itemSearch" placeholder="Wool Cloth, a wand, a quest key…" autocomplete="off">
+          </label>
+          <div class="gf-pills idb-filters" id="itemFilters">
+            <button type="button" class="gf-pill is-on" data-item-filter="all">All</button>
+            <button type="button" class="gf-pill" data-item-filter="gear">Gear</button>
+            <button type="button" class="gf-pill" data-item-filter="reagent">Reagents</button>
+            <button type="button" class="gf-pill" data-item-filter="consumable">Consumables</button>
+            <button type="button" class="gf-pill" data-item-filter="quest">Quest</button>
           </div>
-          <div>
-            <h3>Upgrades <span class="muted" id="upgradeContext"></span></h3>
-            <div class="filter-bar">
-              <label class="field" style="min-width:180px">Focus slot
-                <select id="upgradeSlot"><option value="all">All slots</option></select>
-              </label>
-            </div>
-            <div id="upgradeList" class="upgrade-list"></div>
+          <div id="itemResults"></div>
+          <div id="itemDetail" hidden></div>
+          <div class="filter-bar" style="margin-top:12px">
+            <button type="button" class="btn btn-sm" id="btnAddCustomItem">Add custom item to database</button>
           </div>
-        </div>
+        </details>
       </section>
 
       <!-- Leveling Route -->
@@ -261,17 +254,17 @@
   </div>
   <div class="toast" id="toast" hidden></div>
 
-  <script src="js/data.js?v=20261120g"></script>
-  <script src="js/items.js?v=20261120g"></script>
-  <script src="js/talents.js?v=20261120g"></script>
-  <script src="js/leveling-data.js?v=20261120g"></script>
-  <script src="js/app.js?v=20261120g"></script>
-  <script src="js/cloud-save.js?v=20261120g"></script>
-  <script src="js/professions-data.js?v=20261120g"></script>
-  <script src="data/prices.js?v=20261120g"></script>
-  <script src="js/professions.js?v=20261120g"></script>
-  <script src="js/gold-farms-data.js?v=20261120g"></script>
-  <script src="js/gold-farms.js?v=20261120g"></script>
-  <script src="js/item-db.js?v=20261120g"></script>
+  <script src="js/data.js?v=20261120h"></script>
+  <script src="js/items.js?v=20261120h"></script>
+  <script src="js/talents.js?v=20261120h"></script>
+  <script src="js/leveling-data.js?v=20261120h"></script>
+  <script src="js/app.js?v=20261120h"></script>
+  <script src="js/cloud-save.js?v=20261120h"></script>
+  <script src="js/professions-data.js?v=20261120h"></script>
+  <script src="data/prices.js?v=20261120h"></script>
+  <script src="js/professions.js?v=20261120h"></script>
+  <script src="js/gold-farms-data.js?v=20261120h"></script>
+  <script src="js/gold-farms.js?v=20261120h"></script>
+  <script src="js/item-db.js?v=20261120h"></script>
 </body>
 </html>

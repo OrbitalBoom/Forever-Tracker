@@ -50,6 +50,8 @@ window.WOW_DATA = {
     { id: "shoulder", label: "Shoulder" },
     { id: "back", label: "Back" },
     { id: "chest", label: "Chest" },
+    { id: "shirt", label: "Shirt" },
+    { id: "tabard", label: "Tabard" },
     { id: "wrist", label: "Wrist" },
     { id: "hands", label: "Hands" },
     { id: "waist", label: "Waist" },

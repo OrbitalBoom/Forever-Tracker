@@ -1,6 +1,6 @@
 /* Item search, detail cards, and lazy loading for data/items/*.js */
 (function () {
-  var VERSION = "20261120g";
+  var VERSION = "20261120h";
   var ICON = "https://render.worldofwarcraft.com/forever-us/icons/56/{icon}.jpg";
   var loaded = false;
   var loading = null;
@@ -362,6 +362,8 @@
   }
 
   function open(id) {
+    var fold = document.getElementById("itemDatabase");
+    if (fold && fold.tagName === "DETAILS") fold.open = true;
     id = parseInt(id, 10) || id;
     return ensure().then(function () {
       showTab();

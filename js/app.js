@@ -7,6 +7,14 @@
   var TALENT_META = window.WOW_TALENT_META || {};
   var STORAGE_KEY = "wowForever.tracker.v1";
   var LEVEL_WINDOW = 3;
+  var AT_LEVEL_PAGE = 10;
+  var SOON_LIMIT = 5;
+  var selectedSlot = null;
+  var slotShowAll = false;
+  var DOLL_LEFT = ["head","neck","shoulder","back","chest","shirt","tabard","wrist"];
+  var DOLL_RIGHT = ["hands","waist","legs","feet","finger1","finger2","trinket1","trinket2"];
+  var DOLL_WEAPONS = ["mainhand","offhand","ranged"];
+  var ICON_BASE = "https://render.worldofwarcraft.com/forever-us/icons/56/";
 
   var ARMOR = ["cloth", "leather", "mail", "plate"];
   var WEAPONS = ["sword","axe","mace","dagger","staff","polearm","fist","bow","gun","crossbow","wand","thrown","shield","held","idol","totem","libram"];
@@ -570,15 +578,35 @@
 
   /* ---------- items / upgrades ---------- */
   function effectiveReq(item) {
-    var req = item.reqLevel || 0;
-    var ilvl = item.itemLevel || 0;
-    // Some Forever records default requiredLevel to 0 or 1 on high-ilvl pieces.
-    // Fall back to the usual Classic ilvl-5 proxy when the gap is large.
-    if (ilvl > 5) {
-      var fromIlvl = Math.max(1, ilvl - 5);
-      if (!req || fromIlvl - req >= 8) req = fromIlvl;
+    if (!item) return null;
+    var raw = item.reqLevel;
+    var req = (raw == null || raw === "") ? null : Number(raw);
+    if (req != null && isNaN(req)) req = null;
+    var ilvl = Number(item.itemLevel) || 0;
+    var fromIlvl = ilvl > 5 ? Math.max(1, ilvl - 5) : null;
+    // Missing or default-0 required level: infer conservatively from ilvl.
+    // Never treat a high-ilvl piece as usable at level 1.
+    if (req == null || req === 0) {
+      if (fromIlvl) return fromIlvl;
+      if (ilvl > 0 && ilvl <= 5) return 1;
+      return null; // unknown — exclude from at-your-level lists
     }
+    // Forever records sometimes store RequiredLevel 1 (or another low
+    // placeholder) on high-ilvl gear. Use the ilvl-5 proxy when the gap is large.
+    if (fromIlvl && fromIlvl - req >= 8) return fromIlvl;
     return req;
+  }
+  function reqUsable(item, cap) {
+    var req = effectiveReq(item);
+    if (req == null) return false;
+    return req <= cap;
+  }
+  function itemIconHtml(item, size) {
+    size = size || 36;
+    if (item && item.icon) {
+      return '<img class="slot-icon" src="' + ICON_BASE + item.icon + '.jpg" alt="" width="' + size + '" height="' + size + '" data-icon-img>';
+    }
+    return '<span class="slot-icon slot-icon-empty" aria-hidden="true"></span>';
   }
   function allItems() {
     var base = (window.ITEM_GEAR || ITEMS || []).filter(function (it) {
@@ -700,29 +728,40 @@
     return mh && mh.slot === "twohand";
   }
 
-  function renderItems() {
-    var c = ch();
-    $("#upgradeContext").textContent = c.class ? ("for " + (c.name || "your") + " level " + c.level + " " + c.spec + " " + c.class) : "";
-    var doll = $("#paperDoll");
-    doll.innerHTML = DATA.slots.map(function (s) {
-      var it = state.equipment[s.id];
-      var blocked = s.id === "offhand" && equippedTwoHand();
-      var name = blocked ? "Occupied by two-hand" : (it ? it.name : "Empty");
-      var q = it ? qualityClass(it.quality) : "";
-      return '<button type="button" class="slot-btn' + (it || blocked ? "" : " empty") + '" data-equip-slot="' + s.id + '">' +
-        '<div class="slot-name">' + escapeHtml(s.label) + "</div>" +
-        '<div class="item-name ' + q + '">' + escapeHtml(name) + "</div>" +
-        (it && it.itemLevel ? '<div class="muted" style="font-size:11px">ilvl ' + it.itemLevel + (it.reqLevel ? " · req " + it.reqLevel : "") + "</div>" : "") +
-        "</button>";
-    }).join("");
+  function slotButtonHtml(slotId, selectedId) {
+    var s = slotMeta(slotId);
+    var it = state.equipment[slotId];
+    var blocked = slotId === "offhand" && equippedTwoHand();
+    var name = blocked ? "Occupied by two-hand" : (it ? it.name : "Empty");
+    var q = it ? qualityClass(it.quality) : "";
+    var cls = "slot-btn";
+    if (!it && !blocked) cls += " empty";
+    if (selectedId && slotId === selectedId) cls += " is-open";
+    return '<button type="button" class="' + cls + '" data-equip-slot="' + s.id + '">' +
+      itemIconHtml(blocked ? null : it) +
+      '<span class="slot-text"><div class="slot-name">' + escapeHtml(s.label) + "</div>" +
+      '<div class="item-name ' + q + '">' + escapeHtml(name) + "</div></span></button>";
+  }
 
-    var sel = $("#upgradeSlot");
-    var cur = sel.value || "all";
-    sel.innerHTML = '<option value="all">All slots</option>' + DATA.slots.map(function (s) {
-      return '<option value="' + s.id + '">' + escapeHtml(s.label) + "</option>";
-    }).join("");
-    sel.value = cur;
-    renderUpgrades();
+  function renderItems() {
+    var doll = $("#paperDoll");
+    if (!doll) return;
+    var sel = selectedSlot;
+    doll.innerHTML =
+      '<div class="doll-col doll-left">' + DOLL_LEFT.map(function (id) { return slotButtonHtml(id, sel); }).join("") + "</div>" +
+      '<div class="doll-center"><div class="doll-figure" aria-hidden="true"></div></div>' +
+      '<div class="doll-col doll-right">' + DOLL_RIGHT.map(function (id) { return slotButtonHtml(id, sel); }).join("") + "</div>" +
+      '<div class="doll-weapons">' + DOLL_WEAPONS.map(function (id) { return slotButtonHtml(id, sel); }).join("") + "</div>";
+    if (sel) renderSlotPanel(sel);
+    else {
+      var panel = $("#slotPanel");
+      if (panel) { panel.hidden = true; panel.innerHTML = ""; }
+    }
+  }
+
+  var SKIP_UPGRADE_NAME = /gamemaster|\bqa\s*test\b|\[ph\]|\(test\)|<ph>|\btodo\b|^\d+\s+(epic|green)\b|test staff/i;
+  function isJunkUpgrade(item) {
+    return !!(item && SKIP_UPGRADE_NAME.test(item.name || ""));
   }
 
   function otherUniqueEquipped(item, slotId) {
@@ -748,9 +787,11 @@
       return (item.itemLevel || 0) <= 5;
     }
     allItems().forEach(function (item) {
+      if (isJunkUpgrade(item)) return;
       if (otherUniqueEquipped(item, slotId)) return;
       if (isThinUpgrade(item)) return;
       var req = effectiveReq(item);
+      if (req == null) return;
       var atLevel = req <= (c.level || 1);
       var soonOk = !atLevel && req <= (c.level || 1) + LEVEL_WINDOW;
       if (!atLevel && !soonOk) return;
@@ -760,7 +801,6 @@
         var pref = preferredArmorTypes(c, windowPts);
         if (pref.indexOf(item.type) === -1) return;
       }
-      // Don't recommend the exact item already equipped in this slot
       if (current && current.id === item.id && !item.custom) return;
       if (current && current.name === item.name && current.source === item.source) return;
       var score = itemScore(item);
@@ -770,44 +810,8 @@
     });
     at.sort(function (a, b) { return b.score - a.score; });
     soon.sort(function (a, b) { return b.score - a.score; });
-    // Closest upgrade = smallest positive delta among at-level, also expose best
     var closest = current ? at.slice().sort(function (a, b) { return a.delta - b.delta; })[0] : null;
-    return { blocked: false, at: at.slice(0, 8), soon: soon.slice(0, 4), closest: closest, currentScore: curScore };
-  }
-
-  function renderUpgrades() {
-    var focus = $("#upgradeSlot").value || "all";
-    var slots = focus === "all" ? DATA.slots.map(function (s) { return s.id; }) : [focus];
-    var html = "";
-    slots.forEach(function (slotId) {
-      var u = upgradesFor(slotId);
-      var label = slotMeta(slotId).label;
-      html += "<h4 style=\"margin:12px 0 6px\">" + escapeHtml(label) + "</h4>";
-      var cur = state.equipment[slotId];
-      if (cur) html += '<p class="muted" style="margin:0 0 6px">Currently: <span class="' + qualityClass(cur.quality) + '">' + escapeHtml(cur.name) + "</span></p>";
-      if (u.blocked) {
-        html += "<p class=\"muted\">Your two-handed weapon occupies this slot.</p>";
-        return;
-      }
-      if (!u.at.length && !u.soon.length) {
-        html += "<p class=\"muted\">No upgrades found for this slot at your level (or soon). Add a custom item if something is missing.</p>";
-        return;
-      }
-      var compact = focus === "all";
-      var atList = compact ? u.at.slice(0, 2) : u.at;
-      var soonList = compact ? u.soon.slice(0, 1) : u.soon;
-      if (u.closest) {
-        html += upgradeCard(u.closest, true);
-        atList.forEach(function (r) {
-          if (r.item.id === u.closest.item.id) return;
-          html += upgradeCard(r, false);
-        });
-      } else {
-        atList.forEach(function (r) { html += upgradeCard(r, false); });
-      }
-      soonList.forEach(function (r) { html += upgradeCard(r, false); });
-    });
-    $("#upgradeList").innerHTML = html;
+    return { blocked: false, at: at.slice(0, 40), soon: soon.slice(0, SOON_LIMIT), closest: closest, currentScore: curScore };
   }
 
   function upgradeAhHtml(it) {
@@ -829,71 +833,141 @@
     return '<div class="item-ah"><span class="badge buy-ah">Buy on AH</span> ' + escapeHtml(bits) +
       (p.quantity != null ? " · " + Number(p.quantity).toLocaleString() + " listed" : "") + "</div>";
   }
-  function upgradeCard(rec, isClosest) {
+
+  function upgradeReason(rec, slotId) {
     var it = rec.item;
-    var badge = rec.atLevel
-      ? '<span class="badge at-level">at your level</span>'
-      : '<span class="badge soon">soon · req ' + rec.req + "</span>";
-    if (isClosest && rec.atLevel) badge += ' <span class="badge at-level">closest upgrade</span>';
-    return '<div class="upgrade ' + (rec.atLevel ? "at-level" : "soon") + '">' +
-      badge + ' <a href="#item-' + it.id + '" data-item-id="' + escapeHtml(String(it.id)) + '" class="item-name ' + qualityClass(it.quality) + '">' + escapeHtml(it.name) + "</a>" +
-      '<div class="muted" style="font-size:12px">ilvl ' + (it.itemLevel || "?") +
-      (it.type ? " · " + it.type : "") + (it.slotLabel ? " · " + it.slotLabel : "") +
-      " · score " + rec.score.toFixed(1) + (rec.delta ? " (+" + rec.delta.toFixed(1) + ")" : "") + "</div>" +
-      (formatStats(it) ? '<div class="item-stats">' + escapeHtml(formatStats(it)) + "</div>" : "") +
-      '<div class="item-source">How to get it: ' + escapeHtml(it.source || "Unknown") +
-      (it.sourceType ? " (" + it.sourceType + ")" : "") +
-      (it.custom ? " · custom / Forever" : "") + "</div>" + upgradeAhHtml(it) + "</div>";
+    var parts = [];
+    var stats = formatStats(it);
+    if (stats) parts.push(stats);
+    var cur = state.equipment[slotId];
+    if (cur && cur.itemLevel && it.itemLevel && it.itemLevel !== cur.itemLevel) {
+      var d = it.itemLevel - cur.itemLevel;
+      parts.push((d > 0 ? "+" : "") + d + " ilvl");
+    } else if (it.itemLevel && !stats) {
+      parts.push("ilvl " + it.itemLevel);
+    }
+    return parts.join(" · ");
   }
 
-  function openEquipPicker(slotId) {
-    var cur = state.equipment[slotId];
+  function upgradeCard(rec, slotId) {
+    var it = rec.item;
+    var reason = upgradeReason(rec, slotId);
+    return '<div class="upgrade-row' + (rec.atLevel ? "" : " soon") + '">' +
+      itemIconHtml(it) +
+      '<div class="upgrade-row-main">' +
+      '<a href="#item-' + it.id + '" data-item-id="' + escapeHtml(String(it.id)) + '" class="item-name ' + qualityClass(it.quality) + '">' + escapeHtml(it.name) + "</a>" +
+      '<div class="upgrade-row-meta">Req ' + rec.req +
+      (it.type ? " · " + escapeHtml(it.type) : "") +
+      (it.itemLevel ? " · ilvl " + it.itemLevel : "") + "</div>" +
+      (reason ? '<div class="upgrade-row-reason">' + escapeHtml(reason) + "</div>" : "") +
+      '<div class="upgrade-row-source">' + escapeHtml(it.source || "Unknown") +
+      (it.custom ? " · custom" : "") + "</div>" +
+      upgradeAhHtml(it) +
+      "</div>" +
+      '<div class="upgrade-row-actions"><button type="button" class="btn btn-primary btn-sm" data-equip-id="' + escapeHtml(String(it.id)) + '">Equip</button></div>' +
+      "</div>";
+  }
+
+  function openSlotPanel(slotId) {
+    if (selectedSlot === slotId) {
+      selectedSlot = null;
+      slotShowAll = false;
+      renderItems();
+      return;
+    }
+    selectedSlot = slotId;
+    slotShowAll = false;
+    renderItems();
+    var panel = $("#slotPanel");
+    if (panel) panel.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+
+  function renderSlotPanel(slotId) {
+    var panel = $("#slotPanel");
+    if (!panel) return;
     var label = slotMeta(slotId).label;
-    openModal(
-      "<h3>Equip — " + escapeHtml(label) + "</h3>" +
-      (cur ? "<p>Currently: <span class=\"" + qualityClass(cur.quality) + "\">" + escapeHtml(cur.name) + "</span></p>" : "<p class=\"muted\">Nothing equipped.</p>") +
-      '<label class="field">Search the database<input type="search" id="equipSearch" placeholder="Item name"></label>' +
-      '<div id="equipResults" style="max-height:240px;overflow:auto;margin:8px 0"></div>' +
-      '<div class="row-actions">' +
-      (cur ? '<button type="button" class="btn btn-danger" id="btnUnequip">Unequip</button>' : "") +
-      '<button type="button" class="btn" data-close>Close</button></div>'
-    );
-    var run = function () {
-      var q = ($("#equipSearch").value || "").toLowerCase();
-      var hits = allItems().filter(function (it) {
-        if (!itemFitsSlot(it, slotId)) return false;
-        if (!canEquipInSlot(it, ch(), slotId, LEVEL_WINDOW)) return false;
-        return !q || it.name.toLowerCase().indexOf(q) !== -1;
-      }).sort(function (a, b) { return (b.itemLevel || 0) - (a.itemLevel || 0); }).slice(0, 40);
-      $("#equipResults").innerHTML = hits.length ? hits.map(function (it) {
-        return '<button type="button" class="slot-btn" data-pick-item="' + escapeHtml(String(it.id)) + '" style="margin:4px 0">' +
-          '<div class="item-name ' + qualityClass(it.quality) + '">' + escapeHtml(it.name) + "</div>" +
-          '<div class="muted" style="font-size:11px">ilvl ' + (it.itemLevel || "?") + " · req " + (it.reqLevel || 0) +
-          " · " + escapeHtml(it.source || "") + "</div></button>";
-      }).join("") : "<p class=\"muted\">No matching items you can use in this slot.</p>";
-    };
-    $("#equipSearch").addEventListener("input", run);
-    $("#equipResults").addEventListener("click", function (e) {
-      var btn = e.target.closest("[data-pick-item]");
-      if (!btn) return;
-      var id = btn.getAttribute("data-pick-item");
-      var item = allItems().find(function (it) { return String(it.id) === id; });
-      if (!item) return;
-      state.equipment[slotId] = item;
-      if (item.slot === "twohand") state.equipment.offhand = null;
-      save();
-      closeModal();
-      renderItems();
-      toast("Equipped " + item.name);
-    });
-    var uneq = $("#btnUnequip");
-    if (uneq) uneq.addEventListener("click", function () {
-      delete state.equipment[slotId];
-      save();
-      closeModal();
-      renderItems();
-    });
-    run();
+    var cur = state.equipment[slotId];
+    var u = upgradesFor(slotId);
+    var html = '<div class="slot-panel-head"><h3>' + escapeHtml(label) + "</h3>" +
+      '<button type="button" class="btn btn-sm" data-slot-close>Close</button></div>';
+    html += '<p class="slot-panel-current muted">Currently: ' +
+      (cur ? '<span class="' + qualityClass(cur.quality) + '">' + escapeHtml(cur.name) + "</span>" : "empty") +
+      "</p>";
+    html += '<div class="slot-panel-tools">' +
+      '<label class="field">Search this slot<input type="search" id="slotEquipSearch" placeholder="Type a name to equip…" autocomplete="off"></label>' +
+      (cur ? '<button type="button" class="btn btn-sm" data-slot-clear>Clear slot</button>' : "") +
+      "</div>" +
+      '<div id="slotEquipResults" class="slot-equip-results"></div>';
+    if (u.blocked) {
+      html += "<p class=\"muted\">Your two-handed weapon occupies this slot. Unequip it from Main Hand first, or equip a one-handed weapon there.</p>";
+    } else {
+      var atList = slotShowAll ? u.at : u.at.slice(0, AT_LEVEL_PAGE);
+      html += "<h4>Upgrades at your level</h4>";
+      if (!atList.length) {
+        html += "<p class=\"muted\">No upgrades for this slot at your level. Search above to equip something you already have, or add a custom item in the item database.</p>";
+      } else {
+        atList.forEach(function (r) { html += upgradeCard(r, slotId); });
+        if (!slotShowAll && u.at.length > AT_LEVEL_PAGE) {
+          html += '<p><button type="button" class="btn btn-sm" data-slot-more>Show more (' + (u.at.length - AT_LEVEL_PAGE) + ")</button></p>";
+        }
+      }
+      if (u.soon.length) {
+        html += "<h4>Coming soon</h4>";
+        u.soon.forEach(function (r) { html += upgradeCard(r, slotId); });
+      }
+    }
+    panel.innerHTML = html;
+    panel.hidden = false;
+  }
+
+  function renderSlotSearch() {
+    var box = $("#slotEquipResults");
+    var input = $("#slotEquipSearch");
+    if (!box || !input || !selectedSlot) return;
+    var q = (input.value || "").trim().toLowerCase();
+    if (!q) { box.innerHTML = ""; return; }
+    var c = ch();
+    var cap = c.level || 1;
+    var hits = allItems().filter(function (it) {
+      if (isJunkUpgrade(it)) return false;
+      if (!itemFitsSlot(it, selectedSlot)) return false;
+      if (!canEquipInSlot(it, c, selectedSlot, 0)) return false;
+      if (!reqUsable(it, cap)) return false;
+      return it.name.toLowerCase().indexOf(q) !== -1;
+    }).sort(function (a, b) {
+      var ds = itemScore(b) - itemScore(a);
+      if (ds) return ds;
+      return (a.name || "").localeCompare(b.name || "");
+    }).slice(0, 20);
+    box.innerHTML = hits.length ? hits.map(function (it) {
+      var req = effectiveReq(it);
+      return '<button type="button" class="slot-btn" data-equip-id="' + escapeHtml(String(it.id)) + '">' +
+        itemIconHtml(it) +
+        '<span class="slot-text"><div class="item-name ' + qualityClass(it.quality) + '">' + escapeHtml(it.name) + "</div>" +
+        '<div class="muted" style="font-size:11px">Req ' + (req != null ? req : "?") +
+        (it.itemLevel ? " · ilvl " + it.itemLevel : "") +
+        (it.source ? " · " + escapeHtml(it.source) : "") + "</div></span></button>";
+    }).join("") : "<p class=\"muted\">No matching items you can use in this slot at your level.</p>";
+  }
+
+  function equipFromPanel(id) {
+    if (!selectedSlot) return;
+    var item = allItems().find(function (it) { return String(it.id) === String(id); });
+    if (!item) return;
+    state.equipment[selectedSlot] = item;
+    if (item.slot === "twohand") state.equipment.offhand = null;
+    save();
+    slotShowAll = false;
+    renderItems();
+    toast("Equipped " + item.name);
+  }
+
+  function clearSelectedSlot() {
+    if (!selectedSlot) return;
+    delete state.equipment[selectedSlot];
+    save();
+    slotShowAll = false;
+    renderItems();
   }
 
   function openCustomItemForm() {
@@ -2332,14 +2406,45 @@
       state.equipment = {};
       save(); renderItems();
     });
-    $("#upgradeSlot").addEventListener("change", renderUpgrades);
+    document.addEventListener("error", function (e) {
+      if (e.target && e.target.getAttribute && e.target.hasAttribute("data-icon-img")) {
+        e.target.classList.add("is-missing");
+        e.target.removeAttribute("src");
+      }
+    }, true);
     document.addEventListener("forever-prices", function () {
       if ($("#tab-items") && $("#tab-items").classList.contains("active")) renderItems();
     });
+    document.addEventListener("input", function (e) {
+      if (e.target && e.target.id === "slotEquipSearch") renderSlotSearch();
+    });
     document.addEventListener("click", function (e) {
+      var tab = $("#tab-items");
+      if (!tab || !tab.classList.contains("active")) return;
       var slot = e.target.closest && e.target.closest("[data-equip-slot]");
-      if (slot && $("#tab-items").classList.contains("active")) {
-        openEquipPicker(slot.getAttribute("data-equip-slot"));
+      if (slot && tab.contains(slot)) {
+        openSlotPanel(slot.getAttribute("data-equip-slot"));
+        return;
+      }
+      if (e.target.closest && e.target.closest("[data-slot-close]")) {
+        selectedSlot = null;
+        slotShowAll = false;
+        renderItems();
+        return;
+      }
+      if (e.target.closest && e.target.closest("[data-slot-clear]")) {
+        clearSelectedSlot();
+        return;
+      }
+      if (e.target.closest && e.target.closest("[data-slot-more]")) {
+        slotShowAll = true;
+        if (selectedSlot) renderSlotPanel(selectedSlot);
+        return;
+      }
+      var eq = e.target.closest && e.target.closest("[data-equip-id]");
+      if (eq && tab.contains(eq)) {
+        e.preventDefault();
+        equipFromPanel(eq.getAttribute("data-equip-id"));
       }
     });
 
@@ -2482,7 +2587,9 @@
     var c = ch();
     if (!item || !c.class) return false;
     if (item.forever === false && !item.custom) return false;
-    if (effectiveReq(item) > (c.level || 1)) return false;
+    if (isJunkUpgrade(item)) return false;
+    var need = effectiveReq(item);
+    if (need == null || need > (c.level || 1)) return false;
     if (ARMOR.indexOf(item.type) !== -1 && preferredArmorTypes(c, 0).indexOf(item.type) === -1) return false;
     return DATA.slots.some(function (s) {
       if (!itemFitsSlot(item, s.id) || !canEquipInSlot(item, c, s.id, 0)) return false;
@@ -2512,7 +2619,10 @@
     equipItem: equipItemInSlot,
     render: renderItems,
     qualityClass: qualityClass,
-    formatStats: formatStats
+    formatStats: formatStats,
+    effectiveReq: effectiveReq,
+    upgradesFor: upgradesFor,
+    canEquipInSlot: canEquipInSlot
   };
   window.ForeverApp = {
     STORAGE_KEY: STORAGE_KEY,
