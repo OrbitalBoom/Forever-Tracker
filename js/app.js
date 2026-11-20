@@ -16,6 +16,9 @@
   var activeTab = "character";
   var goalFilter = "all";
   var talentFocusTree = 0;
+  var talentViewLevel = null;
+  var talentPreview = null;
+  var buildOrderCache = {};
 
 
   function emptyTalentState(cls) {
@@ -910,9 +913,22 @@
     return pack.find(function (c) { return c.name === name; }) || pack[0];
   }
 
+  function charTalentLevel() {
+    return Math.max(1, Math.min(60, ch().level || 1));
+  }
+  function pointsAtLevel(lvl) {
+    return Math.max(0, Math.min(51, (lvl || 1) - 9));
+  }
   function pointsAvailable() {
-    var lvl = ch().level || 1;
-    return Math.max(0, Math.min(51, lvl - 9));
+    return pointsAtLevel(charTalentLevel());
+  }
+  function myTalentBaseline() {
+    return Math.max(10, Math.min(60, charTalentLevel()));
+  }
+  function viewTalentLevel() {
+    if (!talentPreview) return charTalentLevel();
+    if (talentViewLevel == null) return myTalentBaseline();
+    return Math.max(10, Math.min(60, talentViewLevel));
   }
   function treeMap(treeName) {
     var store = talentStore();
@@ -923,8 +939,8 @@
   function talentRank(treeName, id) {
     return (treeMap(treeName)[String(id)] || 0);
   }
-  function treeSpent(treeName) {
-    var m = treeMap(treeName);
+  function treeSpent(treeName, trees) {
+    var m = trees ? (trees[treeName] || {}) : treeMap(treeName);
     return Object.keys(m).reduce(function (s, k) { return s + (m[k] || 0); }, 0);
   }
   function totalSpent() {
@@ -933,13 +949,28 @@
     return data.trees.reduce(function (s, t) { return s + treeSpent(t.name); }, 0);
   }
 
-  function canAddPoint(tree, talent) {
-    if (totalSpent() >= pointsAvailable()) return false;
-    var rank = talentRank(tree.name, talent.id);
+  function canAddPoint(tree, talent, trees, avail) {
+    var map = trees || null;
+    var spentTotal;
+    if (map) {
+      spentTotal = 0;
+      Object.keys(map).forEach(function (tn) {
+        Object.keys(map[tn] || {}).forEach(function (k) { spentTotal += map[tn][k] || 0; });
+      });
+    } else {
+      spentTotal = totalSpent();
+    }
+    var cap = avail != null ? avail : pointsAvailable();
+    if (spentTotal >= cap) return false;
+    var rank = map ? ((map[tree.name] && map[tree.name][String(talent.id)]) || 0) : talentRank(tree.name, talent.id);
     if (rank >= talent.maxRank) return false;
-    if (treeSpent(tree.name) < (talent.reqPoints || 0)) return false;
+    var spent = map ? treeSpent(tree.name, map) : treeSpent(tree.name);
+    if (spent < (talent.reqPoints || 0)) return false;
     if (talent.prereq) {
-      if (talentRank(tree.name, talent.prereq.id) < talent.prereq.rank) return false;
+      var pr = map
+        ? ((map[tree.name] && map[tree.name][String(talent.prereq.id)]) || 0)
+        : talentRank(tree.name, talent.prereq.id);
+      if (pr < talent.prereq.rank) return false;
     }
     return true;
   }
@@ -982,56 +1013,269 @@
   }
 
   function resetTree(treeName) {
+    leaveBuildPreview();
     var store = talentStore();
     if (store.trees) delete store.trees[treeName];
     save();
   }
   function resetAllTalents() {
+    leaveBuildPreview();
     talentStore().trees = {};
     state.talents.class = ch().class;
     save();
   }
 
-  function applyBuild(build, opts) {
-    opts = opts || {};
-    if (build.class !== ch().class) {
-      if (build.class !== ch().class) {
-        state.character.class = build.class;
-        var specs = DATA.specs[build.class] || [];
-        if (specs.indexOf(state.character.spec) === -1) state.character.spec = specs[0] || "";
-      }
+  function plannedRankOf(src, id) {
+    if (!src) return 0;
+    if (src[String(id)] != null) return Number(src[String(id)]) || 0;
+    if (src[id] != null) return Number(src[id]) || 0;
+    return 0;
+  }
+
+  function findTalentInTree(tree, id) {
+    return tree.talents.find(function (t) { return String(t.id) === String(id); });
+  }
+
+  function classDataFor(name) {
+    var pack = talentPack();
+    return pack.find(function (c) { return c.name === name; }) || pack[0];
+  }
+
+  function normalizeProvidedOrder(build, data) {
+    var out = [];
+    if (!build.order || !build.order.length) return out;
+    var have = {};
+    function pushStep(tree, talent) {
+      if (!tree || !talent) return false;
+      have[tree.name] = have[tree.name] || {};
+      var from = have[tree.name][String(talent.id)] || 0;
+      if (from >= talent.maxRank) return false;
+      have[tree.name][String(talent.id)] = from + 1;
+      out.push({
+        tree: tree.name,
+        treeIdx: data.trees.indexOf(tree),
+        id: talent.id,
+        name: talent.name,
+        from: from,
+        to: from + 1,
+        maxRank: talent.maxRank,
+        level: 9 + out.length + 1
+      });
+      return true;
     }
-    state.talents.class = build.class;
-    talentStore().trees = {};
-    var data = talentPack().find(function (c) { return c.name === build.class; });
-    var avail = pointsAvailable();
-    var spent = 0;
-    data.trees.forEach(function (tree) {
-      var planned = build.trees[tree.name] || {};
-      var talents = tree.talents.slice().sort(function (a, b) { return a.row - b.row || a.col - b.col; });
-      var guard = 0;
-      var added = true;
-      while (added && spent < avail && guard++ < 400) {
-        added = false;
-        for (var i = 0; i < talents.length; i++) {
-          var t = talents[i];
-          var want = planned[String(t.id)] || planned[t.id] || 0;
-          var have = talentRank(tree.name, t.id);
-          if (have >= want) continue;
-          if (!canAddPoint(tree, t)) continue;
-          addPoint(tree, t);
-          spent++;
-          added = true;
-          if (spent >= avail) break;
+    build.order.forEach(function (step) {
+      var treeName = null, id = null;
+      if (step == null) return;
+      if (typeof step === "number" || (typeof step === "string" && step.indexOf(":") === -1 && step.indexOf("/") === -1)) {
+        id = step;
+      } else if (typeof step === "string") {
+        var parts = step.split(/[:/]/);
+        if (parts.length >= 2) { treeName = parts[0]; id = parts[1]; }
+        else id = step;
+      } else if (Array.isArray(step)) {
+        treeName = step[0]; id = step[1] != null ? step[1] : step[0];
+      } else {
+        treeName = step.tree || step.treeName || step.spec || null;
+        id = step.id != null ? step.id : (step.talentId != null ? step.talentId : step.talent);
+      }
+      var tree = null, talent = null;
+      if (treeName) tree = data.trees.find(function (t) { return t.name === treeName; });
+      if (tree && id != null) talent = findTalentInTree(tree, id);
+      if (!talent && id != null) {
+        for (var i = 0; i < data.trees.length; i++) {
+          var t = findTalentInTree(data.trees[i], id);
+          if (t) { tree = data.trees[i]; talent = t; break; }
         }
       }
+      pushStep(tree, talent);
     });
+    return out;
+  }
+
+  function generateBuildOrder(build, data) {
+    var planned = {};
+    var totalWant = 0;
+    data.trees.forEach(function (tree) {
+      var src = (build.trees && build.trees[tree.name]) || {};
+      planned[tree.name] = {};
+      tree.talents.forEach(function (t) {
+        var want = Math.min(plannedRankOf(src, t.id), t.maxRank);
+        if (want) {
+          planned[tree.name][String(t.id)] = want;
+          totalWant += want;
+        }
+      });
+    });
+    var treeOrder = data.trees.slice().sort(function (a, b) {
+      var pa = 0, pb = 0;
+      Object.keys(planned[a.name] || {}).forEach(function (k) { pa += planned[a.name][k]; });
+      Object.keys(planned[b.name] || {}).forEach(function (k) { pb += planned[b.name][k]; });
+      return pb - pa;
+    });
+    var have = {};
+    var spentInTree = {};
+    var order = [];
+    function rank(tn, id) { return (have[tn] && have[tn][String(id)]) || 0; }
+    function canAdd(tree, talent) {
+      var r = rank(tree.name, talent.id);
+      var want = (planned[tree.name] && planned[tree.name][String(talent.id)]) || 0;
+      if (r >= want || r >= talent.maxRank) return false;
+      if ((spentInTree[tree.name] || 0) < (talent.reqPoints || 0)) return false;
+      if (talent.prereq && rank(tree.name, talent.prereq.id) < talent.prereq.rank) return false;
+      return true;
+    }
+    var guard = 0;
+    while (order.length < totalWant && guard++ < 800) {
+      var picked = null;
+      for (var ti = 0; ti < treeOrder.length && !picked; ti++) {
+        var tree = treeOrder[ti];
+        var cands = tree.talents.filter(function (t) { return canAdd(tree, t); })
+          .sort(function (a, b) { return a.row - b.row || a.col - b.col; });
+        if (cands.length) picked = { tree: tree, talent: cands[0] };
+      }
+      if (!picked) break;
+      have[picked.tree.name] = have[picked.tree.name] || {};
+      var from = rank(picked.tree.name, picked.talent.id);
+      have[picked.tree.name][String(picked.talent.id)] = from + 1;
+      spentInTree[picked.tree.name] = (spentInTree[picked.tree.name] || 0) + 1;
+      order.push({
+        tree: picked.tree.name,
+        treeIdx: data.trees.indexOf(picked.tree),
+        id: picked.talent.id,
+        name: picked.talent.name,
+        from: from,
+        to: from + 1,
+        maxRank: picked.talent.maxRank,
+        level: 9 + order.length + 1
+      });
+    }
+    return order;
+  }
+
+  function getBuildOrder(build) {
+    if (!build) return [];
+    var data = classDataFor(build.class || ch().class);
+    if (!data) return [];
+    var key = (build.id || "anon") + ":" + talentMode() + ":" + (build.class || "") + ":" + JSON.stringify(build.trees || {}) + ":" + JSON.stringify(build.order || null);
+    if (buildOrderCache[key]) return buildOrderCache[key];
+    var order = [];
+    if (build.order && build.order.length) {
+      order = normalizeProvidedOrder(build, data);
+      var generated = generateBuildOrder(build, data);
+      if (order.length < generated.length) {
+        /* Fill any legal remaining planned points the provided order skipped. */
+        var seen = {};
+        var filled = [];
+        function consume(step) {
+          var k = step.tree + "::" + step.id + "::" + step.to;
+          if (seen[k]) return;
+          seen[k] = true;
+          filled.push(step);
+        }
+        order.forEach(consume);
+        generated.forEach(function (step) {
+          var k = step.tree + "::" + step.id + "::" + step.to;
+          if (!seen[k]) {
+            consume({
+              tree: step.tree, treeIdx: step.treeIdx, id: step.id, name: step.name,
+              from: step.from, to: step.to, maxRank: step.maxRank, level: 9 + filled.length + 1
+            });
+          }
+        });
+        /* re-number levels */
+        filled.forEach(function (s, i) { s.level = 10 + i; });
+        order = filled;
+      } else {
+        order.forEach(function (s, i) { s.level = 10 + i; });
+      }
+    } else {
+      order = generateBuildOrder(build, data);
+    }
+    return (buildOrderCache[key] = order);
+  }
+
+  function treesFromOrder(order, n) {
+    var trees = {};
+    order.slice(0, Math.max(0, n)).forEach(function (step) {
+      if (!trees[step.tree]) trees[step.tree] = {};
+      trees[step.tree][String(step.id)] = (trees[step.tree][String(step.id)] || 0) + 1;
+    });
+    return trees;
+  }
+
+  function applyOrderToStore(order, n) {
+    var store = talentStore();
+    store.trees = treesFromOrder(order, n);
+    state.talents.class = ch().class;
+  }
+
+  function findBuildById(id) {
+    if (!id) return null;
+    var pub = talentBuilds().find(function (b) { return b.id === id; });
+    if (pub) return pub;
+    return (state.savedTalentBuilds || []).find(function (b) { return b.id === id; }) || null;
+  }
+
+  function leaveBuildPreview(msg) {
+    if (!talentPreview) return false;
+    talentPreview = null;
+    talentViewLevel = null;
+    if (state.talents) state.talents.activeBuildId = null;
+    if (msg) toast(msg);
+    return true;
+  }
+
+  function activateBuildPreview(build) {
+    if (!build) return;
+    var order = getBuildOrder(build);
+    talentPreview = { build: build, order: order };
+    talentViewLevel = null;
+    if (state.talents) state.talents.activeBuildId = build.id || null;
+  }
+
+  function restoreBuildPreview() {
+    if (talentPreview) return talentPreview;
+    var id = state.talents && state.talents.activeBuildId;
+    if (!id) return null;
+    var build = findBuildById(id);
+    if (!build || (build.class && build.class !== ch().class)) return null;
+    if (build.mode && build.mode !== talentMode()) return null;
+    talentPreview = { build: build, order: getBuildOrder(build) };
+    return talentPreview;
+  }
+
+  function setTalentViewLevel(lvl) {
+    if (!talentPreview && !restoreBuildPreview()) return;
+    if (lvl == null || lvl === "") talentViewLevel = null;
+    else {
+      var n = parseInt(lvl, 10);
+      if (isNaN(n)) return;
+      talentViewLevel = Math.max(10, Math.min(60, n));
+    }
+    renderTalents();
+  }
+
+  function applyBuild(build, opts) {
+    opts = opts || {};
+    if (build.class && build.class !== ch().class) {
+      state.character.class = build.class;
+      var specs = DATA.specs[build.class] || [];
+      if (specs.indexOf(state.character.spec) === -1) state.character.spec = specs[0] || "";
+    }
+    if (build.mode) state.talents.mode = build.mode === "classic" ? "classic" : "forever";
+    if (build.specSlot) state.talents.activeSpec = build.specSlot;
+    state.talents.class = build.class || ch().class;
+    activateBuildPreview(build);
+    var order = talentPreview.order;
+    applyOrderToStore(order, pointsAvailable());
     save();
   }
 
   function setTalentMode(mode) {
     normalizeTalents();
-    state.talents.mode = mode === "classic" ? "classic" : "forever";
+    var next = mode === "classic" ? "classic" : "forever";
+    if (state.talents.mode !== next) leaveBuildPreview();
+    state.talents.mode = next;
     if (state.talents.mode === "classic") state.talents.activeSpec = "primary";
     save();
     renderTalents();
@@ -1043,31 +1287,190 @@
       toast("Dual Specialization unlocks at level 40.");
       return;
     }
-    state.talents.activeSpec = which === "secondary" ? "secondary" : "primary";
+    var next = which === "secondary" ? "secondary" : "primary";
+    if (state.talents.activeSpec !== next) leaveBuildPreview();
+    state.talents.activeSpec = next;
     save();
     renderTalents();
+  }
+
+  function talentStepAtLevel(order, lvl) {
+    if (!order || !order.length) return null;
+    var idx = (lvl || 0) - 10;
+    if (idx < 0 || idx >= order.length) return null;
+    return order[idx];
+  }
+
+  function rankLookup(trees, treeName, id) {
+    return (trees[treeName] && trees[treeName][String(id)]) || 0;
+  }
+
+  function talentDescription(tree, talent, rank) {
+    if (!talent || !talent.ranks || !talent.ranks.length) return "";
+    var i = Math.max(0, Math.min(talent.ranks.length - 1, (rank || 1) - 1));
+    return talent.ranks[i] || "";
+  }
+
+  function renderTalentPreviewDock(data, preview, viewLvl, charLvl, viewTrees) {
+    var dock = $("#talentPreviewDock");
+    if (!dock) return;
+    if (!preview) { dock.hidden = true; dock.innerHTML = ""; return; }
+    dock.hidden = false;
+    var order = preview.order || [];
+    var build = preview.build || {};
+    var step = talentStepAtLevel(order, viewLvl);
+    var endLvl = order.length ? 9 + order.length : 9;
+    var delta = viewLvl - charLvl;
+    var status;
+    if (charLvl < 10 && viewLvl === 10) {
+      status = "<strong>Viewing Lv 10</strong> <span class=\"tp-delta\">Your character is level " + charLvl + " — the first talent point is at 10.</span>";
+    } else if (delta > 0) {
+      status = "<strong>Viewing Lv " + viewLvl + "</strong> <span class=\"tp-delta is-ahead\">" +
+        delta + " level" + (delta === 1 ? "" : "s") + " ahead of your Lv " + charLvl + "</span>";
+    } else if (delta < 0) {
+      status = "<strong>Viewing Lv " + viewLvl + "</strong> <span class=\"tp-delta is-behind\">" +
+        Math.abs(delta) + " level" + (delta === -1 ? "" : "s") + " behind your Lv " + charLvl + "</span>";
+    } else {
+      status = "<strong>Viewing Lv " + viewLvl + "</strong> <span class=\"tp-delta\">This is your current level.</span>";
+    }
+    var backBtn = (talentViewLevel != null && viewLvl !== myTalentBaseline())
+      ? '<button type="button" class="btn btn-sm btn-primary" data-talent-nav="mine">Back to Lv ' + myTalentBaseline() + "</button>"
+      : "";
+
+    var callout;
+    if (viewLvl < 10) {
+      callout = '<div class="tp-callout is-empty" id="talentCallout"><div class="tp-kicker">No talent point</div>' +
+        "<p class=\"tp-headline\">Talents start at level 10.</p></div>";
+    } else if (!step) {
+      callout = '<div class="tp-callout is-empty" id="talentCallout"><div class="tp-kicker">Level ' + viewLvl + "</div>" +
+        "<p class=\"tp-headline\">This build has no further points" +
+        (endLvl >= 10 ? " after level " + endLvl : "") + ".</p></div>";
+    } else {
+      var treeObj = data.trees[step.treeIdx] || data.trees.find(function (t) { return t.name === step.tree; });
+      var tal = treeObj ? findTalentInTree(treeObj, step.id) : null;
+      var desc = talentDescription(treeObj, tal, step.to);
+      callout = '<div class="tp-callout" id="talentCallout">' +
+        '<div class="tp-kicker">Level ' + viewLvl + " · +1 point</div>" +
+        '<p class="tp-headline"><strong>' + escapeHtml(step.name) + "</strong> (" +
+        step.from + "/" + step.maxRank + " → " + step.to + "/" + step.maxRank + ") — " +
+        '<span class="tp-tree">' + escapeHtml(step.tree) + "</span></p>" +
+        (desc ? '<p class="tp-desc">' + escapeHtml(desc) + "</p>" : "") +
+        "</div>";
+    }
+
+    var chips = "";
+    for (var lv = viewLvl + 1; lv <= Math.min(60, viewLvl + 5); lv++) {
+      var st = talentStepAtLevel(order, lv);
+      if (st) {
+        chips += '<button type="button" class="upcoming-chip" data-talent-nav="set" data-level="' + lv +
+          '" title="Jump to level ' + lv + '">' +
+          '<span class="uc-lv">Lv ' + lv + "</span>" +
+          '<span class="uc-name">' + escapeHtml(st.name) + " " + st.to + "/" + st.maxRank + "</span></button>";
+      } else {
+        chips += '<button type="button" class="upcoming-chip is-empty" data-talent-nav="set" data-level="' + lv +
+          '"><span class="uc-lv">Lv ' + lv + "</span><span class=\"uc-name\">No further points</span></button>";
+      }
+    }
+
+    var mine = myTalentBaseline();
+    var jumps = [
+      { label: "My level (Lv " + mine + ")", nav: "mine", level: mine },
+      { label: "+1", nav: "set", level: Math.min(60, mine + 1) },
+      { label: "+2", nav: "set", level: Math.min(60, mine + 2) },
+      { label: "+3", nav: "set", level: Math.min(60, mine + 3) },
+      { label: "+5", nav: "set", level: Math.min(60, mine + 5) },
+      { label: "Lv 60", nav: "set", level: 60 }
+    ];
+    var jumpHtml = jumps.map(function (j) {
+      var active = (j.nav === "mine" ? (talentViewLevel == null || viewLvl === mine) : viewLvl === j.level);
+      return '<button type="button" class="btn btn-sm' + (active ? " is-active btn-primary" : "") +
+        '" data-talent-nav="' + j.nav + '"' +
+        (j.nav === "set" ? ' data-level="' + j.level + '"' : "") + ">" + escapeHtml(j.label) + "</button>";
+    }).join("");
+
+    var showUpcoming = viewLvl > charLvl && charLvl >= 10;
+    var legend = '<div class="tp-legend" id="talentLegend">' +
+      '<span class="tl tl-cur"><i></i> Current</span>' +
+      (showUpcoming ? '<span class="tl tl-up"><i></i> Upcoming (+N)</span>' : "") +
+      (step ? '<span class="tl tl-new"><i></i> New at Lv ' + viewLvl + "</span>" : "") +
+      "</div>";
+
+    dock.innerHTML =
+      '<div class="tp-top">' +
+        '<div class="tp-status" id="talentViewStatus">' + status + backBtn + "</div>" +
+        '<div class="tp-build-name">Previewing <strong>' + escapeHtml(build.name || "this build") + "</strong>" +
+          (build.points ? " (" + escapeHtml(build.points) + ")" : "") +
+          (order.length ? " · " + order.length + " points through Lv " + endLvl : "") +
+        "</div>" +
+      "</div>" +
+      '<div class="tp-controls">' +
+        '<button type="button" class="btn" data-talent-nav="step" data-delta="-1" ' +
+          (viewLvl <= 10 ? "disabled " : "") + 'aria-label="Previous level">−1</button>' +
+        '<label class="tp-slider-wrap">Level' +
+          '<input id="talentLevelSlider" type="range" min="10" max="60" value="' + viewLvl + '" aria-label="Preview talent level">' +
+          '<span class="tp-slider-val" id="talentSliderVal">' + viewLvl + "</span>" +
+        "</label>" +
+        '<button type="button" class="btn" data-talent-nav="step" data-delta="1" ' +
+          (viewLvl >= 60 ? "disabled " : "") + 'aria-label="Next level">+1</button>' +
+        '<div class="tp-jumps">' + jumpHtml + "</div>" +
+      "</div>" +
+      callout +
+      '<div class="tp-upcoming-wrap"><div class="tp-upcoming-label">Next 5 levels — where the build goes next</div>' +
+        '<div class="tp-upcoming" id="talentUpcoming">' + chips + "</div></div>" +
+      legend;
+  }
+
+  function highlightInfo(order, viewLvl, charLvl) {
+    var info = { newKey: null, newTreeIdx: -1, newName: "", upcoming: {} };
+    var step = talentStepAtLevel(order, viewLvl);
+    if (step) {
+      info.newKey = step.tree + "::" + step.id;
+      info.newTreeIdx = step.treeIdx;
+      info.newName = step.name;
+    }
+    if (viewLvl > charLvl) {
+      var fromIdx = Math.max(0, charLvl - 9);
+      var toIdx = Math.max(0, viewLvl - 10);
+      for (var i = fromIdx; i < toIdx; i++) {
+        var s = order[i];
+        if (!s) continue;
+        var k = s.tree + "::" + s.id;
+        if (k === info.newKey) continue;
+        info.upcoming[k] = (info.upcoming[k] || 0) + 1;
+      }
+    }
+    return info;
   }
 
   function renderTalents() {
     normalizeTalents();
     if (state.talents.class && state.talents.class !== ch().class) {
-      var mode = talentMode();
-      var spec = state.talents.activeSpec || "primary";
+      var modeKeep = talentMode();
+      var specKeep = state.talents.activeSpec || "primary";
       state.talents = emptyTalentState(ch().class);
-      state.talents.mode = mode;
-      state.talents.activeSpec = spec;
+      state.talents.mode = modeKeep;
+      state.talents.activeSpec = specKeep;
+      talentPreview = null;
+      talentViewLevel = null;
     }
+    var preview = restoreBuildPreview();
     var data = talentClassData();
-    var avail = pointsAvailable();
-    var spent = totalSpent();
-    var counts = data.trees.map(function (t) { return treeSpent(t.name); });
+    var charLvl = charTalentLevel();
+    var viewLvl = preview ? viewTalentLevel() : charLvl;
+    var order = preview ? preview.order : [];
+    var viewTrees = preview ? treesFromOrder(order, pointsAtLevel(viewLvl)) : (talentStore().trees || {});
+    var hl = preview ? highlightInfo(order, viewLvl, charLvl) : { newKey: null, newTreeIdx: -1, newName: "", upcoming: {} };
+    var avail = preview ? pointsAtLevel(viewLvl) : pointsAvailable();
+    var spent = 0;
+    data.trees.forEach(function (t) { spent += treeSpent(t.name, viewTrees); });
+    var counts = data.trees.map(function (t) { return treeSpent(t.name, viewTrees); });
     var mode = talentMode();
     var meta = TALENT_META || {};
+    var unlocked = dualSpecUnlocked();
+    var spec = state.talents.activeSpec || "primary";
 
     var modeBar = $("#talentModeBar");
     if (modeBar) {
-      var unlocked = dualSpecUnlocked();
-      var spec = state.talents.activeSpec || "primary";
       modeBar.innerHTML =
         '<div class="mode-toggle" role="group" aria-label="Talent data source">' +
         '<button type="button" class="btn btn-sm' + (mode === "forever" ? " btn-primary" : "") + '" data-talent-mode="forever">WoW: Forever</button>' +
@@ -1083,9 +1486,18 @@
         (meta.build ? '<span class="muted">Client ' + escapeHtml(meta.build) + " · " + (meta.talentCount || 467) + " talents</span>" : "");
     }
 
-    $("#talentPoints").innerHTML = (ch().class || "") + " · " + counts.join(" / ") +
-      " · <strong>" + (avail - spent) + "</strong> of " + avail + " remaining (level " + (ch().level || 1) + ")" +
-      (mode === "forever" && unlocked ? " · " + (spec === "secondary" ? "Secondary" : "Primary") + " spec" : "");
+    var remaining = Math.max(0, avail - spent);
+    if (preview) {
+      $("#talentPoints").innerHTML = escapeHtml((preview.build && preview.build.name) || ch().class || "") +
+        " · " + counts.join(" / ") +
+        " · <strong>" + spent + "</strong> / " + order.length + " points at level " + viewLvl +
+        (viewLvl !== charLvl ? " <span class=\"muted\">(character is " + charLvl + ")</span>" : "") +
+        (mode === "forever" && unlocked ? " · " + (spec === "secondary" ? "Secondary" : "Primary") + " spec" : "");
+    } else {
+      $("#talentPoints").innerHTML = (ch().class || "") + " · " + counts.join(" / ") +
+        " · <strong>" + remaining + "</strong> of " + avail + " remaining (level " + charLvl + ")" +
+        (mode === "forever" && unlocked ? " · " + (spec === "secondary" ? "Secondary" : "Primary") + " spec" : "");
+    }
 
     var srcNote = $("#buildSource");
     if (mode === "classic") {
@@ -1095,30 +1507,50 @@
         (meta.credit ? " " + escapeHtml(meta.credit) : "");
     }
 
+    renderTalentPreviewDock(data, preview, viewLvl, charLvl, viewTrees);
+
     $("#talentTrees").innerHTML = data.trees.map(function (tree, idx) {
       var cells = "";
+      var treeIsNew = preview && hl.newTreeIdx === idx;
       for (var row = 1; row <= 7; row++) {
         for (var col = 1; col <= 4; col++) {
           var t = tree.talents.find(function (x) { return x.row === row && x.col === col; });
           if (!t) { cells += "<div></div>"; continue; }
-          var rank = talentRank(tree.name, t.id);
-          var locked = rank === 0 && !canAddPoint(tree, t);
+          var rank = rankLookup(viewTrees, tree.name, t.id);
+          var locked;
+          if (preview) locked = rank === 0;
+          else locked = rank === 0 && !canAddPoint(tree, t);
+          var key = tree.name + "::" + t.id;
+          var isNew = preview && hl.newKey === key;
+          var upN = preview ? (hl.upcoming[key] || 0) : 0;
           var cls = "talent";
           if (rank > 0) cls += " has-points";
           if (rank >= t.maxRank) cls += " maxed";
-          if (locked) cls += " locked";
+          if (locked && !isNew && !upN) cls += " locked";
+          if (isNew) cls += " is-new";
+          else if (upN) cls += " is-upcoming";
           var desc = (t.ranks && t.ranks[Math.max(0, rank ? rank - 1 : 0)]) || "";
           var next = (t.ranks && t.ranks[rank]) ? "<br><em>Next: " + escapeHtml(t.ranks[rank]) + "</em>" : "";
           var req = t.prereq ? "<br>Requires " + t.prereq.rank + " in " + escapeHtml((tree.talents.find(function (x) { return x.id === t.prereq.id; }) || {}).name || "prereq") : "";
+          var badge = "";
+          if (isNew) badge = '<span class="t-badge t-badge-new">NEW</span>';
+          else if (upN) badge = '<span class="t-badge t-badge-up">+' + upN + "</span>";
           cells += '<button type="button" class="' + cls + '" data-tree="' + idx + '" data-talent="' + t.id +
-            '" aria-label="' + escapeHtml(t.name) + '"><span class="t-name">' + escapeHtml(t.name) +
+            '"' + (isNew ? ' data-hl="new"' : (upN ? ' data-hl="upcoming" data-up="' + upN + '"' : "")) +
+            ' aria-label="' + escapeHtml(t.name) + '">' + badge +
+            '<span class="t-name">' + escapeHtml(t.name) +
             '</span><span class="t-rank">' + rank + "/" + t.maxRank + "</span>" +
             '<div class="talent-tip"><strong>' + escapeHtml(t.name) + "</strong> · Rank " + rank + "/" + t.maxRank +
+            (isNew ? " · New at Lv " + viewLvl : (upN ? " · +" + upN + " upcoming" : "")) +
             "<br>" + escapeHtml(desc) + next + req + "</div></button>";
         }
       }
-      return '<div class="talent-tree" data-tree-idx="' + idx + '"><h3>' + escapeHtml(tree.name) +
-        " <span>" + treeSpent(tree.name) + "</span> <button type=\"button\" class=\"btn btn-sm\" data-reset-tree=\"" +
+      var tag = treeIsNew && hl.newName
+        ? '<span class="tree-new-tag">New: ' + escapeHtml(hl.newName) + "</span>"
+        : "";
+      return '<div class="talent-tree' + (treeIsNew ? " has-new" : "") + '" data-tree-idx="' + idx + '"><h3>' + escapeHtml(tree.name) +
+        " <span>" + treeSpent(tree.name, viewTrees) + "</span>" + tag +
+        " <button type=\"button\" class=\"btn btn-sm\" data-reset-tree=\"" +
         escapeHtml(tree.name) + "\">Reset</button></h3><div class=\"talent-grid\">" + cells + "</div></div>";
     }).join("");
 
@@ -1130,11 +1562,13 @@
         ? "<p class=\"muted\">No Classic Era reference builds loaded.</p>"
         : "<p class=\"muted\">No popular Forever builds published yet for this class.</p>";
     } else {
+      var activeId = preview && preview.build && preview.build.id;
       $("#buildList").innerHTML = classBuilds.map(function (b) {
         var cite = b.sourceLabel || (mode === "classic" ? "Classic Era reference — not for Forever" : "");
         var via = b.via ? "<div class=\"muted\" style=\"font-size:11px;margin-top:4px\">" + escapeHtml(b.via) + "</div>" : "";
         var link = b.sourceUrl ? ' · <span class="muted">' + escapeHtml(b.sourceName || "source") + "</span>" : "";
-        return '<button type="button" class="btn build-card" data-load-build="' + escapeHtml(b.id) + '">' +
+        return '<button type="button" class="btn build-card' + (activeId && activeId === b.id ? " is-active" : "") +
+          '" data-load-build="' + escapeHtml(b.id) + '">' +
           '<div class="role">' + escapeHtml(b.role || "") + " · " + escapeHtml(b.points) + "</div>" +
           "<strong>" + escapeHtml(b.name) + "</strong><p>" + escapeHtml(b.summary || "") + "</p>" +
           (cite ? '<div class="build-cite">' + escapeHtml(cite) + "</div>" : "") + via + "</button>";
@@ -1143,15 +1577,16 @@
 
     var sb = $("#savedBuilds");
     var cur = sb.value;
-    var mine = (state.savedTalentBuilds || []).filter(function (b) {
+    var mineSaved = (state.savedTalentBuilds || []).filter(function (b) {
       return b.class === ch().class && (b.mode || "forever") === mode;
     });
-    sb.innerHTML = '<option value="">Saved builds…</option>' + mine.map(function (b) {
+    sb.innerHTML = '<option value="">Saved builds…</option>' + mineSaved.map(function (b) {
       var tag = b.specSlot === "secondary" ? " (2nd)" : "";
       return '<option value="' + escapeHtml(b.id) + '">' + escapeHtml(b.name) + tag + "</option>";
     }).join("");
     if (cur) sb.value = cur;
   }
+
 
   /* ---------- export / import ---------- */
   function exportData() {
@@ -1889,11 +2324,10 @@
       var id = $("#savedBuilds").value;
       var b = (state.savedTalentBuilds || []).find(function (x) { return x.id === id; });
       if (!b) return toast("Pick a saved build");
-      if (b.mode) state.talents.mode = b.mode;
-      if (b.specSlot) state.talents.activeSpec = b.specSlot;
-      state.talents.class = b.class;
-      talentStore().trees = JSON.parse(JSON.stringify(b.trees || {}));
-      save(); renderTalents();
+      applyBuild(b);
+      renderChrome();
+      renderTalents();
+      toast("Loaded " + b.name);
     });
     $("#btnTalentDelete").addEventListener("click", function () {
       var id = $("#savedBuilds").value;
@@ -1902,6 +2336,19 @@
       save(); renderTalents();
     });
     document.addEventListener("click", function (e) {
+      var nav = e.target.closest && e.target.closest("[data-talent-nav]");
+      if (nav && $("#tab-talents").classList.contains("active")) {
+        var kind = nav.getAttribute("data-talent-nav");
+        if (kind === "step") {
+          var d = parseInt(nav.getAttribute("data-delta"), 10) || 0;
+          setTalentViewLevel(viewTalentLevel() + d);
+        } else if (kind === "set") {
+          setTalentViewLevel(nav.getAttribute("data-level"));
+        } else if (kind === "mine") {
+          setTalentViewLevel(null);
+        }
+        return;
+      }
       var rt = e.target.getAttribute && e.target.getAttribute("data-reset-tree");
       if (rt) { resetTree(rt); renderTalents(); return; }
       var lb = e.target.closest && e.target.closest("[data-load-build]");
@@ -1916,7 +2363,14 @@
         var tree = data.trees[parseInt(cell.getAttribute("data-tree"), 10)];
         talentFocusTree = parseInt(cell.getAttribute("data-tree"), 10);
         var tal = tree.talents.find(function (t) { return String(t.id) === cell.getAttribute("data-talent"); });
-        if (tal) { addPoint(tree, tal); renderTalents(); }
+        if (tal) {
+          if (talentPreview) {
+            leaveBuildPreview("Left the build preview. You're editing your live talents at level " + charTalentLevel() + ".");
+            renderTalents();
+          }
+          addPoint(tree, tal);
+          renderTalents();
+        }
       }
     });
     document.addEventListener("contextmenu", function (e) {
@@ -1927,7 +2381,19 @@
         var tree = data.trees[parseInt(cell.getAttribute("data-tree"), 10)];
         talentFocusTree = parseInt(cell.getAttribute("data-tree"), 10);
         var tal = tree.talents.find(function (t) { return String(t.id) === cell.getAttribute("data-talent"); });
-        if (tal) { removePoint(tree, tal); renderTalents(); }
+        if (tal) {
+          if (talentPreview) {
+            leaveBuildPreview("Left the build preview. You're editing your live talents at level " + charTalentLevel() + ".");
+            renderTalents();
+          }
+          removePoint(tree, tal);
+          renderTalents();
+        }
+      }
+    });
+    document.addEventListener("input", function (e) {
+      if (e.target && e.target.id === "talentLevelSlider") {
+        setTalentViewLevel(e.target.value);
       }
     });
 
@@ -1981,6 +2447,12 @@
     setTalentMode: setTalentMode,
     setActiveSpec: setActiveSpec,
     talentMode: talentMode,
+    talentViewLevel: viewTalentLevel,
+    setTalentViewLevel: setTalentViewLevel,
+    charTalentLevel: charTalentLevel,
+    getTalentPreview: function () { return talentPreview; },
+    getBuildOrder: getBuildOrder,
+    pointsAtLevel: pointsAtLevel,
     formatGold: formatGold,
     goldTotal: goldTotal,
     toCopper: toCopper,

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Forever Tracker — Classic Era companion</title>
-  <link rel="stylesheet" href="css/style.css?v=20261118b">
+  <link rel="stylesheet" href="css/style.css?v=20261119">
 </head>
 <body>
   <div class="app">
@@ -212,7 +212,7 @@
       <!-- Talents -->
       <section class="panel" id="tab-talents" role="tabpanel">
         <h2>Talents</h2>
-        <p class="lede">WoW: Forever talent calculator (reworked trees, client 1.60.1). Your first point is at level 10 and you have 51 points at 60. Milestone 1-point talents sit at 11, 16, 21, and 31 points in a tree; there is no 41-point talent. Each row still needs 5 points in that tree, and some talents have prerequisites. Left-click to add a point, right-click to remove. Dual Specialization unlocks at level 40. A Classic Era (reference) toggle keeps the old 1.12 trees for comparison.</p>
+        <p class="lede">WoW: Forever talent calculator (reworked trees, client 1.60.1). Your first point is at level 10 and you have 51 points at 60. Milestone 1-point talents sit at 11, 16, 21, and 31 points in a tree; there is no 41-point talent. Each row still needs 5 points in that tree, and some talents have prerequisites. Left-click to add a point, right-click to remove. Dual Specialization unlocks at level 40. Load a published build to step through every level from 10 to 60 and see what comes next — that preview never changes your character’s saved level. A Classic Era (reference) toggle keeps the old 1.12 trees for comparison.</p>
         <div class="talent-toolbar" id="talentModeBar"></div>
         <div class="talent-toolbar">
           <button type="button" class="btn btn-sm" id="btnTalentReset">Reset all</button>
@@ -223,6 +223,7 @@
           <button type="button" class="btn btn-sm btn-danger" id="btnTalentDelete">Delete saved</button>
           <div class="talent-points" id="talentPoints"></div>
         </div>
+        <div id="talentPreviewDock" class="talent-preview-dock" hidden></div>
         <div id="talentTrees" class="talent-trees"></div>
         <h3 id="buildListTitle">Published Forever builds</h3>
         <p class="build-note" id="buildSource"></p>
@@ -242,14 +243,14 @@
   </div>
   <div class="toast" id="toast" hidden></div>
 
-  <script src="js/data.js?v=20261118b"></script>
-  <script src="js/items.js?v=20261118b"></script>
-  <script src="js/talents.js?v=20261118b"></script>
-  <script src="js/leveling-data.js?v=20261118b"></script>
-  <script src="js/app.js?v=20261118b"></script>
-  <script src="js/cloud-save.js?v=20261118b"></script>
-  <script src="js/professions-data.js?v=20261118b"></script>
-  <script src="data/prices.js?v=20261118b"></script>
-  <script src="js/professions.js?v=20261118b"></script>
+  <script src="js/data.js?v=20261119"></script>
+  <script src="js/items.js?v=20261119"></script>
+  <script src="js/talents.js?v=20261119"></script>
+  <script src="js/leveling-data.js?v=20261119"></script>
+  <script src="js/app.js?v=20261119"></script>
+  <script src="js/cloud-save.js?v=20261119"></script>
+  <script src="js/professions-data.js?v=20261119"></script>
+  <script src="data/prices.js?v=20261119"></script>
+  <script src="js/professions.js?v=20261119"></script>
 </body>
 </html>
