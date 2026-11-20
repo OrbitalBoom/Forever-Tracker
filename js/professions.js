@@ -47,7 +47,7 @@
   function qClass(id) { return "q-" + (QUALITY[item(id)[1]] || "common"); }
   function wowhead(id) { return "https://www.wowhead.com/classic/item=" + id; }
   function itemLink(id) {
-    return '<a class="' + qClass(id) + '" href="' + wowhead(id) + '" target="_blank" rel="noopener">' + esc(itemName(id)) + "</a>";
+    return '<a class="' + qClass(id) + '" href="#item-' + id + '" data-item-id="' + id + '">' + esc(itemName(id)) + "</a>";
   }
   function money(c) {
     if (c == null || isNaN(c)) return '<span class="muted">—</span>';

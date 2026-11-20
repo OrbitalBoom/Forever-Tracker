@@ -40,7 +40,13 @@ def wanted_items():
     path = os.path.join(ROOT, "js", "professions-data.js")
     s = open(path, encoding="utf-8").read()
     s = s[s.index("{"):s.rstrip().rindex("}") + 1]
-    return set(int(k) for k in json.loads(s)["items"].keys())
+    wanted = set(int(k) for k in json.loads(s)["items"].keys())
+    # Also keep prices for the item database (reagents, consumables, and any listed gear).
+    idx = os.path.join(ROOT, "data", "items", "index.js")
+    if os.path.isfile(idx):
+        txt = open(idx, encoding="utf-8").read()
+        wanted.update(int(i) for i in re.findall(r'"id":(\d+)', txt))
+    return wanted
 
 def market_value(units):
     """units: list of (unit_price, qty). Average of the cheapest 15% of units

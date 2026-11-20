@@ -845,7 +845,10 @@
       if (p) bits.push("AH " + goldText(p.marketValue, { compact: true }));
       else if (l.vendor != null) bits.push("vendor " + goldText(l.vendor, { compact: true }));
       else if (l.id) bits.push("no AH price in this snapshot");
-      return "<li><span>" + escapeHtml(l.name) + "</span>" +
+      var label = l.id
+        ? '<a href="#item-' + l.id + '" data-item-id="' + l.id + '">' + escapeHtml(l.name) + "</a>"
+        : "<span>" + escapeHtml(l.name) + "</span>";
+      return "<li>" + label +
         (bits.length ? ' <span class="muted">(' + escapeHtml(bits.join(" · ")) + ")</span>" : "") + "</li>";
     });
     return "<ul class=\"gf-loot\">" + rows.join("") + "</ul>";

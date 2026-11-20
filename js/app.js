@@ -6,7 +6,7 @@
   var ITEMS = window.WOW_ITEMS || [];
   var TALENT_META = window.WOW_TALENT_META || {};
   var STORAGE_KEY = "wowForever.tracker.v1";
-  var LEVEL_WINDOW = 5;
+  var LEVEL_WINDOW = 3;
 
   var ARMOR = ["cloth", "leather", "mail", "plate"];
   var WEAPONS = ["sword","axe","mace","dagger","staff","polearm","fist","bow","gun","crossbow","wand","thrown","shield","held","idol","totem","libram"];
@@ -263,7 +263,11 @@
       p.classList.toggle("active", p.id === "tab-" + name);
     });
     renderTab(name);
-    try { history.replaceState(null, "", "#"+name); } catch (e) {}
+    try {
+      if (!(name === "items" && /^#item-\d+/.test(location.hash || ""))) {
+        history.replaceState(null, "", "#"+name);
+      }
+    } catch (e) {}
   }
 
   function renderTab(name) {
@@ -272,7 +276,7 @@
     else if (name === "goals") renderGoals();
     else if (name === "gold") renderGold();
     else if (name === "notes") renderNotes();
-    else if (name === "items") renderItems();
+    else if (name === "items") { if (window.ItemDB) window.ItemDB.onTab(); else renderItems(); }
     else if (name === "talents") renderTalents();
     else if (name === "leveling") renderLeveling();
   }
@@ -565,8 +569,22 @@
   }
 
   /* ---------- items / upgrades ---------- */
+  function effectiveReq(item) {
+    var req = item.reqLevel || 0;
+    var ilvl = item.itemLevel || 0;
+    // Some Forever records default requiredLevel to 0 or 1 on high-ilvl pieces.
+    // Fall back to the usual Classic ilvl-5 proxy when the gap is large.
+    if (ilvl > 5) {
+      var fromIlvl = Math.max(1, ilvl - 5);
+      if (!req || fromIlvl - req >= 8) req = fromIlvl;
+    }
+    return req;
+  }
   function allItems() {
-    return ITEMS.concat(state.customItems || []);
+    var base = (window.ITEM_GEAR || ITEMS || []).filter(function (it) {
+      return it && it.forever !== false;
+    });
+    return base.concat(state.customItems || []);
   }
 
   function slotMeta(id) {
@@ -723,9 +741,16 @@
     var curScore = current ? itemScore(current) : 0;
     var at = [];
     var soon = [];
+    function isThinUpgrade(item) {
+      var s = item.stats || {};
+      var meaningful = Object.keys(s).some(function (k) { return k !== "armor" || s[k] > 5; });
+      if (meaningful || item.weapon || (item.effects && item.effects.length)) return false;
+      return (item.itemLevel || 0) <= 5;
+    }
     allItems().forEach(function (item) {
       if (otherUniqueEquipped(item, slotId)) return;
-      var req = item.reqLevel || 0;
+      if (isThinUpgrade(item)) return;
+      var req = effectiveReq(item);
       var atLevel = req <= (c.level || 1);
       var soonOk = !atLevel && req <= (c.level || 1) + LEVEL_WINDOW;
       if (!atLevel && !soonOk) return;
@@ -746,7 +771,7 @@
     at.sort(function (a, b) { return b.score - a.score; });
     soon.sort(function (a, b) { return b.score - a.score; });
     // Closest upgrade = smallest positive delta among at-level, also expose best
-    var closest = at.slice().sort(function (a, b) { return a.delta - b.delta; })[0];
+    var closest = current ? at.slice().sort(function (a, b) { return a.delta - b.delta; })[0] : null;
     return { blocked: false, at: at.slice(0, 8), soon: soon.slice(0, 4), closest: closest, currentScore: curScore };
   }
 
@@ -765,7 +790,7 @@
         return;
       }
       if (!u.at.length && !u.soon.length) {
-        html += "<p class=\"muted\">No upgrades found in the starter database for this slot at your level (or soon). Add a custom item if Forever has something new.</p>";
+        html += "<p class=\"muted\">No upgrades found for this slot at your level (or soon). Add a custom item if something is missing.</p>";
         return;
       }
       var compact = focus === "all";
@@ -792,7 +817,7 @@
       : '<span class="badge soon">soon · req ' + rec.req + "</span>";
     if (isClosest && rec.atLevel) badge += ' <span class="badge at-level">closest upgrade</span>';
     return '<div class="upgrade ' + (rec.atLevel ? "at-level" : "soon") + '">' +
-      badge + ' <span class="item-name ' + qualityClass(it.quality) + '">' + escapeHtml(it.name) + "</span>" +
+      badge + ' <a href="#item-' + it.id + '" data-item-id="' + escapeHtml(String(it.id)) + '" class="item-name ' + qualityClass(it.quality) + '">' + escapeHtml(it.name) + "</a>" +
       '<div class="muted" style="font-size:12px">ilvl ' + (it.itemLevel || "?") +
       (it.type ? " · " + it.type : "") + (it.slotLabel ? " · " + it.slotLabel : "") +
       " · score " + rec.score.toFixed(1) + (rec.delta ? " (+" + rec.delta.toFixed(1) + ")" : "") + "</div>" +
@@ -2422,13 +2447,51 @@
     try { q = new URLSearchParams(location.search).get("tab") || ""; } catch (e) {}
     var start = q || hash;
     var valid = ["character","goals","gold","notes","items","talents","leveling"];
+    if (/^item-\d+/.test(hash)) start = "items";
     showTab(valid.indexOf(start) !== -1 ? start : "character");
+    if (/^item-\d+/.test(hash) && window.ItemDB) window.ItemDB.open(hash.replace("item-",""));
     try {
       if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
     } catch (e) {}
     if (window.CloudSave) window.CloudSave.start();
   }
 
+  function isUpgradeItem(item) {
+    var c = ch();
+    if (!item || !c.class) return false;
+    if (item.forever === false && !item.custom) return false;
+    if (effectiveReq(item) > (c.level || 1)) return false;
+    if (ARMOR.indexOf(item.type) !== -1 && preferredArmorTypes(c, 0).indexOf(item.type) === -1) return false;
+    return DATA.slots.some(function (s) {
+      if (!itemFitsSlot(item, s.id) || !canEquipInSlot(item, c, s.id, 0)) return false;
+      if (s.id === "offhand" && equippedTwoHand()) return false;
+      var current = state.equipment[s.id];
+      if (current && current.id === item.id) return false;
+      var curScore = current ? itemScore(current) : 0;
+      return itemScore(item) > curScore + 0.05;
+    });
+  }
+  function equipItemInSlot(item, slotId) {
+    var c = ch();
+    var slots = DATA.slots.filter(function (s) {
+      return itemFitsSlot(item, s.id) && canEquipInSlot(item, c, s.id, LEVEL_WINDOW);
+    });
+    if (slotId) slots = slots.filter(function (s) { return s.id === slotId; });
+    if (!slots.length) { toast("Your character cannot use that in any slot yet"); return; }
+    var slot = slots.filter(function (s) { return !state.equipment[s.id]; })[0] || slots[0];
+    state.equipment[slot.id] = item;
+    if (item.slot === "twohand") state.equipment.offhand = null;
+    save();
+    renderItems();
+    toast("Equipped " + item.name + " in " + slot.label);
+  }
+  window.ForeverItems = {
+    isUpgrade: isUpgradeItem,
+    equipItem: equipItemInSlot,
+    render: renderItems,
+    qualityClass: qualityClass,
+    formatStats: formatStats
+  };
   window.ForeverApp = {
     STORAGE_KEY: STORAGE_KEY,
     getState: function () { return state; },
