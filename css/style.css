@@ -852,6 +852,31 @@ table.data tfoot th { text-align: left; }
   line-height: 1;
 }
 .gf-need { color: var(--ink-dim); font-weight: 500; }
+.gf-uses { color: var(--ok); font-weight: 500; }
+.gf-because {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 11px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--ok);
+}
+.gf-prof-hint, .gf-prof-using { color: var(--muted); }
+.gf-prof-hint a { color: var(--gold-2); }
+.gf-row.is-locked { opacity: .72; }
+.gf-locked {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.gf-locked summary {
+  cursor: pointer;
+  color: var(--ink-dim);
+  font-size: 13px;
+}
+.gf-locked summary:hover { color: var(--gold-2); }
+.gf-locked-list { margin-top: 8px; }
+
 .gf-star-btn {
   width: 36px;
   height: 36px;

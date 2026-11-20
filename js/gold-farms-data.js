@@ -1347,6 +1347,7 @@ window.GOLD_FARMS = [
     factionNote: "Shared crater; still a PvP magnet because of the skin.",
     classes: ["any"],
     professions: ["Skinning"],
+    skillRequired: 250,
     bonusProfs: [],
     type: "gathering",
     loot: [

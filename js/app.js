@@ -2230,7 +2230,7 @@
       if (e.target.getAttribute && e.target.getAttribute("data-prof-skill") != null) {
         var id = e.target.closest("[data-prof]").getAttribute("data-prof");
         var p = state.professions.find(function (x) { return x.id === id; });
-        if (p) { p.skill = Math.max(0, Math.min(300, parseInt(e.target.value, 10) || 0)); save(); renderProfessions(); if (window.ProfGuide) window.ProfGuide.render(); }
+        if (p) { p.skill = Math.max(0, Math.min(300, parseInt(e.target.value, 10) || 0)); save(); renderProfessions(); if (window.ProfGuide) window.ProfGuide.render(); if (window.GoldFarms) { try { window.GoldFarms.render(state, { save: save, formatGold: formatGold, escapeHtml: escapeHtml }); } catch (err) { console.error(err); } } }
       }
       if (e.target.getAttribute && e.target.getAttribute("data-mat-have") != null) {
         var card = e.target.closest("[data-craft]");
