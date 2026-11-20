@@ -134,27 +134,73 @@
   function liveOf(spot) {
     var loot = spot.loot || [];
     var priced = [];
+    var breakdown = [];
     var expected = 0;
     var used = 0;
     var unpriced = 0;
     loot.forEach(function (l) {
+      if (l.kind === "quest" || l.skipGold) {
+        return;
+      }
       var p = l.id ? priceOf(l.id) : null;
       var qty = l.qty != null ? l.qty : 1;
+      var unit = p ? p.marketValue : (l.vendor != null ? l.vendor : null);
+      var priceKind = p ? "AH" : (unit != null ? "vendor" : null);
       if (p) {
         priced.push({ id: l.id, name: l.name, marketValue: p.marketValue, chance: l.chance, qty: qty });
-        if (l.chance != null) {
-          expected += p.marketValue * l.chance * qty;
-          used++;
-        }
       } else if (l.id) {
         unpriced++;
       }
+      if (l.chance != null && unit != null) {
+        var ev = unit * l.chance * qty;
+        expected += ev;
+        used++;
+        breakdown.push({
+          id: l.id,
+          name: l.name,
+          chance: l.chance,
+          qty: qty,
+          price: unit,
+          priceKind: priceKind,
+          ev: ev,
+          yieldPerKill: !!l.yieldPerKill,
+          kind: l.kind || "drop",
+          chanceNote: l.chanceNote || ""
+        });
+      }
     });
+    if (spot.coinPerKill) {
+      expected += spot.coinPerKill;
+      used++;
+      breakdown.push({
+        name: "Coin drop",
+        chance: 1,
+        qty: 1,
+        price: spot.coinPerKill,
+        priceKind: "coin",
+        ev: spot.coinPerKill,
+        chanceNote: spot.coinNote || "Wowhead Classic average money dropped."
+      });
+    }
+    if (spot.vendorTrashPerKill) {
+      expected += spot.vendorTrashPerKill;
+      used++;
+      breakdown.push({
+        name: "Grey / unsold vendor trash",
+        chance: 1,
+        qty: 1,
+        price: spot.vendorTrashPerKill,
+        priceKind: "vendor",
+        ev: spot.vendorTrashPerKill,
+        chanceNote: spot.vendorTrashNote || "Expected vendor value of grey and other unsold drops."
+      });
+    }
     var kph = spot.sourced && spot.sourced.killsPerHour;
     return {
       perKill: used ? Math.round(expected) : null,
       perHour: used && kph ? Math.round(expected * kph) : null,
       priced: priced,
+      breakdown: breakdown,
       used: used,
       unpriced: unpriced,
       kph: kph || null
@@ -187,11 +233,15 @@
     return { copper: null, unit: "", kind: "none", live: live };
   }
 
-  function sortKey(spot) {
+  function sortParts(spot) {
     var h = headline(spot);
-    if (h.unit === "/hr" && h.copper != null) return h.copper;
-    if (h.unit === "/kill" && h.copper != null) return h.copper / 1000;
-    return -1;
+    if (h.unit === "/hr" && h.copper != null) return { tier: 2, n: h.copper };
+    if (h.unit === "/kill" && h.copper != null) return { tier: 1, n: h.copper };
+    return { tier: 0, n: 0 };
+  }
+  function sortKey(spot) {
+    var p = sortParts(spot);
+    return p.tier * 1e12 + p.n;
   }
 
   function pillMatches(spot, typeFilter) {
@@ -332,7 +382,7 @@
       "<p>" + escapeHtml(meta.disclaimer ||
         "Gold per hour moves with the Auction House and with how fast you can pull. Sourced figures are snapshots, not promises. Live values are computed from current AH prices and the drop rates a source listed.") +
       "</p>" +
-      "<p>The big number on each row is a live gold/hour estimate when this site can price the listed drops and a source gave a kill rate; otherwise it is the source's own snapshot, marked the same way. " +
+      "<p>The big number is gold per hour when a source published a kills/hour figure and this site can price the drops. If there is no kill rate, the big number is gold per kill — chance × average stack × current AH price, plus a sourced coin drop and grey vendor value when those exist. " +
       escapeHtml(priceStamp()) + ". Nothing here is invented.</p>" +
       "<p>Bug exploits, duplication, and other play that breaks Blizzard's terms of use are not listed.</p>";
     el.open = open;
@@ -437,15 +487,55 @@
     else st.goldFarmFavs.splice(i, 1);
   }
 
+  function fmtPct(chance) {
+    var n = chance * 100;
+    if (n >= 1) return (Math.round(n * 10) / 10) + "%";
+    return (Math.round(n * 100) / 100) + "%";
+  }
+  function fmtQty(qty) {
+    if (qty == null) return "1";
+    if (Math.abs(qty - Math.round(qty)) < 1e-6) return String(Math.round(qty));
+    return String(Math.round(qty * 100) / 100);
+  }
+  function breakdownHtml(spot, live) {
+    var rows = (live.breakdown || []).slice().sort(function (a, b) { return b.ev - a.ev; });
+    rows = rows.filter(function (r) {
+      return r.ev >= 1 || r.priceKind === "coin" || !r.id;
+    });
+    if (!rows.length) return lootHtml(spot);
+    var body = rows.map(function (r) {
+      var isFlat = r.priceKind === "coin" || !r.id;
+      var pct = isFlat ? "—" : (r.yieldPerKill ? "expected /kill" : fmtPct(r.chance));
+      var qty = isFlat ? "—" : (r.yieldPerKill ? fmtQty(r.chance) : fmtQty(r.qty));
+      var priceLabel = r.priceKind === "coin"
+        ? goldText(r.price, { compact: true })
+        : ((r.priceKind === "AH" ? "AH " : "vendor ") + goldText(r.price, { compact: true }));
+      return "<tr>" +
+        "<td>" + escapeHtml(r.name) + "</td>" +
+        "<td>" + escapeHtml(pct) + "</td>" +
+        "<td>" + escapeHtml(qty) + "</td>" +
+        "<td>" + escapeHtml(priceLabel) + "</td>" +
+        '<td class="gf-ev">' + goldText(r.ev, { compact: true }) + "</td>" +
+        "</tr>";
+    }).join("");
+    var cite = spot.dropSource && spot.dropSource.citation
+      ? '<p class="gf-break-note">' + escapeHtml(spot.dropSource.citation) + "</p>"
+      : "";
+    return '<table class="gf-break"><thead><tr>' +
+      "<th>Item</th><th>Drop %</th><th>Avg qty</th><th>Price</th><th>Est. /kill</th>" +
+      "</tr></thead><tbody>" + body + "</tbody></table>" + cite;
+  }
   function lootHtml(spot) {
     var loot = spot.loot || [];
     if (!loot.length) return '<p class="muted">No priced loot list — see the source notes.</p>';
     var rows = loot.map(function (l) {
       var p = l.id ? priceOf(l.id) : null;
       var bits = [];
-      if (l.chance != null) bits.push(Math.round(l.chance * 1000) / 10 + "%");
-      if (l.qty && l.qty !== 1) bits.push("×" + l.qty);
-      if (p) bits.push("AH " + goldText(p.marketValue));
+      if (l.yieldPerKill && l.chance != null) bits.push("expected " + fmtQty(l.chance) + "/kill");
+      else if (l.chance != null) bits.push(fmtPct(l.chance));
+      if (!l.yieldPerKill && l.qty && l.qty !== 1) bits.push("×" + fmtQty(l.qty));
+      if (p) bits.push("AH " + goldText(p.marketValue, { compact: true }));
+      else if (l.vendor != null) bits.push("vendor " + goldText(l.vendor, { compact: true }));
       else if (l.id) bits.push("no AH price in this snapshot");
       return "<li><span>" + escapeHtml(l.name) + "</span>" +
         (bits.length ? ' <span class="muted">(' + escapeHtml(bits.join(" · ")) + ")</span>" : "") + "</li>";
@@ -457,14 +547,15 @@
     var parts = [];
     if (live.perHour != null) {
       parts.push('<div class="gf-live"><span class="kicker">Live value</span><strong>' +
-        formatGoldHtml(live.perHour) + "/hr</strong>" +
+        goldShortHtml(live.perHour) + "/hr</strong>" +
+        (live.perKill != null ? '<div class="gf-kill-line">Gold per kill ' + goldShortHtml(live.perKill) + "</div>" : "") +
         '<div class="muted">Computed from this site\'s ' + escapeHtml(priceStamp()) +
-        " × the listed drop rates, at the source\'s " + live.kph + " kills/hour assumption.</div></div>");
+        " × sourced drop chances, at the source\'s " + live.kph + " kills/hour assumption.</div></div>");
     } else if (live.perKill != null) {
-      parts.push('<div class="gf-live"><span class="kicker">Live value</span><strong>' +
-        formatGoldHtml(live.perKill) + "/kill</strong>" +
+      parts.push('<div class="gf-live"><span class="kicker">Gold per kill</span><strong>' +
+        goldShortHtml(live.perKill) + "/kill</strong>" +
         '<div class="muted">Computed from this site\'s ' + escapeHtml(priceStamp()) +
-        " × the listed drop rates. No kills/hour figure was published for this camp, so this is per kill, not per hour.</div></div>");
+        " × sourced drop chances and average stacks, plus coin and vendor trash when those are sourced. No published kills/hour for this camp.</div></div>");
     } else if (live.priced.length) {
       parts.push('<div class="gf-live"><span class="kicker">Live AH prices</span><strong>' +
         live.priced.length + " item" + (live.priced.length === 1 ? "" : "s") + " priced</strong>" +
@@ -515,7 +606,7 @@
         " · " + escapeHtml(profLine) +
         (spot.mobLevel ? " · mobs " + escapeHtml(spot.mobLevel) : "") + "</p>" +
       (spot.factionNote ? '<p class="muted">' + escapeHtml(spot.factionNote) + "</p>" : "") +
-      lootHtml(spot) +
+      breakdownHtml(spot, live) +
       valueBlock(spot, live) +
       (spot.risk ? '<div class="gf-risk"><span class="kicker">Risk</span> ' + escapeHtml(spot.risk) + "</div>" : "") +
       (sources ? '<ul class="gf-sources">' + sources + "</ul>" : "") +
@@ -536,9 +627,15 @@
     var open = expandedId === spot.id;
     var names = lootNames(spot);
     var lootLine = names.length ? names.slice(0, 3).join(", ") + (names.length > 3 ? "…" : "") : "See details for loot";
-    var goldInner = h.copper != null
-      ? ("<strong>" + goldShortHtml(h.copper) + "</strong><span class=\"gf-est\">est." + h.unit + "</span>")
-      : '<strong class="gf-na">—</strong><span class="gf-est">no /hr yet</span>';
+    var goldInner;
+    if (h.copper != null) {
+      goldInner = "<strong>" + goldShortHtml(h.copper) + "</strong><span class=\"gf-est\">est. " + h.unit + "</span>";
+      if (h.unit === "/hr" && h.live && h.live.perKill != null) {
+        goldInner += '<span class="gf-kill-sub">' + goldText(h.live.perKill, { compact: true }) + "/kill</span>";
+      }
+    } else {
+      goldInner = '<strong class="gf-na">—</strong><span class="gf-est">no estimate yet</span>';
+    }
     var warn = isContested(spot)
       ? '<span class="gf-warn" title="Contested or PvP" aria-label="Contested or PvP">⚠</span>'
       : "";

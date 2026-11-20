@@ -900,6 +900,21 @@ table.data tfoot th { text-align: left; }
 }
 .gf-about summary:hover { color: var(--gold-2); }
 .gf-about p { margin: 8px 0 0; }
+.gf-break { width: 100%; border-collapse: collapse; font-size: 13px; }
+.gf-break th, .gf-break td { padding: 4px 6px; border-bottom: 1px solid #3a2c18; text-align: left; }
+.gf-break th {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.gf-break td:nth-child(n+2), .gf-break th:nth-child(n+2) { text-align: right; white-space: nowrap; width: 1%; }
+.gf-break .gf-ev { color: var(--gold-2); font-weight: 600; }
+.gf-break-note { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+.gf-kill-line { font-size: 13px; color: var(--gold-2); margin: 2px 0 4px; }
+.gf-kill-sub { display: block; font-size: 11px; color: var(--muted); margin-top: 1px; letter-spacing: 0; text-transform: none; }
+
 @media (max-width: 720px) {
   .gf-row-main {
     grid-template-columns: 1.8em minmax(0, 1fr) 36px;
