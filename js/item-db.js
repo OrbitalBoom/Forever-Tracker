@@ -1,6 +1,6 @@
 /* Item search, detail cards, and lazy loading for data/items/*.js */
 (function () {
-  var VERSION = "20261120h";
+  var VERSION = "20261120i";
   var ICON = "https://render.worldofwarcraft.com/forever-us/icons/56/{icon}.jpg";
   var loaded = false;
   var loading = null;
@@ -191,7 +191,7 @@
       if (it.slot) sub.push(it.slot);
       if (it.typ) sub.push(it.typ);
       sub.push(it.cat);
-      return '<li><button type="button" class="idb-row" data-open-item="' + it.id + '">' +
+      return '<li><button type="button" class="idb-row" data-open-item="' + it.id + '" data-item-id="' + it.id + '">' +
         iconHtml(it.icon, it.q, it.n) +
         '<span class="idb-row-body"><span class="item-name ' + qClass(it.q) + '">' + esc(it.n) + "</span>" +
         badge + '<span class="idb-row-sub">' + esc(sub.join(" · ")) + "</span></span>" +
@@ -337,7 +337,7 @@
     }
 
     box.innerHTML =
-      '<div class="idb-card-head">' + iconHtml(item.icon, quality, item.name) +
+      '<div class="idb-card-head" data-item-id="' + item.id + '">' + iconHtml(item.icon, quality, item.name) +
       '<div><h3 class="item-name ' + qClass(quality) + '">' + esc(item.name) + "</h3>" +
       "<div>" + srcNote + upgrade + "</div>" +
       '<div class="muted">' + esc(metaBits.join(" · ")) + "</div></div></div>" +
@@ -424,8 +424,10 @@
 
   function bindGlobalLinks() {
     document.addEventListener("click", function (e) {
-      var a = e.target.closest && e.target.closest("[data-item-id]");
+      /* Only item name links — not paper-doll slots, Equip buttons, or search rows. */
+      var a = e.target.closest && e.target.closest("a[data-item-id]");
       if (!a) return;
+      if (e.target.closest && e.target.closest("[data-equip-id], [data-equip-slot]")) return;
       var id = a.getAttribute("data-item-id");
       if (!id) return;
       e.preventDefault();
@@ -466,6 +468,7 @@
     open: open,
     search: search,
     onTab: onTab,
+    detailOf: detailOf,
     version: VERSION
   };
 })();

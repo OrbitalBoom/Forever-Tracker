@@ -1148,3 +1148,83 @@ table.data tfoot th { text-align: left; }
 .idb-ah.is-na { font-size: 15px; color: var(--muted); }
 .item-ah { margin-top: 4px; font-size: 13px; color: var(--gold-2); }
 .badge.buy-ah { color: var(--gold-2); border-color: var(--gold-dk); }
+
+
+/* ---------- Item tooltip (Classic-style, self-hosted) ---------- */
+.item-tt {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 80;
+  max-width: 340px;
+  min-width: 220px;
+  padding: 7px 9px 8px 7px;
+  background: rgba(8, 16, 42, 0.94);
+  border: 1px solid rgba(214, 214, 232, 0.72);
+  border-radius: 6px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.6);
+  color: #ffffff;
+  font-family: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif;
+  font-size: 13px;
+  line-height: 1.35;
+  pointer-events: none;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.7);
+}
+.item-tt-compare { z-index: 79; }
+.item-tt-inner { display: grid; grid-template-columns: 36px 1fr; gap: 8px; align-items: start; }
+.item-tt-body { min-width: 0; }
+.item-tt-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 3px;
+  border: 1px solid rgba(200, 200, 220, 0.45);
+  background: #0a0c14;
+  object-fit: cover;
+}
+.item-tt-icon-empty {
+  display: block;
+  background: repeating-linear-gradient(-45deg, #12141c, #12141c 4px, #1a1e2a 4px, #1a1e2a 8px);
+}
+.item-tt-name {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 0 0 3px;
+}
+.item-tt-line, .item-tt-stat, .item-tt-req, .item-tt-sell { color: #fff; }
+.item-tt-row { display: flex; justify-content: space-between; gap: 14px; color: #fff; }
+.item-tt-req.is-high { color: #ff4040; }
+.item-tt-effect { color: #1eff00; }
+.item-tt-flavor { color: #ffd100; font-style: italic; margin-top: 4px; }
+.item-tt-quest { color: #ffd100; margin-top: 2px; }
+.item-tt-set { color: #ffd100; margin-top: 4px; }
+.item-tt-set-bonus { color: #1eff00; }
+.item-tt-sell { margin-top: 4px; }
+.tt-beige { color: #e0cc96; }
+.item-tt-loading { color: #9aa0b4; font-size: 12px; font-style: italic; }
+.item-tt-sep {
+  border-top: 1px solid rgba(200, 200, 220, 0.28);
+  margin: 6px 0 4px;
+}
+.item-tt-extra {
+  font-family: "Segoe UI", Candara, Calibri, "Trebuchet MS", sans-serif;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #c8c0a4;
+  text-shadow: none;
+}
+.item-tt-classic-note { display: block; margin-top: 2px; font-size: 10px; color: #8a8a96; }
+.tt-coins { white-space: nowrap; }
+.tt-amt { margin-left: 1px; }
+.tt-coin {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  margin: 0 3px 0 2px;
+  vertical-align: -1px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 0 0 1px rgba(0,0,0,.4);
+}
+.tt-coin.gold { background: radial-gradient(circle at 32% 28%, #ffe47a, #d4a017 55%, #8a6a10); }
+.tt-coin.silver { background: radial-gradient(circle at 32% 28%, #ffffff, #c0c0c8 55%, #6a6a72); }
+.tt-coin.copper { background: radial-gradient(circle at 32% 28%, #f0c0a0, #c07038 55%, #6a3a18); }

@@ -737,7 +737,8 @@
     var cls = "slot-btn";
     if (!it && !blocked) cls += " empty";
     if (selectedId && slotId === selectedId) cls += " is-open";
-    return '<button type="button" class="' + cls + '" data-equip-slot="' + s.id + '">' +
+    return '<button type="button" class="' + cls + '" data-equip-slot="' + s.id + '"' +
+      (it && it.id != null ? ' data-item-id="' + escapeHtml(String(it.id)) + '"' : "") + ">" +
       itemIconHtml(blocked ? null : it) +
       '<span class="slot-text"><div class="slot-name">' + escapeHtml(s.label) + "</div>" +
       '<div class="item-name ' + q + '">' + escapeHtml(name) + "</div></span></button>";
@@ -852,7 +853,7 @@
   function upgradeCard(rec, slotId) {
     var it = rec.item;
     var reason = upgradeReason(rec, slotId);
-    return '<div class="upgrade-row' + (rec.atLevel ? "" : " soon") + '">' +
+    return '<div class="upgrade-row' + (rec.atLevel ? "" : " soon") + '" data-item-id="' + escapeHtml(String(it.id)) + '" data-compare-slot="' + escapeHtml(String(slotId)) + '">' +
       itemIconHtml(it) +
       '<div class="upgrade-row-main">' +
       '<a href="#item-' + it.id + '" data-item-id="' + escapeHtml(String(it.id)) + '" class="item-name ' + qualityClass(it.quality) + '">' + escapeHtml(it.name) + "</a>" +
@@ -941,7 +942,7 @@
     }).slice(0, 20);
     box.innerHTML = hits.length ? hits.map(function (it) {
       var req = effectiveReq(it);
-      return '<button type="button" class="slot-btn" data-equip-id="' + escapeHtml(String(it.id)) + '">' +
+      return '<button type="button" class="slot-btn" data-equip-id="' + escapeHtml(String(it.id)) + '" data-item-id="' + escapeHtml(String(it.id)) + '" data-compare-slot="' + escapeHtml(String(selectedSlot)) + '">' +
         itemIconHtml(it) +
         '<span class="slot-text"><div class="item-name ' + qualityClass(it.quality) + '">' + escapeHtml(it.name) + "</div>" +
         '<div class="muted" style="font-size:11px">Req ' + (req != null ? req : "?") +
@@ -2622,7 +2623,9 @@
     formatStats: formatStats,
     effectiveReq: effectiveReq,
     upgradesFor: upgradesFor,
-    canEquipInSlot: canEquipInSlot
+    canEquipInSlot: canEquipInSlot,
+    itemFitsSlot: itemFitsSlot,
+    itemScore: itemScore
   };
   window.ForeverApp = {
     STORAGE_KEY: STORAGE_KEY,
