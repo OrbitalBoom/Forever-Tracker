@@ -1276,3 +1276,49 @@ table.data tfoot th { text-align: left; }
 @media (max-width: 430px) {
   .gf-hide-dungeons { white-space: normal; }
 }
+
+.slot-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: flex-end;
+  margin: 0 0 10px;
+}
+.slot-filters .field { flex: 1 1 160px; margin: 0; }
+.slot-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+.slot-chip {
+  background: var(--panel);
+  border: 1px solid #4a3a22;
+  color: var(--ink-dim);
+  border-radius: 99px;
+  padding: 5px 11px;
+  font-size: 13px;
+}
+.slot-chip:hover { border-color: var(--gold); color: var(--gold-2); }
+.slot-chip.is-on {
+  border-color: var(--gold);
+  color: var(--gold-2);
+  background: #2a2214;
+}
+.slot-browse-note { margin: 0 0 10px; }
+.good-for-tag {
+  margin-left: 6px;
+  vertical-align: middle;
+  cursor: pointer;
+  font-weight: 500;
+}
+.gf-unknown-tag {
+  margin-left: 6px;
+  color: var(--muted);
+}
+.good-for-explain { margin: 4px 0 0; font-size: 12px; }
+.upgrade-row-note { margin-top: 2px; }
+@media (max-width: 430px) {
+  .slot-filters .field { flex: 1 1 100%; }
+  .slot-chip { padding: 6px 10px; }
+}

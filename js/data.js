@@ -126,54 +126,7 @@ window.WOW_DATA = {
       dualWield: false, twoHand: true, shield: false, relic: "idol"
     }
   },
-  /* Simple 1.12-style stat weights used only to rank upgrades. */
-  statWeights: {
-    Warrior: {
-      Arms: { str: 2.2, agi: 1.1, sta: 0.4, ap: 1, crit: 8, hit: 12, dps: 2.4, armor: 0.02, skillAxes: 3, skillSwords: 3, skillMaces: 3, ilvl: 0.8 },
-      Fury: { str: 2.0, agi: 1.3, sta: 0.3, ap: 1, crit: 9, hit: 12, dps: 2.6, armor: 0.02, skillSwords: 3, skillAxes: 3, ilvl: 0.8 },
-      Protection: { sta: 1.8, str: 0.9, agi: 1.1, defense: 3.5, dodge: 2.2, parry: 2.2, blockChance: 2, blockValue: 0.4, block: 0.12, armor: 0.06, ap: 0.3, hit: 5, crit: 2, ilvl: 0.6 }
-    },
-    Paladin: {
-      Holy: { int: 1.6, spi: 1.1, sta: 0.3, mp5: 2.2, healing: 1, sp: 0.4, spellCrit: 6, ilvl: 0.7 },
-      Protection: { sta: 1.6, str: 0.8, agi: 0.9, defense: 3, dodge: 2, parry: 1.6, blockChance: 2.2, blockValue: 0.5, block: 0.12, armor: 0.06, int: 0.4, spellCrit: 2, sp: 0.3, ilvl: 0.6 },
-      Retribution: { str: 2, agi: 1, sta: 0.4, ap: 1, crit: 8, hit: 10, int: 0.5, sp: 0.6, dps: 2.2, ilvl: 0.8 }
-    },
-    Hunter: {
-      "Beast Mastery": { agi: 2.2, sta: 0.3, ap: 1, rap: 1, crit: 8, hit: 12, dps: 2.4, str: 0.3, ilvl: 0.8 },
-      Marksmanship: { agi: 2.2, sta: 0.3, ap: 1, rap: 1, crit: 8.5, hit: 12, dps: 2.5, ilvl: 0.8 },
-      Survival: { agi: 2.0, sta: 0.4, ap: 1, rap: 1, crit: 8, hit: 12, dps: 2.2, sta2: 0, ilvl: 0.8 }
-    },
-    Rogue: {
-      Assassination: { agi: 2.2, str: 1.0, sta: 0.3, ap: 1, crit: 8, hit: 14, dps: 2.8, skillDaggers: 3, ilvl: 0.8 },
-      Combat: { agi: 2.0, str: 1.1, sta: 0.3, ap: 1, crit: 8, hit: 14, dps: 2.8, skillSwords: 3, skillMaces: 2, skillDaggers: 2, ilvl: 0.8 },
-      Subtlety: { agi: 2.2, str: 1.0, sta: 0.3, ap: 1, crit: 8, hit: 14, dps: 2.6, ilvl: 0.8 }
-    },
-    Priest: {
-      Discipline: { int: 1.4, spi: 1.2, sta: 0.3, mp5: 2, healing: 1, sp: 0.5, spellCrit: 5, spellHit: 8, ilvl: 0.7 },
-      Holy: { int: 1.5, spi: 1.3, sta: 0.3, mp5: 2.2, healing: 1.1, sp: 0.35, spellCrit: 5, ilvl: 0.7 },
-      Shadow: { int: 1.6, spi: 0.8, sta: 0.3, sp: 1, spShadow: 1.1, spellCrit: 8, spellHit: 12, mp5: 1, dps: 0.3, ilvl: 0.8 }
-    },
-    Shaman: {
-      Elemental: { int: 1.6, sta: 0.3, spi: 0.4, sp: 1, spNature: 1.1, spellCrit: 8, spellHit: 12, mp5: 1, ilvl: 0.8 },
-      Enhancement: { str: 1.8, agi: 1.2, sta: 0.4, ap: 1, crit: 8, hit: 12, int: 0.6, sp: 0.5, dps: 2.2, ilvl: 0.8 },
-      Restoration: { int: 1.5, spi: 1.1, sta: 0.3, mp5: 2.2, healing: 1.1, sp: 0.4, spellCrit: 5, ilvl: 0.7 }
-    },
-    Mage: {
-      Arcane: { int: 1.6, spi: 0.6, sta: 0.3, sp: 1, spArcane: 1.1, spellCrit: 8, spellHit: 12, mp5: 0.8, ilvl: 0.8 },
-      Fire: { int: 1.5, spi: 0.5, sta: 0.3, sp: 1, spFire: 1.1, spellCrit: 9, spellHit: 12, mp5: 0.6, ilvl: 0.8 },
-      Frost: { int: 1.5, spi: 0.5, sta: 0.3, sp: 1, spFrost: 1.1, spellCrit: 8, spellHit: 12, mp5: 0.6, ilvl: 0.8 }
-    },
-    Warlock: {
-      Affliction: { int: 1.5, sta: 0.4, spi: 0.5, sp: 1, spShadow: 1.1, spellHit: 12, spellCrit: 6, mp5: 0.6, ilvl: 0.8 },
-      Demonology: { int: 1.5, sta: 0.5, spi: 0.5, sp: 1, spShadow: 1.05, spellHit: 12, spellCrit: 7, ilvl: 0.8 },
-      Destruction: { int: 1.5, sta: 0.3, spi: 0.4, sp: 1, spShadow: 1.05, spFire: 1.05, spellCrit: 9, spellHit: 12, ilvl: 0.8 }
-    },
-    Druid: {
-      Balance: { int: 1.6, spi: 0.7, sta: 0.3, sp: 1, spNature: 1.1, spellCrit: 8, spellHit: 12, mp5: 0.8, ilvl: 0.8 },
-      Feral: { agi: 2.0, str: 1.4, sta: 0.8, ap: 1, fap: 1.1, crit: 8, hit: 12, armor: 0.04, defense: 1.2, dodge: 1.5, ilvl: 0.8 },
-      Restoration: { int: 1.5, spi: 1.3, sta: 0.3, mp5: 2, healing: 1.1, sp: 0.4, spellCrit: 5, ilvl: 0.7 }
-    }
-  },
+  /* Upgrade stat weights live in js/item-weights.js (ITEM_WEIGHTS). */
   dungeons: [
     { id: "rfc", name: "Ragefire Chasm", levelMin: 13, levelMax: 18, players: 5, faction: "Horde", zone: "Orgrimmar" },
     { id: "wc", name: "Wailing Caverns", levelMin: 17, levelMax: 24, players: 5, faction: "both", zone: "The Barrens" },
