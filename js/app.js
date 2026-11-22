@@ -765,10 +765,12 @@
   }
   function slotFilter(slotId) {
     var root = itemFiltersRoot();
-    if (!root.slots[slotId]) root.slots[slotId] = { type: "usable", hand: "all", build: null };
+    if (!root.slots[slotId]) root.slots[slotId] = { type: "usable", hand: "all", build: null, sort: "best", minQuality: "all" };
     var f = root.slots[slotId];
     if (!f.type) f.type = "usable";
     if (!f.hand) f.hand = "all";
+    if (!f.sort) f.sort = "best";
+    if (!f.minQuality) f.minQuality = "all";
     return f;
   }
   function viewChar() {
@@ -820,6 +822,47 @@
     if (item.weapon && item.weapon.dps && w.dps) score += item.weapon.dps * w.dps;
     if (hasStatData(item) && item.itemLevel && w.ilvl) score += item.itemLevel * w.ilvl;
     return score;
+  }
+
+  /* Classic quality ranks. Artifact / heirloom are included when the data has them,
+     sitting above legendary and with rare, respectively; they are omitted from the
+     Min rarity list when a slot has none. */
+  var QUALITY_RANK = { poor: 1, common: 2, uncommon: 3, rare: 4, heirloom: 4, epic: 5, legendary: 6, artifact: 7 };
+  var QUALITY_ORDER = ["poor", "common", "uncommon", "rare", "heirloom", "epic", "legendary", "artifact"];
+  var QUALITY_LABELS = { poor: "Poor", common: "Common", uncommon: "Uncommon", rare: "Rare", heirloom: "Heirloom", epic: "Epic", legendary: "Legendary", artifact: "Artifact" };
+  function qualityRank(q) {
+    return QUALITY_RANK[String(q || "common").toLowerCase()] || 0;
+  }
+  function passesMinQuality(item, f) {
+    var min = f && f.minQuality;
+    if (!min || min === "all") return true;
+    return qualityRank(item && item.quality) >= qualityRank(min);
+  }
+  function compareBySort(itemA, itemB, scoreA, scoreB, reqA, reqB, sort) {
+    var nameCmp = (itemA.name || "").localeCompare(itemB.name || "");
+    if (sort === "rarity") {
+      var dq = qualityRank(itemB.quality) - qualityRank(itemA.quality);
+      if (dq) return dq;
+      var ds = (scoreB || 0) - (scoreA || 0);
+      if (ds) return ds;
+      var di = (itemB.itemLevel || 0) - (itemA.itemLevel || 0);
+      return di || nameCmp;
+    }
+    if (sort === "ilvl") {
+      var li = (itemB.itemLevel || 0) - (itemA.itemLevel || 0);
+      if (li) return li;
+      var rq = qualityRank(itemB.quality) - qualityRank(itemA.quality);
+      return rq || nameCmp;
+    }
+    if (sort === "req") {
+      var lr = (reqB || 0) - (reqA || 0);
+      if (lr) return lr;
+      var ii = (itemB.itemLevel || 0) - (itemA.itemLevel || 0);
+      return ii || nameCmp;
+    }
+    var sc = (scoreB || 0) - (scoreA || 0);
+    if (sc) return sc;
+    return (itemB.itemLevel || 0) - (itemA.itemLevel || 0) || nameCmp;
   }
 
   var TYPE_CHIP_LABELS = {
@@ -952,16 +995,24 @@
   }
 
   function typeCountsFor(slotId) {
-    var lvl = ch().level || 1;
-    var counts = {}, hands = { "1h": 0, "2h": 0 };
+    var view = viewChar();
+    var f = slotFilter(slotId);
+    var counts = {}, hands = { "1h": 0, "2h": 0 }, qualities = {};
     allItems().forEach(function (item) {
       if (!slotCandidate(item, slotId)) return;
       var typ = item.type;
       if (typ) counts[typ] = (counts[typ] || 0) + 1;
       var hand = itemHandChip(item);
       if (hand) hands[hand] = (hands[hand] || 0) + 1;
+      var req = effectiveReq(item);
+      var atLevel = req <= (view.level || 1);
+      var windowPts = atLevel ? 0 : LEVEL_WINDOW;
+      if (passesSlotTypeFilter(item, slotId, f, view, windowPts)) {
+        var q = String(item.quality || "common").toLowerCase();
+        qualities[q] = (qualities[q] || 0) + 1;
+      }
     });
-    return { types: counts, hands: hands };
+    return { types: counts, hands: hands, qualities: qualities };
   }
 
   function upgradesFor(slotId) {
@@ -969,6 +1020,7 @@
     var current = state.equipment[slotId];
     if (slotId === "offhand" && equippedTwoHand()) return { blocked: true, at: [], soon: [], unknownAt: [], unknownSoon: [] };
     var f = slotFilter(slotId);
+    var sort = f.sort || "best";
     var weights = weightsFor(slotId);
     var curKnown = current && hasStatData(current);
     var curScore = curKnown ? itemScore(current, weights) : 0;
@@ -979,20 +1031,27 @@
       var atLevel = req <= (view.level || 1);
       var windowPts = atLevel ? 0 : LEVEL_WINDOW;
       if (!passesSlotTypeFilter(item, slotId, f, view, windowPts)) return;
+      if (!passesMinQuality(item, f)) return;
       var known = hasStatData(item);
       var score = known ? itemScore(item, weights) : 0;
       var rec = { item: item, score: score, delta: score - curScore, atLevel: atLevel, req: req, unknown: !known };
-      if (!known) {
-        if (atLevel) unknownAt.push(rec); else unknownSoon.push(rec);
-        return;
+      if (sort === "best") {
+        if (!known) {
+          if (atLevel) unknownAt.push(rec); else unknownSoon.push(rec);
+          return;
+        }
+        if (curKnown && score <= curScore + 0.05) return;
+        if (atLevel) at.push(rec); else soon.push(rec);
+      } else {
+        if (atLevel) at.push(rec); else soon.push(rec);
       }
-      if (curKnown && score <= curScore + 0.05) return;
-      if (atLevel) at.push(rec); else soon.push(rec);
     });
-    function byScore(a, b) { return b.score - a.score || (b.item.itemLevel || 0) - (a.item.itemLevel || 0); }
+    function byChosen(a, b) {
+      return compareBySort(a.item, b.item, a.score, b.score, a.req, b.req, sort);
+    }
     function byIlvl(a, b) { return (b.item.itemLevel || 0) - (a.item.itemLevel || 0) || (a.item.name || "").localeCompare(b.item.name || ""); }
-    at.sort(byScore);
-    soon.sort(byScore);
+    at.sort(byChosen);
+    soon.sort(byChosen);
     unknownAt.sort(byIlvl);
     unknownSoon.sort(byIlvl);
     var closest = current ? at.slice().sort(function (a, b) { return a.delta - b.delta; })[0] : null;
@@ -1137,12 +1196,30 @@
         '<button type="button" class="slot-chip' + (f.hand === "2h" ? " is-on" : "") + '" data-slot-hand="2h">2H</button>' +
         "</div>";
     }
+    if (f.minQuality !== "all" && !counts.qualities[f.minQuality]) f.minQuality = "all";
+    var sort = f.sort || "best";
+    var sortOpts = [
+      ["best", "Best for spec"],
+      ["rarity", "Rarity"],
+      ["ilvl", "Item level"],
+      ["req", "Required level"]
+    ].map(function (pair) {
+      return '<option value="' + pair[0] + '"' + (sort === pair[0] ? " selected" : "") + ">" + pair[1] + "</option>";
+    }).join("");
+    var minOpts = '<option value="all"' + (f.minQuality === "all" ? " selected" : "") + ">Any</option>";
+    QUALITY_ORDER.forEach(function (q) {
+      if (!counts.qualities[q]) return;
+      minOpts += '<option value="' + q + '" class="q-' + q + '"' + (f.minQuality === q ? " selected" : "") + ">" +
+        escapeHtml(QUALITY_LABELS[q] || q) + "</option>";
+    });
     var browseNote = (cls !== ch().class)
       ? '<p class="muted slot-browse-note">Browsing as ' + escapeHtml(cls) + ". Your saved character is a " + escapeHtml(ch().class || "unknown") + ".</p>"
       : "";
     return '<div class="slot-filters">' +
       '<label class="field">Class<select id="slotFilterClass">' + classOpts + "</select></label>" +
       '<label class="field">Best for<select id="slotFilterBuild">' + buildOpts + "</select></label>" +
+      '<label class="field">Sort by<select id="slotFilterSort">' + sortOpts + "</select></label>" +
+      '<label class="field">Min rarity<select id="slotFilterMinQuality">' + minOpts + "</select></label>" +
       "</div>" +
       (family === "other" ? "" : '<div class="slot-chips" role="group" aria-label="Item type">' + chips + "</div>") +
       handChips +
@@ -1185,7 +1262,8 @@
     } else {
       var atList = slotShowAll ? u.at : u.at.slice(0, AT_LEVEL_PAGE);
       var unkAt = u.unknownAt || [];
-      html += "<h4>Upgrades at your level</h4>";
+      var sort = slotFilter(slotId).sort || "best";
+      html += "<h4>" + (sort === "best" ? "Upgrades at your level" : "At your level") + "</h4>";
       if (!atList.length && !unkAt.length) {
         html += "<p class=\"muted\">No upgrades for this slot at your level with these filters. Try All, or search above to equip something you already have.</p>";
       } else {
@@ -1223,17 +1301,17 @@
     var f = slotFilter(selectedSlot);
     var view = viewChar();
     var w = weightsFor(selectedSlot);
+    var sort = f.sort || "best";
     var hits = allItems().filter(function (it) {
       if (isJunkUpgrade(it)) return false;
       if (!itemFitsSlot(it, selectedSlot)) return false;
       if (!canEquipInSlot(it, c, selectedSlot, 0)) return false;
       if (!reqUsable(it, cap)) return false;
       if (!passesSlotTypeFilter(it, selectedSlot, f, view, 0)) return false;
+      if (!passesMinQuality(it, f)) return false;
       return it.name.toLowerCase().indexOf(q) !== -1;
     }).sort(function (a, b) {
-      var ds = itemScore(b, w) - itemScore(a, w);
-      if (ds) return ds;
-      return (a.name || "").localeCompare(b.name || "");
+      return compareBySort(a, b, itemScore(a, w), itemScore(b, w), effectiveReq(a), effectiveReq(b), sort);
     }).slice(0, 20);
     box.innerHTML = hits.length ? hits.map(function (it) {
       var req = effectiveReq(it);
@@ -2762,6 +2840,20 @@
       }
       if (tEl.id === "slotFilterBuild") {
         slotFilter(selectedSlot).build = tEl.value;
+        save();
+        slotShowAll = false;
+        renderSlotPanel(selectedSlot);
+        return;
+      }
+      if (tEl.id === "slotFilterSort") {
+        slotFilter(selectedSlot).sort = tEl.value || "best";
+        save();
+        slotShowAll = false;
+        renderSlotPanel(selectedSlot);
+        return;
+      }
+      if (tEl.id === "slotFilterMinQuality") {
+        slotFilter(selectedSlot).minQuality = tEl.value || "all";
         save();
         slotShowAll = false;
         renderSlotPanel(selectedSlot);

@@ -442,6 +442,7 @@ canvas.chart {
 .q-rare { color: var(--rare); }
 .q-epic { color: var(--epic); }
 .q-legendary { color: var(--legendary); }
+.q-heirloom { color: #00ccff; }
 
 .upgrade-list { display: flex; flex-direction: column; gap: 8px; }
 .upgrade {
@@ -1284,7 +1285,7 @@ table.data tfoot th { text-align: left; }
   align-items: flex-end;
   margin: 0 0 10px;
 }
-.slot-filters .field { flex: 1 1 160px; margin: 0; }
+.slot-filters .field { flex: 1 1 140px; margin: 0; }
 .slot-chips {
   display: flex;
   flex-wrap: wrap;
@@ -1319,6 +1320,6 @@ table.data tfoot th { text-align: left; }
 .good-for-explain { margin: 4px 0 0; font-size: 12px; }
 .upgrade-row-note { margin-top: 2px; }
 @media (max-width: 430px) {
-  .slot-filters .field { flex: 1 1 100%; }
+  .slot-filters .field { flex: 1 1 calc(50% - 8px); }
   .slot-chip { padding: 6px 10px; }
 }
