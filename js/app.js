@@ -663,10 +663,28 @@
     return '<span class="slot-icon slot-icon-empty" aria-hidden="true"></span>';
   }
   function allItems() {
-    var base = (window.ITEM_GEAR || ITEMS || []).filter(function (it) {
-      return it && it.forever !== false;
-    });
+    /* Include Classic-reference rows (forever:false) so a piece the player
+       already has, like Harpyclaw Short Bow, can be found and equipped. */
+    var base = (window.ITEM_GEAR || ITEMS || []).filter(function (it) { return !!it; });
     return base.concat(state.customItems || []);
+  }
+  function isClassicRef(item) {
+    return !!(item && item.forever === false && !item.custom);
+  }
+  function findItemById(id) {
+    return allItems().find(function (it) { return String(it.id) === String(id); });
+  }
+  function equipWarnings(item, character, slotId) {
+    var notes = [];
+    if (!item) return notes;
+    if (isClassicRef(item)) notes.push("Classic reference — not marked as Forever-verified.");
+    if (character && !canEquipInSlot(item, character, slotId, 0)) {
+      notes.push("Your " + (character.class || "character") + " is not normally able to use this.");
+    }
+    var req = effectiveReq(item);
+    var lvl = (character && character.level) || 1;
+    if (req != null && req > lvl) notes.push("Requires level " + req + " (you are " + lvl + ").");
+    return notes;
   }
 
   function slotMeta(id) {
@@ -1125,17 +1143,18 @@
     var saved = ch();
     var canSave = canEquipInSlot(it, saved, slotId, 0);
     var canView = canEquipInSlot(it, view, slotId, rec.atLevel ? 0 : LEVEL_WINDOW);
-    var note = "";
-    if (!canView) note = '<div class="upgrade-row-note muted">Your selected class cannot use this.</div>';
-    else if (view.class !== saved.class && !canSave) note = '<div class="upgrade-row-note muted">Your saved character cannot equip this.</div>';
-    var actions = canSave
-      ? '<button type="button" class="btn btn-primary btn-sm" data-equip-id="' + escapeHtml(String(it.id)) + '">Equip</button>'
-      : '<span class="muted">Can\'t equip</span>';
+    var notes = [];
+    if (isClassicRef(it)) notes.push("Classic reference");
+    if (!canView) notes.push("Your selected class cannot use this.");
+    else if (view.class !== saved.class && !canSave) notes.push("Your saved character is not normally able to use this.");
+    var note = notes.length ? '<div class="upgrade-row-note muted">' + notes.map(escapeHtml).join(" · ") + "</div>" : "";
+    var actions = '<button type="button" class="btn btn-primary btn-sm" data-equip-id="' + escapeHtml(String(it.id)) + '">Equip</button>';
     return '<div class="upgrade-row' + (rec.atLevel ? "" : " soon") + (rec.unknown ? " is-unknown" : "") + '" data-item-id="' + escapeHtml(String(it.id)) + '" data-compare-slot="' + escapeHtml(String(slotId)) + '">' +
       itemIconHtml(it) +
       '<div class="upgrade-row-main">' +
       '<a href="#item-' + it.id + '" data-item-id="' + escapeHtml(String(it.id)) + '" class="item-name ' + qualityClass(it.quality) + '">' + escapeHtml(it.name) + "</a> " +
-      goodForHtml(rec, slotId) +
+      (isClassicRef(it) ? '<span class="classic-ref-tag">Classic reference</span> ' : "") +
+            goodForHtml(rec, slotId) +
       '<div class="upgrade-row-meta">Req ' + rec.req +
       (it.type ? " · " + escapeHtml(it.type) : "") +
       (it.itemLevel ? " · ilvl " + it.itemLevel : "") + "</div>" +
@@ -1240,6 +1259,29 @@
     if (panel) panel.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
 
+  function equippedCard(it, slotId) {
+    var rec = { item: it, score: 0, delta: 0, atLevel: true, req: effectiveReq(it), unknown: !hasStatData(it) };
+    var reason = rec.unknown ? "" : formatStats(it);
+    var warns = equipWarnings(it, ch(), slotId).filter(function (w) { return w.indexOf("Classic reference") === -1; });
+    return '<div class="upgrade-row is-equipped" data-item-id="' + escapeHtml(String(it.id)) + '" data-compare-slot="' + escapeHtml(String(slotId)) + '">' +
+      itemIconHtml(it) +
+      '<div class="upgrade-row-main">' +
+      '<a href="#item-' + it.id + '" data-item-id="' + escapeHtml(String(it.id)) + '" class="item-name ' + qualityClass(it.quality) + '">' + escapeHtml(it.name) + "</a> " +
+      (isClassicRef(it) ? '<span class="classic-ref-tag">Classic reference</span> ' : "") +
+      '<span class="wearing-tag">Equipped</span>' +
+      '<div class="upgrade-row-meta">Req ' + (rec.req != null ? rec.req : "?") +
+      (it.type ? " · " + escapeHtml(it.type) : "") +
+      (it.itemLevel ? " · ilvl " + it.itemLevel : "") + "</div>" +
+      (reason ? '<div class="upgrade-row-reason">' + escapeHtml(reason) + "</div>" : "") +
+      (warns.length ? '<div class="upgrade-row-note muted">' + warns.map(escapeHtml).join(" · ") + "</div>" : "") +
+      '<div class="upgrade-row-source">' + escapeHtml(it.source || "Unknown") +
+      (it.custom ? " · custom" : "") + "</div>" +
+      upgradeAhHtml(it) +
+      "</div>" +
+      '<div class="upgrade-row-actions"><button type="button" class="btn btn-sm" data-slot-clear>Clear slot</button></div>' +
+      "</div>";
+  }
+
   function renderSlotPanel(slotId) {
     var panel = $("#slotPanel");
     if (!panel) return;
@@ -1248,15 +1290,15 @@
     var u = upgradesFor(slotId);
     var html = '<div class="slot-panel-head"><h3>' + escapeHtml(label) + "</h3>" +
       '<button type="button" class="btn btn-sm" data-slot-close>Close</button></div>';
-    html += '<p class="slot-panel-current muted">Currently: ' +
-      (cur ? '<span class="' + qualityClass(cur.quality) + '">' + escapeHtml(cur.name) + "</span>" : "empty") +
-      "</p>";
-    html += slotFilterBarHtml(slotId);
+    html += "<h4>Currently wearing</h4>";
+    if (cur) html += equippedCard(cur, slotId);
+    else html += '<p class="muted slot-empty-hint">Nothing in this slot yet. Use “Set what I’m wearing” below to find the piece you already have on.</p>';
     html += '<div class="slot-panel-tools">' +
-      '<label class="field">Search this slot<input type="search" id="slotEquipSearch" placeholder="Type a name to equip…" autocomplete="off"></label>' +
-      (cur ? '<button type="button" class="btn btn-sm" data-slot-clear>Clear slot</button>' : "") +
+      '<label class="field">Set what I’m wearing<input type="search" id="slotEquipSearch" placeholder="Search any item for this slot…" autocomplete="off"></label>' +
       "</div>" +
+      '<p class="muted slot-search-note">This search ignores type, class, level, and rarity filters, and includes Classic-reference items.</p>' +
       '<div id="slotEquipResults" class="slot-equip-results"></div>';
+    html += slotFilterBarHtml(slotId);
     if (u.blocked) {
       html += "<p class=\"muted\">Your two-handed weapon occupies this slot. Unequip it from Main Hand first, or equip a one-handed weapon there.</p>";
     } else {
@@ -1297,47 +1339,52 @@
     var q = (input.value || "").trim().toLowerCase();
     if (!q) { box.innerHTML = ""; return; }
     var c = ch();
-    var cap = c.level || 1;
-    var f = slotFilter(selectedSlot);
-    var view = viewChar();
-    var w = weightsFor(selectedSlot);
-    var sort = f.sort || "best";
     var hits = allItems().filter(function (it) {
-      if (isJunkUpgrade(it)) return false;
       if (!itemFitsSlot(it, selectedSlot)) return false;
-      if (!canEquipInSlot(it, c, selectedSlot, 0)) return false;
-      if (!reqUsable(it, cap)) return false;
-      if (!passesSlotTypeFilter(it, selectedSlot, f, view, 0)) return false;
-      if (!passesMinQuality(it, f)) return false;
       return it.name.toLowerCase().indexOf(q) !== -1;
     }).sort(function (a, b) {
-      return compareBySort(a, b, itemScore(a, w), itemScore(b, w), effectiveReq(a), effectiveReq(b), sort);
+      var an = (a.name || "").toLowerCase();
+      var bn = (b.name || "").toLowerCase();
+      var as = an.indexOf(q) === 0 ? 0 : 1;
+      var bs = bn.indexOf(q) === 0 ? 0 : 1;
+      if (as !== bs) return as - bs;
+      return (a.name || "").localeCompare(b.name || "");
     }).slice(0, 20);
-    box.innerHTML = hits.length ? hits.map(function (it) {
+    if (!hits.length) {
+      box.innerHTML = "<p class=\"muted\">No items in this slot match “" + escapeHtml((input.value || "").trim()) + "”.</p>";
+      return;
+    }
+    box.innerHTML = hits.map(function (it) {
       var req = effectiveReq(it);
-      return '<button type="button" class="slot-btn" data-equip-id="' + escapeHtml(String(it.id)) + '" data-item-id="' + escapeHtml(String(it.id)) + '" data-compare-slot="' + escapeHtml(String(selectedSlot)) + '">' +
+      var warns = equipWarnings(it, c, selectedSlot);
+      return '<div class="upgrade-row slot-search-hit" data-item-id="' + escapeHtml(String(it.id)) + '" data-compare-slot="' + escapeHtml(String(selectedSlot)) + '">' +
         itemIconHtml(it) +
-        '<span class="slot-text"><div class="item-name ' + qualityClass(it.quality) + '">' + escapeHtml(it.name) + "</div>" +
-        '<div class="muted" style="font-size:11px">Req ' + (req != null ? req : "?") +
+        '<div class="upgrade-row-main">' +
+        '<a href="#item-' + it.id + '" data-item-id="' + escapeHtml(String(it.id)) + '" class="item-name ' + qualityClass(it.quality) + '">' + escapeHtml(it.name) + "</a> " +
+        (isClassicRef(it) ? '<span class="classic-ref-tag">Classic reference</span> ' : "") +
+        '<div class="upgrade-row-meta">Req ' + (req != null ? req : "?") +
+        (it.type ? " · " + escapeHtml(it.type) : "") +
         (it.itemLevel ? " · ilvl " + it.itemLevel : "") +
-        (it.source ? " · " + escapeHtml(it.source) : "") + "</div></span></button>";
-    }).join("") : "<p class=\"muted\">No matching items you can use in this slot at your level.</p>";
+        (it.source ? " · " + escapeHtml(it.source) : "") + "</div>" +
+        (warns.length ? '<div class="upgrade-row-note muted">' + warns.map(escapeHtml).join(" · ") + "</div>" : "") +
+        "</div>" +
+        '<div class="upgrade-row-actions">' +
+        '<button type="button" class="btn btn-primary btn-sm" data-equip-id="' + escapeHtml(String(it.id)) + '">Equip</button>' +
+        "</div></div>";
+    }).join("");
   }
 
   function equipFromPanel(id) {
     if (!selectedSlot) return;
-    var item = allItems().find(function (it) { return String(it.id) === String(id); });
+    var item = findItemById(id);
     if (!item) return;
-    if (!canEquipInSlot(item, ch(), selectedSlot, 0)) {
-      toast("Your character cannot use that in this slot");
-      return;
-    }
+    var warns = equipWarnings(item, ch(), selectedSlot).filter(function (w) { return w.indexOf("Classic reference") === -1; });
     state.equipment[selectedSlot] = item;
     if (item.slot === "twohand") state.equipment.offhand = null;
     save();
     slotShowAll = false;
     renderItems();
-    toast("Equipped " + item.name);
+    toast(warns.length ? ("Equipped " + item.name + " — " + warns.join(" ")) : ("Equipped " + item.name));
   }
 
   function clearSelectedSlot() {
