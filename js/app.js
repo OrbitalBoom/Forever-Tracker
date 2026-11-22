@@ -305,13 +305,14 @@
   function renderCharacter() {
     var c = ch();
     var form = $("#characterForm");
-    form.name.value = c.name || "";
+    var active = document.activeElement;
+    if (active !== form.name) form.name.value = c.name || "";
     fillSelect(form.race, DATA.races, c.race);
     fillSelect(form.class, DATA.classes, c.class);
     var specs = (DATA.specs[c.class] || []);
     if (specs.indexOf(c.spec) === -1) c.spec = specs[0] || "";
     fillSelect(form.spec, specs, c.spec);
-    form.level.value = c.level || 1;
+    if (active !== form.level) form.level.value = c.level || 1;
     var races = DATA.classRaces[c.class] || [];
     var hint = $("#classHint");
     hint.textContent = c.class + " can be: " + races.join(", ") + ". Forever may add races — pick what you play.";
@@ -322,15 +323,33 @@
     }
   }
 
-  function onCharacterChange() {
+  function parseBoundedInt(raw, min, max, fallback) {
+    var n = parseInt(raw, 10);
+    if (raw === "" || raw === "-" || raw === "+" || isNaN(n)) return fallback;
+    return Math.max(min, Math.min(max, n));
+  }
+
+  function applyCharacterForm(opts) {
+    opts = opts || {};
     var form = $("#characterForm");
     var prevClass = state.character.class;
+    var level = state.character.level || 1;
+    if (opts.clampLevel) {
+      level = parseBoundedInt(form.level.value, 1, 60, 1);
+    } else {
+      var n = parseInt(form.level.value, 10);
+      if (form.level.value !== "" && form.level.value !== "-" && form.level.value !== "+" && !isNaN(n) && n >= 1 && n <= 60) {
+        level = n;
+      }
+    }
+    var name = form.name.value;
+    if (opts.trimName) name = name.trim();
     state.character = {
-      name: form.name.value.trim(),
+      name: name,
       race: form.race.value,
       class: form.class.value,
       spec: form.spec.value,
-      level: Math.max(1, Math.min(60, parseInt(form.level.value, 10) || 1))
+      level: level
     };
     if (state.character.class !== prevClass) {
       var specs = DATA.specs[state.character.class] || [];
@@ -348,9 +367,27 @@
     normalizeLeveling();
     if (state.leveling.follow) state.leveling.race = state.character.race || state.leveling.race;
     save();
-    renderCharacter();
+    if (opts.render) renderCharacter();
     renderChrome();
   }
+
+  /* Mid-typing: never clamp or rewrite the level field. */
+  function onCharacterInput(e) {
+    var isLevel = e.target && e.target.name === "level";
+    if (isLevel) {
+      applyCharacterForm({ clampLevel: false, render: false, trimName: false });
+      return;
+    }
+    var isSelect = e.target && e.target.tagName === "SELECT";
+    applyCharacterForm({ clampLevel: false, render: isSelect, trimName: false });
+  }
+
+  /* Commit: clamp level to 1–60 on change/blur/submit. */
+  function onCharacterCommit() {
+    applyCharacterForm({ clampLevel: true, render: true, trimName: true });
+  }
+
+  function onCharacterChange() { onCharacterCommit(); }
 
   /* ---------- goals ---------- */
   function allGoalDefs() {
@@ -2249,8 +2286,10 @@
     $all(".tabs [data-tab]").forEach(function (b) {
       b.addEventListener("click", function () { showTab(b.getAttribute("data-tab")); });
     });
-    $("#characterForm").addEventListener("input", onCharacterChange);
-    $("#characterForm").addEventListener("change", onCharacterChange);
+    $("#characterForm").addEventListener("input", onCharacterInput);
+    $("#characterForm").addEventListener("change", onCharacterCommit);
+    var levelInput = $("#characterForm").elements.level;
+    if (levelInput) levelInput.addEventListener("blur", onCharacterCommit);
     bindLevelingOnce();
 
     $("#goalSearch").addEventListener("input", renderGoals);
@@ -2349,13 +2388,34 @@
       if (e.target.getAttribute && e.target.getAttribute("data-prof-skill") != null) {
         var id = e.target.closest("[data-prof]").getAttribute("data-prof");
         var p = state.professions.find(function (x) { return x.id === id; });
-        if (p) { p.skill = Math.max(0, Math.min(300, parseInt(e.target.value, 10) || 0)); save(); renderProfessions(); if (window.ProfGuide) window.ProfGuide.render(); if (window.GoldFarms) { try { window.GoldFarms.render(state, { save: save, formatGold: formatGold, escapeHtml: escapeHtml }); } catch (err) { console.error(err); } } }
+        var n = parseInt(e.target.value, 10);
+        if (p && e.target.value !== "" && !isNaN(n) && n >= 0 && n <= 300) { p.skill = n; save(); }
       }
       if (e.target.getAttribute && e.target.getAttribute("data-mat-have") != null) {
         var card = e.target.closest("[data-craft]");
         var rec = state.crafting.find(function (x) { return x.id === card.getAttribute("data-craft"); });
         var idx = parseInt(e.target.closest("[data-mat]").getAttribute("data-mat"), 10);
-        if (rec && rec.mats[idx]) { rec.mats[idx].have = Math.max(0, parseInt(e.target.value, 10) || 0); save(); renderCrafting(); }
+        var have = parseInt(e.target.value, 10);
+        if (rec && rec.mats[idx] && e.target.value !== "" && !isNaN(have) && have >= 0) { rec.mats[idx].have = have; save(); }
+      }
+    });
+    document.addEventListener("change", function (e) {
+      if (e.target.getAttribute && e.target.getAttribute("data-prof-skill") != null) {
+        var id = e.target.closest("[data-prof]").getAttribute("data-prof");
+        var p = state.professions.find(function (x) { return x.id === id; });
+        if (p) {
+          p.skill = parseBoundedInt(e.target.value, 0, 300, 0);
+          save();
+          renderProfessions();
+          if (window.ProfGuide) window.ProfGuide.render();
+          if (window.GoldFarms) { try { window.GoldFarms.render(state, { save: save, formatGold: formatGold, escapeHtml: escapeHtml }); } catch (err) { console.error(err); } }
+        }
+      }
+      if (e.target.getAttribute && e.target.getAttribute("data-mat-have") != null) {
+        var card = e.target.closest("[data-craft]");
+        var rec = state.crafting.find(function (x) { return x.id === card.getAttribute("data-craft"); });
+        var idx = parseInt(e.target.closest("[data-mat]").getAttribute("data-mat"), 10);
+        if (rec && rec.mats[idx]) { rec.mats[idx].have = parseBoundedInt(e.target.value, 0, 999999, 0); save(); renderCrafting(); }
       }
     });
     $("#btnAddCraft").addEventListener("click", function () {
