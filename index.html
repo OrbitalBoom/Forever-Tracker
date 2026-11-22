@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Forever Tracker — Classic Era companion</title>
-  <link rel="stylesheet" href="css/style.css?v=20261122a">
+  <link rel="stylesheet" href="css/style.css?v=20261122b">
 </head>
 <body>
   <div class="app">
@@ -24,7 +24,8 @@
     <nav class="tabs" role="tablist">
       <button type="button" role="tab" aria-selected="true" data-tab="character">Character</button>
       <button type="button" role="tab" aria-selected="false" data-tab="goals">Goals</button>
-      <button type="button" role="tab" aria-selected="false" data-tab="gold">Gold &amp; Professions</button>
+      <button type="button" role="tab" aria-selected="false" data-tab="gold">Gold</button>
+      <button type="button" role="tab" aria-selected="false" data-tab="professions">Professions</button>
       <button type="button" role="tab" aria-selected="false" data-tab="notes">Notes &amp; Journal</button>
       <button type="button" role="tab" aria-selected="false" data-tab="items">Items &amp; Upgrades</button>
       <button type="button" role="tab" aria-selected="false" data-tab="leveling">Leveling Route</button>
@@ -74,10 +75,10 @@
         <div id="goalLists"></div>
       </section>
 
-      <!-- Gold & professions -->
+      <!-- Gold -->
       <section class="panel" id="tab-gold" role="tabpanel">
-        <h2>Gold &amp; Professions</h2>
-        <p class="lede">Log gold in g / s / c (100 copper = 1 silver, 100 silver = 1 gold). The running total and chart update as you add entries. Professions cap at 300 in Classic Era.</p>
+        <h2>Gold</h2>
+        <p class="lede">Log gold in g / s / c (100 copper = 1 silver, 100 silver = 1 gold). The running total and chart update as you add entries. The farming guide uses your level and, when you have them, the professions on the Professions tab.</p>
         <div class="stat-row" id="goldSummary"></div>
         <canvas class="chart" id="goldChart" width="1100" height="180" aria-label="Gold over time"></canvas>
         <form id="goldForm" class="form-grid">
@@ -110,15 +111,18 @@
         <h3>Gold Farming</h3>
         <p class="muted gf-lede">Best gold farms for your level, valued at today's auction prices.</p>
         <div id="goldFarms"></div>
+      </section>
 
-        <h3>Professions</h3>
+      <!-- Professions -->
+      <section class="panel" id="tab-professions" role="tabpanel">
+        <h2>Professions</h2>
+        <p class="lede">Add the professions you have and their skill. The guide below follows those skills: it starts at where you are, marks earlier work as done, and shows the next crafts and materials (with auction prices when we have them). Changing skill in the guide updates the numbers here. Profession caps are 300 in Classic Era.</p>
         <div id="professions" class="card-grid"></div>
         <div class="row-actions">
           <button type="button" class="btn" id="btnAddProf">Add profession</button>
         </div>
 
         <h3>Profession guide</h3>
-        <p class="muted">The cheapest path from your skill to 300, and what pays to craft at any skill, using WoW: Forever recipes and US Normal Horde auction prices. Your skill syncs with the professions above.</p>
         <div id="profGuide" class="prof-guide"></div>
 
         <h3>Crafting list</h3>
@@ -254,18 +258,18 @@
   </div>
   <div class="toast" id="toast" hidden></div>
 
-  <script src="js/data.js?v=20261122a"></script>
-  <script src="js/items.js?v=20261122a"></script>
-  <script src="js/talents.js?v=20261122a"></script>
-  <script src="js/leveling-data.js?v=20261122a"></script>
-  <script src="js/app.js?v=20261122a"></script>
-  <script src="js/cloud-save.js?v=20261122a"></script>
-  <script src="js/professions-data.js?v=20261122a"></script>
-  <script src="data/prices.js?v=20261122a"></script>
-  <script src="js/professions.js?v=20261122a"></script>
-  <script src="js/gold-farms-data.js?v=20261122a"></script>
-  <script src="js/gold-farms.js?v=20261122a"></script>
-  <script src="js/item-db.js?v=20261122a"></script>
-  <script src="js/item-tooltip.js?v=20261122a"></script>
+  <script src="js/data.js?v=20261122b"></script>
+  <script src="js/items.js?v=20261122b"></script>
+  <script src="js/talents.js?v=20261122b"></script>
+  <script src="js/leveling-data.js?v=20261122b"></script>
+  <script src="js/app.js?v=20261122b"></script>
+  <script src="js/cloud-save.js?v=20261122b"></script>
+  <script src="js/professions-data.js?v=20261122b"></script>
+  <script src="data/prices.js?v=20261122b"></script>
+  <script src="js/professions.js?v=20261122b"></script>
+  <script src="js/gold-farms-data.js?v=20261122b"></script>
+  <script src="js/gold-farms.js?v=20261122b"></script>
+  <script src="js/item-db.js?v=20261122b"></script>
+  <script src="js/item-tooltip.js?v=20261122b"></script>
 </body>
 </html>

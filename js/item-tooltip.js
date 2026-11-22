@@ -1,6 +1,6 @@
 /* Self-hosted Classic-style item tooltip. Does not load Wowhead power.js. */
 (function () {
-  var VERSION = "20261122a";
+  var VERSION = "20261122b";
   var ICON = "https://render.worldofwarcraft.com/forever-us/icons/56/{icon}.jpg";
   var HOVER_DELAY = 80;
   var HOLD_MS = 420;

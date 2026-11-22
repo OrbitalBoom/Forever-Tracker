@@ -58,6 +58,9 @@
   var unavailable = {};        // spellId -> true when a reagent is missing from the client
   var rendered = false;
   var lastPlan = null;
+  var lastMineKey = null;
+  var browseOther = false;
+  var pendingScroll = false;
 
   ORDER.forEach(function (pid) {
     var p = D.professions[pid];
@@ -129,11 +132,53 @@
     if (!o.mode) o.mode = "gold";
     if (o.useIntermediates == null) o.useIntermediates = true;
     g.roi = g.roi || { sort: "profit", dir: -1, minQty: 0, onlyProfit: false, level: null };
-    if (!g.prof) {
-      var mine = (s.professions || []).map(function (p) { return profIdByName(p.name); }).filter(Boolean);
-      g.prof = mine[0] || 171;
-    }
+    if (!g.prof) g.prof = 171;
     return g;
+  }
+
+  function guidedIds() {
+    var s = APP().getState();
+    var mine = [];
+    (s.professions || []).forEach(function (p) {
+      var id = profIdByName(p.name);
+      if (id && mine.indexOf(id) === -1) mine.push(id);
+    });
+    return mine;
+  }
+
+  function gatheringProfs() {
+    var s = APP().getState();
+    return (s.professions || []).filter(function (p) { return p && p.name && !profIdByName(p.name); });
+  }
+
+  function syncSelectedProfession(opts) {
+    opts = opts || {};
+    var g = st();
+    var mine = guidedIds();
+    var key = mine.join(",");
+    var listChanged = lastMineKey !== null && lastMineKey !== key;
+    lastMineKey = key;
+    var prev = g.prof;
+    if (opts.addedName) {
+      var aid = profIdByName(opts.addedName);
+      if (aid) { g.prof = aid; browseOther = false; }
+      else if (mine.length && mine.indexOf(g.prof) === -1) { g.prof = mine[0]; browseOther = false; }
+    } else if (mine.length) {
+      var inMine = mine.indexOf(g.prof) !== -1;
+      if (!g.prof || (!inMine && (!browseOther || listChanged))) {
+        g.prof = mine[0];
+        browseOther = false;
+      }
+    }
+    if (g.prof !== prev) save();
+    return g;
+  }
+
+  function nextMilestone(skill) {
+    var marks = [75, 150, 225, 300];
+    var i;
+    for (i = 0; i < marks.length; i++) if (skill < marks[i]) return marks[i];
+    return null;
   }
   function save() { APP().save(); }
   function profIdByName(name) {
@@ -161,6 +206,9 @@
     var cp = charProf(pid);
     if (cp) cp.skill = v; else st().skill[pid] = v;
     save();
+    if (cp && APP() && typeof APP().renderProfessions === "function") {
+      try { APP().renderProfessions(); } catch (e) {}
+    }
   }
 
   /* ---------- recipe source ---------- */
@@ -339,11 +387,46 @@
   }
 
   /* ---------- rendering ---------- */
+  function profLabel(pid) {
+    return D.professions[pid].name + (pid === 186 ? " (smelting)" : "");
+  }
+
   function profOptions(sel) {
-    return ORDER.filter(function (pid) { return D.professions[pid]; }).map(function (pid) {
-      var n = D.professions[pid].name + (pid === 186 ? " (smelting)" : "");
+    var mine = guidedIds();
+    function opt(pid) {
+      var n = profLabel(pid);
+      var cp = charProf(pid);
+      if (cp) n += " — skill " + (cp.skill || 0);
       return '<option value="' + pid + '"' + (pid === sel ? " selected" : "") + ">" + esc(n) + "</option>";
-    }).join("");
+    }
+    var html = "";
+    if (mine.length) {
+      html += '<optgroup label="Yours" class="prof-select-yours">';
+      mine.forEach(function (pid) { html += opt(pid); });
+      html += "</optgroup>";
+    }
+    html += '<optgroup label="All guides">';
+    ORDER.forEach(function (pid) {
+      if (!D.professions[pid] || mine.indexOf(pid) !== -1) return;
+      html += opt(pid);
+    });
+    html += "</optgroup>";
+    return html;
+  }
+
+  function guideHint() {
+    var s = APP().getState();
+    var listed = (s.professions || []).filter(function (p) { return p && p.name; });
+    if (!listed.length) {
+      return '<p class="pg-hint muted">Add a profession and its skill <a href="#professions">above</a> and this guide will start at that skill, mark earlier steps as done, and show what to craft next (with auction prices when we have them).</p>';
+    }
+    var gather = gatheringProfs();
+    if (!guidedIds().length && gather.length) {
+      return '<p class="pg-hint muted">Your listed profession' + (gather.length === 1 ? " is" : "s are") + " " +
+        esc(gather.map(function (p) { return p.name + " (" + (p.skill || 0) + ")"; }).join(", ")) +
+        ". Gathering has no 1–300 craft guide here. Add a craft profession above, or pick one in the list to browse.</p>";
+    }
+    return "";
   }
 
   function priceLine() {
@@ -360,7 +443,7 @@
     if (!root || !APP()) return;
     var g = st(), o = g.opts, pid = g.prof;
     var skill = currentSkill(pid);
-    var html = "";
+    var html = guideHint();
     html += '<div class="route-toolbar pg-toolbar">' +
       '<label class="field">Profession<select id="pgProf">' + profOptions(pid) + "</select></label>" +
       '<label class="field">Current skill<input type="number" id="pgSkill" min="1" max="300" value="' + skill + '"></label>' +
@@ -406,12 +489,59 @@
       p = plan(pid, Math.min(start, 299), o);
     }
     lastPlan = p;
-    if (start >= 300 && !locked) { body.innerHTML = '<p class="muted">Already at 300. Switch to "Best profit by skill" to see what to craft.</p>'; return; }
+    if (start >= 300 && !locked) {
+      body.innerHTML = '<p class="pg-caught-up muted">Completed through skill 300.</p><p class="muted">Already at 300. Switch to "Best profit by skill" to see what to craft.</p>';
+      return;
+    }
     var shop = shopping(p.steps, pid, o);
     var totalCost = 0, totalCrafts = 0;
     p.steps.forEach(function (x) { totalCost += x.cost; totalCrafts += x.n; });
     var countMode = o.mode === "count";
-    var h = '<div class="stat-row">' +
+    var mile = nextMilestone(start);
+    var fromHere = p.steps.filter(function (x) { return x.to > start; });
+    var mileSteps = mile ? fromHere.filter(function (x) { return x.from < mile; }) : fromHere;
+    var mileShop = shopping(mileSteps, pid, o);
+    var mileCost = 0, mileCrafts = 0;
+    mileSteps.forEach(function (x) { mileCost += x.cost; mileCrafts += x.n; });
+    var currentIdx = -1;
+    p.steps.forEach(function (x, i) {
+      if (currentIdx === -1 && x.to > start) currentIdx = i;
+    });
+    var h = "";
+    if (start > 1) h += '<p class="pg-caught-up muted">Completed through skill ' + start + ". The steps below start from here.</p>";
+    var cur = currentIdx >= 0 ? p.steps[currentIdx] : null;
+    if (cur && cur.r) {
+      var cr = cur.r;
+      h += '<div class="pg-next" id="pgCurrent"><div class="kicker">You are at skill ' + start + '</div><h3>Next: Craft ' + cur.n + "× " +
+        (cr.i ? itemLink(cr.i) : esc(cr.n)) + ' <span class="pg-range">' + cur.from + "–" + cur.to + "</span> " + colorChip(cr, Math.max(cur.from, start)) + "</h3>";
+      h += "<p>" + cr.g.map(function (gg) {
+        var u = unitCost(gg[0], pid, o, 0);
+        var how = u.how === "vendor" ? "vendor" : u.how === "ah" ? "AH" : u.how === "craft" ? "craft" : u.how === "est" ? "est." : "";
+        return gg[1] + "× " + itemLink(gg[0]) + (how ? ' <span class="muted">(' + how + ")</span>" : "");
+      }).join(", ") + " · per craft " + (countMode ? "" : money(cur.cost / Math.max(1e-9, cur.crafts))) + "</p>";
+      if (mile) {
+        var shopIds = Object.keys(mileShop.list).sort(function (a, b) { return itemName(a) < itemName(b) ? -1 : 1; });
+        h += '<div class="pg-mile"><strong>From here to skill ' + mile + "</strong> — about " + mileCrafts.toLocaleString() +
+          " crafts, estimated " + (countMode ? Math.round(mileCost).toLocaleString() + " raw units" : money(mileCost)) +
+          (shopIds.length ? " in materials from the auction house or vendors." : ".") + "</div>";
+        if (shopIds.length) {
+          h += "<ul>";
+          shopIds.forEach(function (id) {
+            var e = mileShop.list[id], q = Math.ceil(e.qty - 1e-9);
+            var unit = o.mode === "count" ? unitCost(id, pid, { mode: "gold", useIntermediates: false }, 0) : e.u;
+            var tot = unit.c != null ? unit.c * q : null;
+            var from = unit.how === "vendor" ? "vendor" : unit.how === "ah" ? "AH" : unit.how === "est" ? "est." : "";
+            h += "<li>" + q.toLocaleString() + "× " + itemLink(id) + (from ? ' <span class="muted">(' + from + ")</span>" : "") +
+              " · " + money(tot) + "</li>";
+          });
+          h += "</ul>";
+        }
+      }
+      h += "</div>";
+    } else if (cur && !cur.r) {
+      h += '<div class="pg-next" id="pgCurrent"><div class="kicker">You are at skill ' + start + "</div><h3>No recipe for the next step with the current filters</h3><p>Turn on more recipe sources above.</p></div>";
+    }
+    h += '<div class="stat-row">' +
       pill("Plan", (locked ? "Locked " + esc(locked.at) : "Live") + " · " + p.start + " → 300") +
       pill("Crafts (expected)", totalCrafts.toLocaleString()) +
       pill(countMode ? "Raw materials" : "Estimated cost", countMode ? Math.round(totalCost).toLocaleString() + " units" : money(totalCost)) +
@@ -429,9 +559,12 @@
           h += '<div class="pg-gate">Train ' + esc(gt.t) + " (Classic rule).</div>";
         }
       });
-      var done = !!g.done[x.id];
+      var past = x.to <= start;
+      var isCurrent = !past && currentIdx === p.steps.indexOf(x);
+      var done = !!g.done[x.id] || past;
+      var stepClass = "route-step pg-step" + (done ? " done" : "") + (past ? " is-past" : "") + (isCurrent ? " is-current" : "");
       if (!x.r) {
-        h += '<div class="route-step pg-step"><div class="step-main"><h4>' + x.from + "–" + x.to + ": no recipe available with the current filters</h4><p>Turn on more recipe sources above.</p></div></div>";
+        h += '<div class="' + stepClass + '"><div class="step-main"><h4>' + x.from + "–" + x.to + ": no recipe available with the current filters</h4><p>Turn on more recipe sources above.</p></div></div>";
         return;
       }
       var r = x.r, si = sourceInfo(r);
@@ -442,7 +575,7 @@
       }).join(", ");
       var learn = /trainer/i.test(si.cat) ? "" : '<div class="muted">Learn: ' + esc(si.label) + (si.item ? " · " + itemLink(si.item) : "") +
         (si.cost != null ? " · " + money(si.cost) : "") + (si.npcs.length ? " · " + esc(si.npcs.join(", ")) : "") + "</div>";
-      h += '<div class="route-step pg-step' + (done ? " done" : "") + '"><input type="checkbox" data-pgstep="' + esc(x.id) + '"' + (done ? " checked" : "") + ' aria-label="Done">' +
+      h += '<div class="' + stepClass + '"' + (isCurrent ? ' id="pgStepCurrent"' : "") + '><input type="checkbox" data-pgstep="' + esc(x.id) + '"' + (done ? " checked" : "") + (past ? " disabled" : "") + ' aria-label="Done">' +
         '<div class="step-main"><h4><span class="pg-range">' + x.from + "–" + x.to + "</span> Craft " + x.n + "× " +
         (r.i ? itemLink(r.i) : esc(r.n)) + (r.i && itemName(r.i) !== r.n ? ' <span class="muted">(' + esc(r.n) + ")</span>" : "") +
         " " + colorChip(r, x.from) + " " + sourceTag(r) + "</h4>" +
@@ -452,7 +585,7 @@
     // shopping list
     var ids = Object.keys(shop.list).sort(function (a, b) { return itemName(a) < itemName(b) ? -1 : 1; });
     var shopTotal = 0;
-    h += "<h3>Shopping list</h3><div class=\"table-wrap\"><table class=\"data\"><thead><tr><th>Material</th><th>Qty</th><th>Buy from</th><th>Unit</th><th>Total</th></tr></thead><tbody>";
+    h += "<h3>Shopping list to 300</h3><div class=\"table-wrap\"><table class=\"data\"><thead><tr><th>Material</th><th>Qty</th><th>Buy from</th><th>Unit</th><th>Total</th></tr></thead><tbody>";
     ids.forEach(function (id) {
       var e = shop.list[id], q = Math.ceil(e.qty - 1e-9), u = e.u;
       var unit = o.mode === "count" ? unitCost(id, pid, { mode: "gold", useIntermediates: false }, 0) : u;
@@ -478,6 +611,22 @@
       }).join("") + "</ul>";
     }
     body.innerHTML = h;
+    if (pendingScroll) {
+      pendingScroll = false;
+      scrollToCurrent();
+    }
+  }
+
+  function scrollToCurrent() {
+    var root = $("#profGuide");
+    if (!root) return;
+    var tab = $("#tab-professions");
+    if (tab && !tab.classList.contains("active")) return;
+    var el = root.querySelector("#pgCurrent") || root.querySelector(".pg-step.is-current");
+    if (!el) return;
+    requestAnimationFrame(function () {
+      try { el.scrollIntoView({ block: "nearest", behavior: "smooth" }); } catch (e) { try { el.scrollIntoView(true); } catch (e2) {} }
+    });
   }
 
   function pill(label, value) {
@@ -565,8 +714,15 @@
       var t = e.target;
       if (!t.closest || !t.closest("#profGuide")) return;
       var g = st();
-      if (t.id === "pgProf") { g.prof = parseInt(t.value, 10); g.roi.level = null; save(); render(); }
-      else if (t.id === "pgSkill") { setSkill(g.prof, t.value); render(); }
+      if (t.id === "pgProf") {
+        g.prof = parseInt(t.value, 10);
+        g.roi.level = null;
+        browseOther = guidedIds().indexOf(g.prof) === -1;
+        save();
+        pendingScroll = true;
+        render();
+      }
+      else if (t.id === "pgSkill") { setSkill(g.prof, t.value); pendingScroll = true; render(); }
       else if (t.id === "pgMode") { g.opts.mode = t.value; save(); render(); }
       else if (t.getAttribute("data-pgopt")) { g.opts[t.getAttribute("data-pgopt")] = t.checked; save(); render(); }
       else if (t.getAttribute("data-pgstep")) {
@@ -649,8 +805,19 @@
     });
   }
 
+  function syncAndRender(opts) {
+    opts = opts || {};
+    if (!APP() || !$("#profGuide")) return;
+    syncSelectedProfession(opts);
+    pendingScroll = !!opts.scroll;
+    render();
+  }
+
   window.ProfGuide = {
     render: render,
+    syncAndRender: syncAndRender,
+    onProfessionAdded: function (name) { syncAndRender({ addedName: name, scroll: true }); },
+    onProfessionsChanged: function () { syncAndRender({ scroll: true }); },
     plan: function (pid, start, opts) { st(); return plan(pid, start, Object.assign({}, st().opts, opts || {})); },
     roiRows: function (pid, level) { return roiRows(pid, level, st().opts); },
     prices: function () { return prices; },

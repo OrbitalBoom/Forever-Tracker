@@ -1228,3 +1228,30 @@ table.data tfoot th { text-align: left; }
 .tt-coin.gold { background: radial-gradient(circle at 32% 28%, #ffe47a, #d4a017 55%, #8a6a10); }
 .tt-coin.silver { background: radial-gradient(circle at 32% 28%, #ffffff, #c0c0c8 55%, #6a6a72); }
 .tt-coin.copper { background: radial-gradient(circle at 32% 28%, #f0c0a0, #c07038 55%, #6a3a18); }
+
+@media (max-width: 430px) {
+  .tabs button { padding: 8px 10px; font-size: 14px; }
+  main.stage { padding: 14px; }
+}
+
+.pg-next {
+  background: var(--panel-2);
+  border: 1px solid var(--gold-dk);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin: 0 0 14px;
+}
+.pg-next h3 { margin: 4px 0 6px; }
+.pg-next .kicker { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.pg-next .pg-mile { margin-top: 10px; padding-top: 8px; border-top: 1px solid #3a2c18; }
+.pg-next .pg-mile ul { margin: 6px 0 0; padding-left: 18px; }
+.pg-next .pg-mile li { margin: 2px 0; }
+.pg-step.is-current {
+  outline: 1px solid var(--gold);
+  box-shadow: 0 0 0 1px var(--gold-dk);
+  background: var(--panel-2);
+}
+.pg-step.is-past, .pg-step.done { opacity: .55; }
+.pg-caught-up { margin: 0 0 10px; }
+.pg-hint { margin: 8px 0 0; }
+.prof-select-yours { font-weight: 600; }

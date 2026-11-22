@@ -638,7 +638,7 @@
         '. <button type="button" class="gf-text-btn" id="gfToggleGroups">Show all classes/factions</button>';
     }
     if (!hasProfsFilled()) {
-      line += '<br><span class="gf-prof-hint">Add your professions <a href="#professions">below</a> to hide farms you cannot gather and to count only your skinning, mining, and herbalism yields.</span>';
+      line += '<br><span class="gf-prof-hint">Add your professions on the <a href="#professions">Professions tab</a> to hide farms you cannot gather and to count only your skinning, mining, and herbalism yields.</span>';
     } else {
       var bits = charProfessions().map(function (pr) {
         return pr.name + (pr.skill != null ? " " + pr.skill : "");
@@ -662,7 +662,7 @@
       escapeHtml(priceStamp()) + ".</p>" +
       "<p>The default is " + kpmLabel(DEFAULT_KPM) + " kills per minute (" + (DEFAULT_KPM * 60) +
         "/hour) for a typical solo, at-level, single-pull grind. That matches ByteTavern’s “two kills a minute” linen-farm assumption and sits in the 100–150 kills/hour range Classic guides often use (Conquest Capped’s mid-level farms assume 100/hour). Pack, AoE, and slow elite camps will differ — use the Kills/min control, which is saved with your character. It does not change rows that already have a sourced kill rate. Nothing here invents drop rates.</p>" +
-      "<p>When you add professions on this page, gathering farms you cannot do move out of the top list, and gold/kill only counts skinning, mining, or herbalism yields you can actually gather. If no professions are listed, every farm is shown as before.</p>" +
+      "<p>When you add professions on the Professions tab, gathering farms you cannot do move out of the top list, and gold/kill only counts skinning, mining, or herbalism yields you can actually gather. If no professions are listed, every farm is shown as before.</p>" +
       "<p>Bug exploits, duplication, and other play that breaks Blizzard's terms of use are not listed.</p>";
     el.open = open;
   }

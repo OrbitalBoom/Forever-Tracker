@@ -262,7 +262,16 @@
   }
 
   /* ---------- tabs ---------- */
+  function resolveTab(name) {
+    if (!name) return null;
+    var aliases = { profession: "professions", prof: "professions", profs: "professions", farming: "gold", "gold-farms": "gold" };
+    if (aliases[name]) name = aliases[name];
+    var valid = ["character","goals","gold","professions","notes","items","talents","leveling"];
+    return valid.indexOf(name) !== -1 ? name : null;
+  }
+
   function showTab(name) {
+    name = resolveTab(name) || name;
     activeTab = name;
     $all(".tabs [data-tab]").forEach(function (b) {
       b.setAttribute("aria-selected", b.getAttribute("data-tab") === name ? "true" : "false");
@@ -283,6 +292,7 @@
     if (name === "character") renderCharacter();
     else if (name === "goals") renderGoals();
     else if (name === "gold") renderGold();
+    else if (name === "professions") renderProfessionsTab();
     else if (name === "notes") renderNotes();
     else if (name === "items") { if (window.ItemDB) window.ItemDB.onTab(); else renderItems(); }
     else if (name === "talents") renderTalents();
@@ -486,7 +496,6 @@
     if (!form.date.value) form.date.value = todayISO();
     $("#goldSummary").innerHTML = pill("Running total", formatGold(goldTotal()));
     drawGoldChart();
-    if (window.ProfGuide) { try { window.ProfGuide.render(); } catch (e) { console.error(e); } }
     if (window.GoldFarms) {
       try { window.GoldFarms.render(state, { save: save, formatGold: formatGold, escapeHtml: escapeHtml }); }
       catch (e) { console.error(e); }
@@ -501,8 +510,15 @@
     });
     html += "</tbody>";
     $("#goldTable").innerHTML = html;
+  }
+
+  function renderProfessionsTab() {
     renderProfessions();
     renderCrafting();
+    if (window.ProfGuide) {
+      try { window.ProfGuide.syncAndRender({ scroll: true }); }
+      catch (e) { try { window.ProfGuide.render(); } catch (e2) { console.error(e2); } }
+    }
   }
 
   function drawGoldChart() {
@@ -556,7 +572,7 @@
   function renderProfessions() {
     var box = $("#professions");
     if (!state.professions.length) {
-      box.innerHTML = "<p class=\"muted\">No professions yet. Classic caps at 300.</p>";
+      box.innerHTML = "<p class=\"muted\">No professions yet. Add one and the guide below will start at your skill. Classic caps at 300.</p>";
       return;
     }
     box.innerHTML = state.professions.map(function (p) {
@@ -2368,20 +2384,25 @@
         '<div class="row-actions"><button type="button" class="btn btn-primary" id="profSave">Add</button>' +
         '<button type="button" class="btn" data-close>Cancel</button></div>');
       $("#profSave").addEventListener("click", function () {
-        state.professions.push({ id: uid("prof"), name: $("#profName").value, skill: Math.max(0, Math.min(300, parseInt($("#profSkill").value, 10) || 0)) });
-        save(); closeModal(); renderGold();
+        var added = { id: uid("prof"), name: $("#profName").value, skill: Math.max(0, Math.min(300, parseInt($("#profSkill").value, 10) || 0)) };
+        state.professions.push(added);
+        save(); closeModal();
+        if (window.ProfGuide && ProfGuide.onProfessionAdded) ProfGuide.onProfessionAdded(added.name);
+        renderProfessionsTab();
       });
     });
     document.addEventListener("click", function (e) {
       if (e.target.getAttribute && e.target.getAttribute("data-del-prof") != null) {
         var id = e.target.closest("[data-prof]").getAttribute("data-prof");
         state.professions = state.professions.filter(function (p) { return p.id !== id; });
-        save(); renderGold();
+        save();
+        if (window.ProfGuide && ProfGuide.onProfessionsChanged) ProfGuide.onProfessionsChanged();
+        renderProfessionsTab();
       }
       if (e.target.getAttribute && e.target.getAttribute("data-del-craft") != null) {
         var idc = e.target.closest("[data-craft]").getAttribute("data-craft");
         state.crafting = state.crafting.filter(function (p) { return p.id !== idc; });
-        save(); renderGold();
+        save(); renderProfessionsTab();
       }
     });
     document.addEventListener("input", function (e) {
@@ -2407,8 +2428,13 @@
           p.skill = parseBoundedInt(e.target.value, 0, 300, 0);
           save();
           renderProfessions();
-          if (window.ProfGuide) window.ProfGuide.render();
-          if (window.GoldFarms) { try { window.GoldFarms.render(state, { save: save, formatGold: formatGold, escapeHtml: escapeHtml }); } catch (err) { console.error(err); } }
+          if (window.ProfGuide) {
+            try { window.ProfGuide.syncAndRender({ scroll: true }); }
+            catch (err) { try { window.ProfGuide.render(); } catch (e2) { console.error(e2); } }
+          }
+          if (window.GoldFarms && $("#tab-gold") && $("#tab-gold").classList.contains("active")) {
+            try { window.GoldFarms.render(state, { save: save, formatGold: formatGold, escapeHtml: escapeHtml }); } catch (err) { console.error(err); }
+          }
         }
       }
       if (e.target.getAttribute && e.target.getAttribute("data-mat-have") != null) {
@@ -2616,6 +2642,13 @@
       }
     });
 
+    window.addEventListener("hashchange", function () {
+      var hash = (location.hash || "").replace("#", "");
+      if (/^item-\d+/.test(hash)) return;
+      var name = resolveTab(hash);
+      if (name && name !== activeTab) showTab(name);
+    });
+
     var importFile = $("#importFile");
     if (importFile) {
       importFile.addEventListener("change", function () {
@@ -2633,10 +2666,9 @@
     var hash = (location.hash || "").replace("#", "");
     var q = "";
     try { q = new URLSearchParams(location.search).get("tab") || ""; } catch (e) {}
-    var start = q || hash;
-    var valid = ["character","goals","gold","notes","items","talents","leveling"];
+    var start = resolveTab(q) || resolveTab(hash);
     if (/^item-\d+/.test(hash)) start = "items";
-    showTab(valid.indexOf(start) !== -1 ? start : "character");
+    showTab(start || "character");
     if (/^item-\d+/.test(hash) && window.ItemDB) window.ItemDB.open(hash.replace("item-",""));
     try {
       if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
@@ -2701,6 +2733,9 @@
     toast: toast,
     renderTab: function () { renderTab(activeTab); },
     showTab: showTab,
+    resolveTab: resolveTab,
+    renderProfessions: renderProfessions,
+    renderProfessionsTab: renderProfessionsTab,
     allItems: allItems,
     itemScore: itemScore,
     canEquipInSlot: canEquipInSlot,
