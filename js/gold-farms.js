@@ -81,6 +81,7 @@
       typeFilter: "all",
       favsOnly: false,
       showAllGroups: false,
+      hideDungeons: false,
       killsPerMin: DEFAULT_KPM
     };
   }
@@ -493,9 +494,20 @@
     return p.tier * 1e12 + p.n;
   }
 
+  function isDungeonFarm(spot) {
+    return spot.instance === "dungeon" || spot.instance === "raid" || spot.instance === "mixed";
+  }
+  function dungeonTag(spot) {
+    if (!isDungeonFarm(spot)) return "";
+    var name = spot.instanceName || "instance";
+    var label = spot.instance === "raid" ? "Raid: " + name : "Dungeon: " + name;
+    if (spot.instance === "mixed") label += " (some mobs)";
+    return '<span class="kind-tag gf-dungeon-tag">' + escapeHtml(label) + "</span>";
+  }
   function pillMatches(spot, typeFilter) {
     if (typeFilter === "all") return true;
-    if (typeFilter === "mob") return spot.type === "mob" || spot.type === "cloth";
+    if (typeFilter === "mob") return (spot.type === "mob" || spot.type === "cloth") && !isDungeonFarm(spot);
+    if (typeFilter === "instance") return isDungeonFarm(spot);
     return spot.type === typeFilter;
   }
   function factionOk(spot, p) {
@@ -528,6 +540,7 @@
     var L = viewLevel();
     return (window.GOLD_FARMS || []).filter(function (spot) {
       if (p.favsOnly && !isFav(spot.id)) return false;
+      if (p.hideDungeons && isDungeonFarm(spot)) return false;
       if (!pillMatches(spot, p.typeFilter)) return false;
       if (!factionOk(spot, p)) return false;
       if (!classOk(spot, p)) return false;
@@ -619,7 +632,9 @@
         "</label>" +
         '<button type="button" class="gf-step" id="gfKpmUp" aria-label="More kills per minute">+</button>' +
       "</div>" +
-      '<div class="gf-pills" role="group" aria-label="Farm type">' + pills + "</div>";
+      '<div class="gf-pills" role="group" aria-label="Farm type">' + pills + "</div>" +
+      '<label class="check gf-hide-dungeons"><input type="checkbox" id="gfHideDungeons"' +
+        (p.hideDungeons ? " checked" : "") + '> Hide dungeon farms</label>';
   }
 
   function renderContext() {
@@ -645,6 +660,9 @@
       });
       line += ' <span class="gf-prof-using">Using your ' + escapeHtml(bits.join(", ")) + ".</span>";
     }
+    if (p.hideDungeons) {
+      line += ' <span class="gf-filter-note">Dungeon and raid farms are hidden.</span>';
+    }
     el.innerHTML = line;
   }
 
@@ -663,6 +681,7 @@
       "<p>The default is " + kpmLabel(DEFAULT_KPM) + " kills per minute (" + (DEFAULT_KPM * 60) +
         "/hour) for a typical solo, at-level, single-pull grind. That matches ByteTavern’s “two kills a minute” linen-farm assumption and sits in the 100–150 kills/hour range Classic guides often use (Conquest Capped’s mid-level farms assume 100/hour). Pack, AoE, and slow elite camps will differ — use the Kills/min control, which is saved with your character. It does not change rows that already have a sourced kill rate. Nothing here invents drop rates.</p>" +
       "<p>When you add professions on the Professions tab, gathering farms you cannot do move out of the top list, and gold/kill only counts skinning, mining, or herbalism yields you can actually gather. If no professions are listed, every farm is shown as before.</p>" +
+      "<p>A farm is tagged Dungeon when its listed creatures spawn inside an instance in NorgannonDB (spawn area / map, not continent maps 0/1/530). Hide dungeon farms also hides raids and any farm that mixes instance and open-world mobs. Counts in this list follow that checkbox.</p>" +
       "<p>Bug exploits, duplication, and other play that breaks Blizzard's terms of use are not listed.</p>";
     el.open = open;
   }
@@ -670,6 +689,15 @@
   function bind(root) {
     if (bound) return;
     bound = true;
+    root.addEventListener("change", function (e) {
+      var t = e.target;
+      if (t && t.id === "gfHideDungeons") {
+        prefs().hideDungeons = !!t.checked;
+        persist();
+        showAllRows = false;
+        refresh();
+      }
+    });
     root.addEventListener("click", function (e) {
       var t = e.target;
       if (!t) return;
@@ -987,7 +1015,8 @@
       '<div class="gf-row-main" data-gf-toggle="' + escapeHtml(spot.id) + '" role="button" tabindex="0" aria-expanded="' + (open ? "true" : "false") + '">' +
         '<span class="gf-rank">' + rank + "</span>" +
         '<div class="gf-row-body">' +
-          '<div class="gf-row-title">' + escapeHtml(spot.name) + warn + needTag(spot) + "</div>" +
+          '<div class="gf-row-title">' + escapeHtml(spot.name) + warn + needTag(spot) + dungeonTag(spot) +
+            (spot.eliteOpenWorld ? '<span class="kind-tag gf-elite-tag">Elite</span>' : "") + "</div>" +
           '<div class="gf-row-sub">' + escapeHtml(spot.zone) + " · Lv " + spot.levelMin + "–" + spot.levelMax +
             " · " + escapeHtml(lootLine) + "</div>" +
           extra +
@@ -1016,7 +1045,8 @@
         html = '<p class="gf-empty">Star a farm to save it here. Favorites stay with your character.</p>';
       } else if (p.favsOnly) {
         html = '<p class="gf-empty">None of your favorites fit level ' + L +
-          (p.typeFilter !== "all" ? " in " + escapeHtml(typeLabel) : "") + ".</p>";
+          (p.typeFilter !== "all" ? " in " + escapeHtml(typeLabel) : "") +
+          (p.hideDungeons ? " (dungeon farms hidden)" : "") + ".</p>";
         var nearFav = closest(TOP_N);
         if (nearFav.length) {
           html += '<p class="muted">Closest favorites or matches:</p><ol class="gf-list">';
@@ -1025,7 +1055,8 @@
         }
       } else {
         html = '<p class="gf-empty">No farms sit right at level ' + L +
-          (p.typeFilter !== "all" ? " for " + escapeHtml(typeLabel) : "") + ". Here are the closest ones.</p>";
+          (p.typeFilter !== "all" ? " for " + escapeHtml(typeLabel) : "") +
+          (p.hideDungeons ? " (dungeon farms hidden)" : "") + ". Here are the closest ones.</p>";
         var near = closest(TOP_N);
         if (near.length) {
           html += '<ol class="gf-list">';

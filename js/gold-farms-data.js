@@ -39,6 +39,17 @@
  *   and fishing (29-30 Oct 2026).
  * - Wowhead Forever profession-pairing guide (gathering at launch).
  *
+ * Instance flags (`instance` / `instanceName`) are from NorgannonDB 1.9
+ * (2026-11-19, Forever / QuestieDB-based, GPL-3.0): each listed farm creature's
+ * spawn area (and zone) was checked against NorgannonDB maps.instanceToArea
+ * (instance map IDs, not continent maps 0/1/530) and the dungeons/instances
+ * catalogs. A farm is mixed if some of its creatures spawn inside an instance
+ * and others in the open world. Open-world farms with no creature ids were
+ * classified from their listed zone names in the same zone table. Creature
+ * names mentioned in a farm's location text were looked up only when no id
+ * was stored. "Firetail Stinger" was not in NorgannonDB; that farm is open
+ * world because its listed zone, Silithus, is not an instance map.
+ *
  * Left out of the list:
  * - The Blackmaw Hold devotee farm, which a mid-November hotfix stripped
  *   of loot. It is not a legitimate live spot.
@@ -66,6 +77,7 @@ window.GOLD_FARMS = [
     professions: ["Skinning"],
     bonusProfs: [],
     type: "gathering",
+    instance: null,
     loot: [
       { id: 249427, name: "Pristine Leather" },
       { id: 2318, name: "Light Leather" },
@@ -94,6 +106,7 @@ window.GOLD_FARMS = [
     professions: ["Herbalism"],
     bonusProfs: [],
     type: "gathering",
+    instance: null,
     loot: [
       { id: 2447, name: "Peacebloom" },
       { id: 765, name: "Silverleaf" },
@@ -126,6 +139,7 @@ window.GOLD_FARMS = [
     professions: ["Mining"],
     bonusProfs: ["Herbalism"],
     type: "gathering",
+    instance: null,
     loot: [
       { id: 2770, name: "Copper Ore" },
       { id: 2771, name: "Tin Ore" },
@@ -157,6 +171,7 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: ["Tailoring", "First Aid"],
     type: "cloth",
+    instance: null,
     loot: [
       { id: 2589, name: "Linen Cloth", chance: 0.77, qty: 1, chanceNote: "about 0.77 Linen per kill in Classic data for level 10–15 humanoids", yieldPerKill: true, kind: "drop", vendor: 13 },
       { id: 4537, name: "Tel'Abim Banana", chance: 0.034162, qty: 1, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever. Averaged over 6 of 11 listed mob types that have a published percentage for this item.", kind: "drop", vendor: 6 },
@@ -207,6 +222,7 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: ["Tailoring", "First Aid"],
     type: "cloth",
+    instance: null,
     loot: [
       { id: 2589, name: "Linen Cloth", chance: 0.87, qty: 1, chanceNote: "ByteTavern: 0.87 Linen per kill at this camp in Classic data", yieldPerKill: true, kind: "drop", vendor: 13 },
       { id: 2287, name: "Haunch of Meat", chance: 0.050163, qty: 1, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever.", kind: "drop", vendor: 6 },
@@ -260,6 +276,7 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: ["Tailoring", "First Aid"],
     type: "cloth",
+    instance: null,
     loot: [
       { id: 2592, name: "Wool Cloth", chance: 0.243584, qty: 1.5, qtyMin: 1, qtyMax: 2, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever.", kind: "drop", vendor: 33 },
       { id: 2589, name: "Linen Cloth", chance: 0.125818, qty: 2, qtyMin: 1, qtyMax: 3, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever.", kind: "drop", vendor: 13 },
@@ -314,6 +331,7 @@ window.GOLD_FARMS = [
     professions: ["Skinning"],
     bonusProfs: [],
     type: "gathering",
+    instance: null,
     loot: [
       { id: 2319, name: "Medium Leather", chance: 0.536716, qty: 1, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever.", kind: "skin", vendor: 50 },
       { id: 4234, name: "Heavy Leather", chance: 0.029135, qty: 1, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever. Averaged over 1 of 4 listed mob types that have a published percentage for this item.", kind: "skin", vendor: 150 },
@@ -362,6 +380,7 @@ window.GOLD_FARMS = [
     professions: ["Fishing"],
     bonusProfs: ["Cooking"],
     type: "gathering",
+    instance: null,
     loot: [
       
     ],
@@ -388,6 +407,7 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: [],
     type: "craft",
+    instance: null,
     loot: [
       { id: 2589, name: "Linen Cloth" },
       { id: 2318, name: "Light Leather" },
@@ -419,6 +439,7 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: [],
     type: "mob",
+    instance: null,
     loot: [
       { id: 4479, name: "Burning Charm", chance: 0.34, qty: 1, chanceNote: "Rate kept from this camp’s existing Forever or Classic guide source.", kind: "quest" },
       { id: 7068, name: "Elemental Fire", chance: 0.11, qty: 1, chanceNote: "Rate kept from this camp’s existing Forever or Classic guide source.", kind: "drop", vendor: 400 },
@@ -463,6 +484,7 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: [],
     type: "mob",
+    instance: null,
     loot: [
       { id: 4480, name: "Thundering Charm", chance: 0.39, qty: 1, chanceNote: "Rate kept from this camp’s existing Forever or Classic guide source.", kind: "quest" },
       { id: 7069, name: "Elemental Air", chance: 0.13, qty: 1, chanceNote: "Rate kept from this camp’s existing Forever or Classic guide source.", kind: "drop", vendor: 400 }
@@ -504,6 +526,7 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: [],
     type: "mob",
+    instance: null,
     loot: [
       { id: 4481, name: "Cresting Charm", chance: 0.32, qty: 1, chanceNote: "Rate kept from this camp’s existing Forever or Classic guide source.", kind: "quest" },
       { id: 7070, name: "Elemental Water", chance: 0.1, qty: 1, chanceNote: "Rate kept from this camp’s existing Forever or Classic guide source.", kind: "drop", vendor: 400 },
@@ -545,6 +568,7 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: ["Skinning"],
     type: "mob",
+    instance: null,
     loot: [
       { id: 12207, name: "Giant Egg", chance: 0.5, qty: 1, chanceNote: "Rate kept from this camp’s existing Forever or Classic guide source.", kind: "drop", vendor: 150 },
       { id: 4599, name: "Cured Ham Steak", chance: 0.07, qty: 1, chanceNote: "Rate kept from this camp’s existing Forever or Classic guide source.", kind: "drop", vendor: 100 },
@@ -598,6 +622,7 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: ["Skinning"],
     type: "mob",
+    instance: null,
     loot: [
       { id: 12207, name: "Giant Egg", chance: 0.33, qty: 1, chanceNote: "Rate kept from this camp’s existing Forever or Classic guide source.", kind: "drop", vendor: 150 },
       { id: 3404, name: "Buzzard Wing", chance: 0.38, qty: 1, chanceNote: "Rate kept from this camp’s existing Forever or Classic guide source.", kind: "drop", vendor: 181 },
@@ -648,6 +673,7 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: [],
     type: "mob",
+    instance: null,
     loot: [
       { id: 7067, name: "Elemental Earth", chance: 0.1, qty: 1, chanceNote: "Rate kept from this camp’s existing Forever or Classic guide source.", kind: "drop", vendor: 400 },
       { id: 4784, name: "Lifeless Stone", chance: 0.564568, qty: 1, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever.", kind: "drop", vendor: 360 },
@@ -696,6 +722,7 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: ["Skinning"],
     type: "mob",
+    instance: null,
     loot: [
       { id: 3712, name: "Turtle Meat", chance: 0.39, qty: 1, chanceNote: "Rate kept from this camp’s existing Forever or Classic guide source.", kind: "drop", vendor: 87 },
       { id: 7973, name: "Big-mouth Clam", chance: 0.32, qty: 1, chanceNote: "Rate kept from this camp’s existing Forever or Classic guide source.", kind: "drop", vendor: 46 },
@@ -743,6 +770,7 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: ["Skinning"],
     type: "mob",
+    instance: null,
     loot: [
       { id: 3712, name: "Turtle Meat", chance: 0.41, qty: 1, chanceNote: "Rate kept from this camp’s existing Forever or Classic guide source.", kind: "drop", vendor: 87 },
       { id: 7973, name: "Big-mouth Clam", chance: 0.33, qty: 1, chanceNote: "Rate kept from this camp’s existing Forever or Classic guide source.", kind: "drop", vendor: 46 },
@@ -790,6 +818,7 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: ["Skinning"],
     type: "mob",
+    instance: null,
     loot: [
       { id: 12208, name: "Tender Wolf Meat", chance: 0.37, qty: 1, chanceNote: "Rate kept from this camp’s existing Forever or Classic guide source.", kind: "drop", vendor: 150 },
       { id: 12203, name: "Red Wolf Meat", chance: 0.46, qty: 1, chanceNote: "Rate kept from this camp’s existing Forever or Classic guide source.", kind: "drop", vendor: 87 },
@@ -838,6 +867,7 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: ["Tailoring"],
     type: "cloth",
+    instance: null,
     loot: [
       { id: 4338, name: "Mageweave Cloth", chance: 0.73, qty: 1, yieldPerKill: true, chanceNote: "Rate kept from this camp’s existing Forever or Classic guide source.", kind: "drop", vendor: 250 },
       { id: 3928, name: "Superior Healing Potion", chance: 0.03, qty: 1, chanceNote: "Rate kept from this camp’s existing Forever or Classic guide source.", kind: "drop", vendor: 250 },
@@ -883,6 +913,7 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: ["Tailoring"],
     type: "cloth",
+    instance: null,
     loot: [
       { id: 4338, name: "Mageweave Cloth", chance: 0.55, qty: 1, yieldPerKill: true, chanceNote: "Rate kept from this camp’s existing Forever or Classic guide source.", kind: "drop", vendor: 250 },
       { id: 3928, name: "Superior Healing Potion", chance: 0.03, qty: 1, chanceNote: "Rate kept from this camp’s existing Forever or Classic guide source.", kind: "drop", vendor: 250 },
@@ -928,6 +959,7 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: ["Skinning"],
     type: "mob",
+    instance: null,
     loot: [
       { id: 3712, name: "Turtle Meat", chance: 0.32, qty: 1, chanceNote: "Rate kept from this camp’s existing Forever or Classic guide source.", kind: "drop", vendor: 87 },
       { id: 2319, name: "Medium Leather", chance: 0.557818, qty: 1, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever.", kind: "skin", vendor: 50 },
@@ -973,6 +1005,7 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: [],
     type: "mob",
+    instance: null,
     loot: [{ id: 7069, name: "Elemental Air", chance: 0.13, qty: 1, chanceNote: "Rate kept from this camp’s existing Forever or Classic guide source." }],
 
     sourced: {
@@ -1000,6 +1033,7 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: ["Skinning", "Mining", "Herbalism"],
     type: "gathering",
+    instance: null,
     loot: [
       { id: 4304, name: "Thick Leather" },
       { id: 4338, name: "Mageweave Cloth" },
@@ -1034,6 +1068,7 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: ["Herbalism", "Mining"],
     type: "gathering",
+    instance: null,
     loot: [
       { id: 8838, name: "Sungrass" },
       { id: 4625, name: "Firebloom" },
@@ -1070,6 +1105,8 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: ["Tailoring"],
     type: "instance",
+    instance: "dungeon",
+    instanceName: "Scarlet Monastery",
     loot: [
       { id: 4306, name: "Silk Cloth", chance: 0.244818, qty: 2.5282, qtyMin: 1, qtyMax: 4, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever. Averaged over 9 of 13 listed mob types that have a published percentage for this item.", kind: "drop", vendor: 150 },
       { id: 1707, name: "Stormwind Brie", chance: 0.047692, qty: 1.0871, qtyMin: 1, qtyMax: 3, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever. Averaged over 12 of 13 listed mob types that have a published percentage for this item.", kind: "drop", vendor: 62 },
@@ -1115,6 +1152,7 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: ["Skinning"],
     type: "mob",
+    instance: null,
     loot: [
       { id: 14227, name: "Ironweb Spider Silk", chance: 0.119, qty: 1, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever.", kind: "drop", vendor: 2500 },
       { id: 4337, name: "Thick Spider's Silk", chance: 0.24, qty: 1, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever.", kind: "drop", vendor: 750 },
@@ -1158,6 +1196,7 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: ["Skinning"],
     type: "mob",
+    instance: null,
     loot: [
       { id: 10450, name: "Undamaged Hippogryph Feather", chance: 0.3, qty: 1, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever.", kind: "drop", vendor: 396 },
       { id: 4304, name: "Thick Leather", chance: 0.605639, qty: 1, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever.", kind: "skin", vendor: 300 },
@@ -1214,6 +1253,7 @@ window.GOLD_FARMS = [
     professions: ["Skinning"],
     bonusProfs: [],
     type: "gathering",
+    instance: null,
     loot: [
       { id: 8170, name: "Rugged Leather", chance: 0.196937, qty: 1, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever.", kind: "skin", vendor: 500 },
       { id: 11018, name: "Un'Goro Soil", chance: 0.315855, qty: 1, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever.", kind: "drop", vendor: 146 },
@@ -1259,6 +1299,7 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: ["Skinning"],
     type: "mob",
+    instance: null,
     loot: [
       { id: 14227, name: "Ironweb Spider Silk", chance: 0.068, qty: 1, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever.", kind: "drop", vendor: 2500 },
       { id: 4337, name: "Thick Spider's Silk", chance: 0.232, qty: 1, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever.", kind: "drop", vendor: 750 },
@@ -1304,6 +1345,7 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: ["Skinning"],
     type: "mob",
+    instance: null,
     loot: [
       { id: 8170, name: "Rugged Leather", chance: 0.211, qty: 1, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever.", kind: "skin", vendor: 500 },
       { id: 4304, name: "Thick Leather", chance: 0.757, qty: 1, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever.", kind: "skin", vendor: 300 },
@@ -1350,6 +1392,8 @@ window.GOLD_FARMS = [
     skillRequired: 250,
     bonusProfs: [],
     type: "gathering",
+    instance: null,
+    eliteOpenWorld: true,
     loot: [
       { id: 15417, name: "Devilsaur Leather", chance: 1, qty: 1, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever.", kind: "skin", vendor: 500 },
       { id: 8170, name: "Rugged Leather" },
@@ -1394,6 +1438,7 @@ window.GOLD_FARMS = [
     professions: ["Skinning"],
     bonusProfs: [],
     type: "gathering",
+    instance: null,
     loot: [
       { id: 15408, name: "Heavy Scorpid Scale", chance: 0.75, qty: 1, kind: "skin", chanceNote: "Conquest Capped, PvP-realm AH, 15 Nov 2026: 75% Heavy Scorpid Scale. Firetail Stinger has no matching 1.12 NPC id (Stonelash Scorpids are a different mob)." },
       { id: 19933, name: "Glowing Scorpid Blood", chance: 0.07, qty: 1, kind: "drop", chanceNote: "Conquest Capped, 15 Nov 2026: 7% Glowing Scorpid Blood. No matching 1.12 Firetail Stinger NPC." }
@@ -1422,6 +1467,7 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: ["Enchanting"],
     type: "mob",
+    instance: null,
     loot: [
       { id: 7082, name: "Essence of Air", chance: 0.04, qty: 1, chanceNote: "Rate kept from this camp’s existing Forever or Classic guide source.", kind: "drop", vendor: 400 },
       { id: 7069, name: "Elemental Air", chance: 0.104, qty: 1, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever.", kind: "drop", vendor: 400 },
@@ -1462,6 +1508,7 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: ["Skinning", "Cooking"],
     type: "mob",
+    instance: null,
     loot: [
       { id: 20424, name: "Sandworm Meat", chance: 0.389, qty: 1, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever.", kind: "drop", vendor: 175 },
       { id: 3676, name: "Slimy Ichor", chance: 0.534, qty: 1, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever.", kind: "drop", vendor: 106 },
@@ -1500,6 +1547,7 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: ["Enchanting", "Alchemy"],
     type: "mob",
+    instance: null,
     loot: [
       { id: 7078, name: "Essence of Fire", chance: 0.05, qty: 1, chanceNote: "Rate kept from this camp’s existing Forever or Classic guide source.", kind: "drop", vendor: 400 },
       { id: 7077, name: "Heart of Fire", chance: 0.068, qty: 1, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever.", kind: "drop", vendor: 400 },
@@ -1544,6 +1592,7 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: ["Enchanting"],
     type: "mob",
+    instance: null,
     loot: [
       { id: 7076, name: "Essence of Earth", chance: 0.033, qty: 1, chanceNote: "Rate kept from this camp’s existing Forever or Classic guide source.", kind: "drop", vendor: 400 },
       { id: 7067, name: "Elemental Earth", chance: 0.049129, qty: 1, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever.", kind: "drop", vendor: 400 },
@@ -1587,6 +1636,7 @@ window.GOLD_FARMS = [
     professions: ["Skinning"],
     bonusProfs: [],
     type: "gathering",
+    instance: null,
     loot: [
       { id: 15422, name: "Frostsaber Leather", chance: 0.352567, qty: 1, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever.", kind: "skin", vendor: 500 },
       { id: 8170, name: "Rugged Leather", chance: 0.500683, qty: 1, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever.", kind: "skin", vendor: 500 },
@@ -1636,6 +1686,7 @@ window.GOLD_FARMS = [
     professions: ["Skinning"],
     bonusProfs: [],
     type: "gathering",
+    instance: null,
     loot: [
       { id: 15419, name: "Warbear Leather", chance: 0.150855, qty: 1, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever.", kind: "skin", vendor: 600 },
       { id: 8170, name: "Rugged Leather", chance: 0.581685, qty: 1, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever.", kind: "skin", vendor: 500 },
@@ -1687,6 +1738,7 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: ["Tailoring"],
     type: "cloth",
+    instance: null,
     loot: [
       { id: 14047, name: "Runecloth", chance: 0.350435, qty: 2, qtyMin: 1, qtyMax: 3, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever.", kind: "drop", vendor: 400 },
       { id: 8952, name: "Roasted Quail", chance: 0.046478, qty: 1, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever.", kind: "drop", vendor: 200 },
@@ -1729,6 +1781,7 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: ["Tailoring", "Enchanting"],
     type: "cloth",
+    instance: null,
     loot: [
       { id: 14256, name: "Felcloth", chance: 0.1, qty: 1, chanceNote: "Rate kept from this camp’s existing Forever or Classic guide source.", kind: "drop", vendor: 2000 },
       { id: 14047, name: "Runecloth", chance: 0.248, qty: 1.5, qtyMin: 1, qtyMax: 2, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever.", kind: "drop", vendor: 400 },
@@ -1773,6 +1826,7 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: ["Enchanting"],
     type: "mob",
+    instance: null,
     loot: [
       { id: 7080, name: "Essence of Water", chance: 0.027, qty: 1, chanceNote: "Rate kept from this camp’s existing Forever or Classic guide source.", kind: "drop", vendor: 400 },
       { id: 7079, name: "Globe of Water", chance: 0.079, qty: 1, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever.", kind: "drop", vendor: 400 },
@@ -1812,6 +1866,7 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: ["Herbalism", "Mining"],
     type: "gathering",
+    instance: null,
     loot: [
       { id: 10620, name: "Thorium Ore" },
       { id: 12363, name: "Arcane Crystal" },
@@ -1848,6 +1903,7 @@ window.GOLD_FARMS = [
     professions: ["Alchemy"],
     bonusProfs: [],
     type: "craft",
+    instance: null,
     loot: [
       { id: 12360, name: "Arcanite Bar" },
       { id: 12359, name: "Thorium Bar" },
@@ -1879,6 +1935,7 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: [],
     type: "craft",
+    instance: null,
     loot: [
       { id: 14047, name: "Runecloth" },
       { id: 4338, name: "Mageweave Cloth" },
@@ -1910,6 +1967,8 @@ window.GOLD_FARMS = [
     professions: [],
     bonusProfs: ["Tailoring"],
     type: "instance",
+    instance: "dungeon",
+    instanceName: "Maraudon",
     loot: [
       { id: 4306, name: "Silk Cloth", chance: 0.082857, qty: 2.5, qtyMin: 1, qtyMax: 4, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever. Averaged over 4 of 7 listed mob types that have a published percentage for this item.", kind: "drop", vendor: 150 },
       { id: 4338, name: "Mageweave Cloth", chance: 0.143571, qty: 2.5, qtyMin: 1, qtyMax: 4, chanceNote: "Classic 1.12 world data (ZugZugDB, seeded from VMaNGOS). Not yet confirmed in Forever. Averaged over 5 of 7 listed mob types that have a published percentage for this item.", kind: "drop", vendor: 250 },

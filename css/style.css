@@ -1255,3 +1255,24 @@ table.data tfoot th { text-align: left; }
 .pg-caught-up { margin: 0 0 10px; }
 .pg-hint { margin: 8px 0 0; }
 .prof-select-yours { font-weight: 600; }
+
+.gf-hide-dungeons {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.gf-dungeon-tag {
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.gf-elite-tag {
+  margin-left: 6px;
+  vertical-align: middle;
+  color: var(--ink-dim);
+}
+.gf-filter-note { color: var(--muted); }
+.gf-row-title .kind-tag { font-weight: 500; }
+@media (max-width: 430px) {
+  .gf-hide-dungeons { white-space: normal; }
+}
