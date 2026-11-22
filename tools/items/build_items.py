@@ -964,6 +964,14 @@ window.WOW_ITEMS = window.WOW_ITEMS || [];
     def sz(p: Path):
         return p.stat().st_size if p.exists() else 0
     total = sum(sz(p) for p in OUT.glob("*.js")) + sz(ROOT / "js" / "items.js")
+    try:
+        from build_suffixes import collect_suffix_data, write_suffix_files, find_src as find_suffix_src
+        sdata = collect_suffix_data(find_suffix_src())
+        sstats = write_suffix_files(ROOT, sdata)
+        print("  suffixes", sstats["itemsWithSuffixes"], "items", sstats["suffixTypes"], "types")
+    except SystemExit as e:
+        print("  suffixes skipped:", e)
+
     print("wrote", OUT)
     print("  index", sz(OUT / "index.js"), "gear", sz(OUT / "gear.js"), "chunks", n_chunks,
           "chunk0", sz(OUT / "d0.js") if n_chunks else 0, "total", total)

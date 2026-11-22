@@ -1,6 +1,6 @@
 /* Self-hosted Classic-style item tooltip. Does not load Wowhead power.js. */
 (function () {
-  var VERSION = "20261122f";
+  var VERSION = "20261122g";
   var ICON = "https://render.worldofwarcraft.com/forever-us/icons/56/{icon}.jpg";
   var HOVER_DELAY = 80;
   var HOLD_MS = 420;
@@ -176,7 +176,10 @@
     if (!item) return '<div class="item-tt-name q-common">Unknown item</div>';
     var lines = [];
     var quality = item.quality || "common";
-    lines.push('<div class="item-tt-name ' + qClass(quality) + '">' + esc(item.name || "Item") + "</div>");
+    var suffixId = opts.suffixId != null && opts.suffixId !== "" ? opts.suffixId : item.suffixId;
+    var suffix = (window.ItemSuffixes && suffixId != null && suffixId !== "") ? ItemSuffixes.prop(suffixId) : null;
+    var shownName = (window.ItemSuffixes) ? ItemSuffixes.displayName(item, suffixId) : (item.name || "Item");
+    lines.push('<div class="item-tt-name ' + qClass(quality) + '">' + esc(shownName || "Item") + "</div>");
 
     if (item._partial && !item._failed) {
       lines.push('<div class="item-tt-loading">Loading…</div>');
@@ -226,6 +229,17 @@
     Object.keys(STAT_RESIST).forEach(function (k) {
       if (stats[k]) lines.push('<div class="item-tt-stat">+' + stats[k] + " " + STAT_RESIST[k] + "</div>");
     });
+    if (suffix && suffix.s) {
+      Object.keys(STAT_WHITE).forEach(function (k) {
+        if (suffix.s[k]) lines.push('<div class="item-tt-effect">+' + suffix.s[k] + " " + STAT_WHITE[k] + "</div>");
+      });
+      Object.keys(STAT_RESIST).forEach(function (k) {
+        if (suffix.s[k]) lines.push('<div class="item-tt-effect">+' + suffix.s[k] + " " + STAT_RESIST[k] + "</div>");
+      });
+    } else if (item.suffixGroup && window.ItemSuffixes) {
+      var nOpt = ItemSuffixes.count(item);
+      if (nOpt) lines.push('<div class="item-tt-line tt-beige">Random enchant: ' + nOpt + " options</div>");
+    }
 
     if (item.durability || item.maxDurability) {
       var maxD = item.maxDurability || item.durability;
@@ -250,6 +264,16 @@
     (item.effects || []).forEach(function (e) {
       lines.push('<div class="item-tt-effect">' + esc(e) + "</div>");
     });
+    if (suffix && suffix.s) {
+      Object.keys(STAT_GREEN).forEach(function (k) {
+        if (suffix.s[k]) lines.push('<div class="item-tt-effect">Equip: +' + suffix.s[k] + " " + STAT_GREEN[k] + ".</div>");
+      });
+    }
+    if (suffix && suffix.e && suffix.e.length) {
+      suffix.e.forEach(function (e) {
+        lines.push('<div class="item-tt-effect">' + esc(e) + "</div>");
+      });
+    }
 
     if (item.setName) {
       lines.push('<div class="item-tt-set">' + esc(item.setName) + "</div>");
@@ -382,14 +406,14 @@
     hideTimer = setTimeout(hideNow, HIDE_DELAY);
   }
 
-  function openTip(id, slot, x, y) {
+  function openTip(id, slot, x, y, suffixId) {
     if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
     ensureEls();
     var gen = ++reqGen;
-    current = { id: id, slot: slot, x: x, y: y };
+    current = { id: id, slot: slot, x: x, y: y, suffixId: suffixId };
     var seed = indexItem(id) || { id: id, name: "Item " + id, quality: "common", _partial: true };
     cache[String(id)] = cache[String(id)] || seed;
-    renderTooltip(tip, seed, { slot: slot });
+    renderTooltip(tip, seed, { slot: slot, suffixId: suffixId });
     tip.hidden = false;
     place(x, y);
     showCompareIfNeeded(seed, slot, x, y);
@@ -397,13 +421,13 @@
       if (gen !== reqGen) return;
       var item = d || seed;
       if (!d) { seed._failed = true; item = seed; }
-      renderTooltip(tip, item, { slot: slot });
+      renderTooltip(tip, item, { slot: slot, suffixId: suffixId });
       place(current ? current.x : x, current ? current.y : y);
       showCompareIfNeeded(item, slot, current ? current.x : x, current ? current.y : y);
     }).catch(function () {
       if (gen !== reqGen) return;
       seed._failed = true;
-      renderTooltip(tip, seed, { slot: slot });
+      renderTooltip(tip, seed, { slot: slot, suffixId: suffixId });
     });
   }
 
@@ -420,7 +444,19 @@
       slot = el.getAttribute("data-equip-slot");
     }
     if (!id) return null;
-    return { el: el, id: id, slot: slot };
+    var suffixId = el.getAttribute("data-suffix-id");
+    var row = (el.classList && el.classList.contains("upgrade-row")) ? el : (el.closest && el.closest(".upgrade-row"));
+    if (!suffixId && row) {
+      var sel = row.querySelector(".suffix-select");
+      var link = row.querySelector("a[data-suffix-id]");
+      if (sel && sel.value) suffixId = sel.value;
+      else if (link) suffixId = link.getAttribute("data-suffix-id");
+    }
+    if ((suffixId == null || suffixId === "") && el.hasAttribute("data-equip-slot")) {
+      var worn = equippedIn(el.getAttribute("data-equip-slot"));
+      if (worn && worn.suffixId != null) suffixId = worn.suffixId;
+    }
+    return { el: el, id: id, slot: slot, suffixId: suffixId };
   }
 
   function stillInside(e, el) {
@@ -434,11 +470,11 @@
     if (!hook) return;
     lastPointer = { x: e.clientX, y: e.clientY, type: e.pointerType || "mouse" };
     if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
-    if (current && String(current.id) === String(hook.id) && current.slot === hook.slot) return;
+    if (current && String(current.id) === String(hook.id) && current.slot === hook.slot && String(current.suffixId || "") === String(hook.suffixId || "")) return;
     if (showTimer) clearTimeout(showTimer);
     showTimer = setTimeout(function () {
       showTimer = null;
-      openTip(hook.id, hook.slot, lastPointer.x, lastPointer.y);
+      openTip(hook.id, hook.slot, lastPointer.x, lastPointer.y, hook.suffixId);
     }, HOVER_DELAY);
   }
 
@@ -473,7 +509,7 @@
     holdTimer = setTimeout(function () {
       holdTimer = null;
       suppressClick = true;
-      openTip(hook.id, hook.slot, e.clientX, e.clientY);
+      openTip(hook.id, hook.slot, e.clientX, e.clientY, hook.suffixId);
     }, HOLD_MS);
   }
 
@@ -524,7 +560,7 @@
 
   window.ItemTooltip = {
     version: VERSION,
-    show: function (id, x, y, slot) { openTip(id, slot, x || lastPointer.x, y || lastPointer.y); },
+    show: function (id, x, y, slot, suffixId) { openTip(id, slot, x || lastPointer.x, y || lastPointer.y, suffixId); },
     hide: hideNow,
     detailOf: detailOf
   };

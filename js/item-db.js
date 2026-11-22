@@ -1,6 +1,6 @@
 /* Item search, detail cards, and lazy loading for data/items/*.js */
 (function () {
-  var VERSION = "20261122f";
+  var VERSION = "20261122g";
   var ICON = "https://render.worldofwarcraft.com/forever-us/icons/56/{icon}.jpg";
   var loaded = false;
   var loading = null;
@@ -10,6 +10,7 @@
   var filter = "all";
   var selected = null;
   var searchTimer = null;
+  var gearById = {};
 
   function $(sel, root) { return (root || document).querySelector(sel); }
   function esc(s) {
@@ -34,12 +35,15 @@
     loading = Promise.all([
       loadScript(cacheUrl("data/items/meta.js")),
       loadScript(cacheUrl("data/items/index.js")),
-      loadScript(cacheUrl("data/items/gear.js"))
+      loadScript(cacheUrl("data/items/gear.js")),
+      window.ItemSuffixes ? ItemSuffixes.ensure() : Promise.resolve()
     ]).then(function () {
       index = window.ITEM_INDEX || [];
       byId = {};
       index.forEach(function (it) { byId[it.id] = it; });
       window.WOW_ITEMS = window.ITEM_GEAR || [];
+      gearById = {};
+      (window.ITEM_GEAR || []).forEach(function (it) { gearById[it.id] = it; });
       loaded = true;
       loading = null;
     }).catch(function (err) {
@@ -68,7 +72,14 @@
       var g = gear.find(function (it) { return String(it.id) === String(id); });
       return Promise.resolve(g || null);
     }
-    return loadChunk(idx.k).then(function (ch) { return (ch && ch[id]) || (ch && ch[String(id)]) || null; });
+    return loadChunk(idx.k).then(function (ch) {
+      var item = (ch && ch[id]) || (ch && ch[String(id)]) || null;
+      if (item && item.suffixGroup == null) {
+        var g = gearById[id] || gearById[Number(id)];
+        if (g && g.suffixGroup != null) item.suffixGroup = g.suffixGroup;
+      }
+      return item;
+    });
   }
 
   function qClass(q) { return "q-" + (q || "common"); }
@@ -137,7 +148,11 @@
     for (var i = 0; i < index.length; i++) {
       var it = index[i];
       if (cat && cat !== "all" && it.cat !== cat) continue;
-      if (q && it.n.toLowerCase().indexOf(q) === -1 && String(it.id) !== q) continue;
+      if (q && it.n.toLowerCase().indexOf(q) === -1 && String(it.id) !== q) {
+        if (!window.ItemSuffixes) continue;
+        var g = gearById[it.id];
+        if (!g || !ItemSuffixes.itemMatchesSearch({ id: it.id, name: it.n, suffixGroup: g.suffixGroup }, q)) continue;
+      }
       out.push(it);
       if (out.length >= limit) break;
     }
@@ -209,6 +224,18 @@
     return '<a href="#item-' + id + '" data-item-id="' + id + '" class="item-name ' + qClass(quality || "common") + '">' + esc(name || ("Item " + id)) + "</a>";
   }
 
+  function suffixDetailHtml(item) {
+    if (!item || !window.ItemSuffixes) return "";
+    var list = ItemSuffixes.rolls(ItemSuffixes.groupOf(item));
+    if (!list.length) return "";
+    var rows = list.map(function (r) {
+      var ch = (r.chance != null) ? " · " + r.chance + "%" : "";
+      return "<li>" + esc(ItemSuffixes.formatRoll(r)) + ch + "</li>";
+    }).join("");
+    return '<details class="suffix-details"><summary>Random enchant: ' + list.length +
+      " options</summary><ul class=\"suffix-list\">" + rows + "</ul></details>";
+  }
+
   function renderDetail(item) {
     var box = $("#itemDetail");
     if (!box) return;
@@ -278,6 +305,9 @@
       if (ts) ahHtml += '<p class="muted">US Normal Horde snapshot ' + formatTs(ts) + ".</p>";
     }
     if (item.sell) ahHtml += "<p>Vendor sell: " + money(item.sell) + "</p>";
+    if (p && item.suffixGroup) {
+      ahHtml += '<p class="muted suffix-price-note">AH price is for the base item (all suffixes).</p>';
+    }
 
     var useRows = [];
     (item.recipes || []).forEach(function (r) {
@@ -342,6 +372,7 @@
       "<div>" + srcNote + upgrade + "</div>" +
       '<div class="muted">' + esc(metaBits.join(" · ")) + "</div></div></div>" +
       (stats.length ? '<p class="idb-stats">' + esc(stats.join(" · ")) + "</p>" : "") +
+      suffixDetailHtml(item) +
       statNote +
       ahHtml +
       listBlock("Uses", useRows) +

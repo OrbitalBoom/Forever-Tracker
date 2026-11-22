@@ -822,23 +822,52 @@
     if (IW && id) return IW.weightsFor(viewClass(), selectedBuild(id));
     return characterWeights();
   }
-  function hasStatData(item) {
+  function suffixStatsOf(item, suffixId) {
+    if (!window.ItemSuffixes) return null;
+    var id = suffixId != null ? suffixId : (item && item.suffixId);
+    if (id == null || id === "") return null;
+    return ItemSuffixes.stats(id);
+  }
+  function itemDisplayName(item, suffixId) {
+    if (window.ItemSuffixes) return ItemSuffixes.displayName(item, suffixId != null ? suffixId : (item && item.suffixId));
+    return (item && item.name) || "";
+  }
+  function hasStatData(item, suffixId) {
     var s = (item && item.stats) || {};
     var k;
     for (k in s) {
       if (Object.prototype.hasOwnProperty.call(s, k) && typeof s[k] === "number" && s[k]) return true;
     }
+    var extra = suffixStatsOf(item, suffixId);
+    if (extra) {
+      for (k in extra) {
+        if (Object.prototype.hasOwnProperty.call(extra, k) && extra[k]) return true;
+      }
+    }
+    if (item && item.suffixGroup && window.ItemSuffixes) {
+      var rolls = ItemSuffixes.rolls(ItemSuffixes.groupOf(item));
+      var i;
+      for (i = 0; i < rolls.length; i++) {
+        s = rolls[i].stats || {};
+        for (k in s) {
+          if (Object.prototype.hasOwnProperty.call(s, k) && s[k]) return true;
+        }
+      }
+    }
     return !!(item && item.weapon && item.weapon.dps);
   }
-  function itemScore(item, weights) {
+  function itemScore(item, weights, extraStats) {
     var w = weights || (selectedSlot ? weightsFor(selectedSlot) : characterWeights());
     var s = item.stats || {};
+    if (window.ItemSuffixes) s = ItemSuffixes.mergeStats(s, extraStats || suffixStatsOf(item));
+    else if (extraStats) s = Object.assign({}, s, extraStats);
     var score = 0;
     Object.keys(s).forEach(function (k) {
       if (typeof s[k] === "number" && w[k]) score += s[k] * w[k];
     });
     if (item.weapon && item.weapon.dps && w.dps) score += item.weapon.dps * w.dps;
-    if (hasStatData(item) && item.itemLevel && w.ilvl) score += item.itemLevel * w.ilvl;
+    var known = extraStats ? Object.keys(extraStats || {}).length > 0 || hasStatData(item) : hasStatData(item);
+    if (known && item.itemLevel && w.ilvl) score += item.itemLevel * w.ilvl;
     return score;
   }
 
@@ -911,8 +940,10 @@
     return null;
   }
 
-  function formatStats(item) {
+  function formatStats(item, extraStats) {
     var s = item.stats || {};
+    if (window.ItemSuffixes) s = ItemSuffixes.mergeStats(s, extraStats || suffixStatsOf(item));
+    else if (extraStats) s = Object.assign({}, s, extraStats);
     var parts = [];
     var labels = { str: "Str", agi: "Agi", sta: "Sta", int: "Int", spi: "Spi", ap: "AP", rap: "RAP", fap: "Feral AP",
       crit: "Crit%", hit: "Hit%", spellCrit: "Spell Crit%", spellHit: "Spell Hit%", sp: "Spell Dmg", healing: "Healing",
@@ -938,7 +969,7 @@
     var s = slotMeta(slotId);
     var it = state.equipment[slotId];
     var blocked = slotId === "offhand" && equippedTwoHand();
-    var name = blocked ? "Occupied by two-hand" : (it ? it.name : "Empty");
+    var name = blocked ? "Occupied by two-hand" : (it ? itemDisplayName(it) : "Empty");
     var q = it ? qualityClass(it.quality) : "";
     var cls = "slot-btn";
     if (!it && !blocked) cls += " empty";
@@ -1050,9 +1081,21 @@
       var windowPts = atLevel ? 0 : LEVEL_WINDOW;
       if (!passesSlotTypeFilter(item, slotId, f, view, windowPts)) return;
       if (!passesMinQuality(item, f)) return;
+      var best = null;
+      var score = 0;
       var known = hasStatData(item);
-      var score = known ? itemScore(item, weights) : 0;
-      var rec = { item: item, score: score, delta: score - curScore, atLevel: atLevel, req: req, unknown: !known };
+      if (window.ItemSuffixes && ItemSuffixes.count(item)) {
+        best = ItemSuffixes.bestFor(item, function (it, roll) { return itemScore(it, weights, roll.stats); });
+        if (best) {
+          score = best.score;
+          known = true;
+        } else if (known) {
+          score = itemScore(item, weights);
+        }
+      } else if (known) {
+        score = itemScore(item, weights);
+      }
+      var rec = { item: item, score: score, delta: score - curScore, atLevel: atLevel, req: req, unknown: !known, bestSuffix: best && best.roll };
       if (sort === "best") {
         if (!known) {
           if (atLevel) unknownAt.push(rec); else unknownSoon.push(rec);
@@ -1107,7 +1150,7 @@
   function upgradeReason(rec, slotId) {
     var it = rec.item;
     var parts = [];
-    var stats = formatStats(it);
+    var stats = formatStats(it, rec.bestSuffix && rec.bestSuffix.stats);
     if (stats) parts.push(stats);
     var cur = state.equipment[slotId];
     if (cur && cur.itemLevel && it.itemLevel && it.itemLevel !== cur.itemLevel) {
@@ -1136,6 +1179,32 @@
       '<p class="good-for-explain muted" hidden>' + escapeHtml(explain) + "</p>";
   }
 
+  function suffixSelectHtml(item, selectedId, bestId) {
+    if (!window.ItemSuffixes) return "";
+    var list = ItemSuffixes.rolls(ItemSuffixes.groupOf(item));
+    if (!list.length) return "";
+    var sel = selectedId != null && selectedId !== "" ? String(selectedId) : (bestId != null ? String(bestId) : String(list[0].id));
+    var opts = list.map(function (r) {
+      return '<option value="' + r.id + '"' + (String(r.id) === sel ? " selected" : "") + ">" +
+        escapeHtml(ItemSuffixes.formatRoll(r)) + "</option>";
+    }).join("");
+    return '<div class="suffix-row">' +
+      '<span class="suffix-count">Random enchant: ' + list.length + " options</span>" +
+      '<label class="suffix-label">Suffix<select class="suffix-select" data-item-suffix="' + escapeHtml(String(item.id)) + '">' + opts + "</select></label>" +
+      "</div>";
+  }
+  function suffixBestTag(rec) {
+    if (!rec || !rec.bestSuffix) return "";
+    return '<span class="best-suffix-tag" title="Scored using this suffix for the selected spec">best: ' +
+      escapeHtml(rec.bestSuffix.name) + "</span>";
+  }
+  function suffixAhNote(it) {
+    if (!it || !it.suffixGroup) return "";
+    var p = window.priceEntry ? window.priceEntry(it.id) : null;
+    if (!p) return "";
+    return '<div class="suffix-price-note muted">AH price is for the base item (all suffixes).</div>';
+  }
+
   function upgradeCard(rec, slotId) {
     var it = rec.item;
     var reason = rec.unknown ? "" : upgradeReason(rec, slotId);
@@ -1152,9 +1221,12 @@
     return '<div class="upgrade-row' + (rec.atLevel ? "" : " soon") + (rec.unknown ? " is-unknown" : "") + '" data-item-id="' + escapeHtml(String(it.id)) + '" data-compare-slot="' + escapeHtml(String(slotId)) + '">' +
       itemIconHtml(it) +
       '<div class="upgrade-row-main">' +
-      '<a href="#item-' + it.id + '" data-item-id="' + escapeHtml(String(it.id)) + '" class="item-name ' + qualityClass(it.quality) + '">' + escapeHtml(it.name) + "</a> " +
+      '<a href="#item-' + it.id + '" data-item-id="' + escapeHtml(String(it.id)) + '" class="item-name ' + qualityClass(it.quality) + '"' +
+      (rec.bestSuffix ? ' data-suffix-id="' + escapeHtml(String(rec.bestSuffix.id)) + '"' : "") + '>' +
+      escapeHtml(rec.bestSuffix ? itemDisplayName(it, rec.bestSuffix.id) : it.name) + "</a> " +
       (isClassicRef(it) ? '<span class="classic-ref-tag">Classic reference</span> ' : "") +
-            goodForHtml(rec, slotId) +
+      suffixBestTag(rec) + " " +
+      goodForHtml(rec, slotId) +
       '<div class="upgrade-row-meta">Req ' + rec.req +
       (it.type ? " · " + escapeHtml(it.type) : "") +
       (it.itemLevel ? " · ilvl " + it.itemLevel : "") + "</div>" +
@@ -1163,6 +1235,8 @@
       '<div class="upgrade-row-source">' + escapeHtml(it.source || "Unknown") +
       (it.custom ? " · custom" : "") + "</div>" +
       upgradeAhHtml(it) +
+      suffixAhNote(it) +
+      suffixSelectHtml(it, rec.bestSuffix && rec.bestSuffix.id, rec.bestSuffix && rec.bestSuffix.id) +
       "</div>" +
       '<div class="upgrade-row-actions">' + actions + "</div>" +
       "</div>";
@@ -1266,7 +1340,9 @@
     return '<div class="upgrade-row is-equipped" data-item-id="' + escapeHtml(String(it.id)) + '" data-compare-slot="' + escapeHtml(String(slotId)) + '">' +
       itemIconHtml(it) +
       '<div class="upgrade-row-main">' +
-      '<a href="#item-' + it.id + '" data-item-id="' + escapeHtml(String(it.id)) + '" class="item-name ' + qualityClass(it.quality) + '">' + escapeHtml(it.name) + "</a> " +
+      '<a href="#item-' + it.id + '" data-item-id="' + escapeHtml(String(it.id)) + '" class="item-name ' + qualityClass(it.quality) + '"' +
+      (it.suffixId != null ? ' data-suffix-id="' + escapeHtml(String(it.suffixId)) + '"' : "") + '>' +
+      escapeHtml(itemDisplayName(it)) + "</a> " +
       (isClassicRef(it) ? '<span class="classic-ref-tag">Classic reference</span> ' : "") +
       '<span class="wearing-tag">Equipped</span>' +
       '<div class="upgrade-row-meta">Req ' + (rec.req != null ? rec.req : "?") +
@@ -1277,6 +1353,8 @@
       '<div class="upgrade-row-source">' + escapeHtml(it.source || "Unknown") +
       (it.custom ? " · custom" : "") + "</div>" +
       upgradeAhHtml(it) +
+      suffixAhNote(it) +
+      suffixSelectHtml(it, it.suffixId, it.suffixId) +
       "</div>" +
       '<div class="upgrade-row-actions"><button type="button" class="btn btn-sm" data-slot-clear>Clear slot</button></div>' +
       "</div>";
@@ -1341,6 +1419,7 @@
     var c = ch();
     var hits = allItems().filter(function (it) {
       if (!itemFitsSlot(it, selectedSlot)) return false;
+      if (window.ItemSuffixes) return ItemSuffixes.itemMatchesSearch(it, q);
       return it.name.toLowerCase().indexOf(q) !== -1;
     }).sort(function (a, b) {
       var an = (a.name || "").toLowerCase();
@@ -1349,7 +1428,7 @@
       var bs = bn.indexOf(q) === 0 ? 0 : 1;
       if (as !== bs) return as - bs;
       return (a.name || "").localeCompare(b.name || "");
-    }).slice(0, 20);
+    }).slice(0, 50);
     if (!hits.length) {
       box.innerHTML = "<p class=\"muted\">No items in this slot match “" + escapeHtml((input.value || "").trim()) + "”.</p>";
       return;
@@ -1357,16 +1436,30 @@
     box.innerHTML = hits.map(function (it) {
       var req = effectiveReq(it);
       var warns = equipWarnings(it, c, selectedSlot);
+      var prefer = null;
+      if (window.ItemSuffixes) {
+        var want = ItemSuffixes.suffixIdsMatching(q);
+        var list = ItemSuffixes.rolls(ItemSuffixes.groupOf(it));
+        var wi;
+        for (wi = 0; wi < list.length; wi++) {
+          if (want.indexOf(list[wi].id) !== -1 || want.indexOf(String(list[wi].id)) !== -1) { prefer = list[wi]; break; }
+        }
+        if (!prefer && list.length) prefer = list[0];
+      }
       return '<div class="upgrade-row slot-search-hit" data-item-id="' + escapeHtml(String(it.id)) + '" data-compare-slot="' + escapeHtml(String(selectedSlot)) + '">' +
         itemIconHtml(it) +
         '<div class="upgrade-row-main">' +
-        '<a href="#item-' + it.id + '" data-item-id="' + escapeHtml(String(it.id)) + '" class="item-name ' + qualityClass(it.quality) + '">' + escapeHtml(it.name) + "</a> " +
+        '<a href="#item-' + it.id + '" data-item-id="' + escapeHtml(String(it.id)) + '" class="item-name ' + qualityClass(it.quality) + '"' +
+        (prefer ? ' data-suffix-id="' + escapeHtml(String(prefer.id)) + '"' : "") + '>' +
+        escapeHtml(prefer ? itemDisplayName(it, prefer.id) : it.name) + "</a> " +
         (isClassicRef(it) ? '<span class="classic-ref-tag">Classic reference</span> ' : "") +
         '<div class="upgrade-row-meta">Req ' + (req != null ? req : "?") +
         (it.type ? " · " + escapeHtml(it.type) : "") +
         (it.itemLevel ? " · ilvl " + it.itemLevel : "") +
         (it.source ? " · " + escapeHtml(it.source) : "") + "</div>" +
         (warns.length ? '<div class="upgrade-row-note muted">' + warns.map(escapeHtml).join(" · ") + "</div>" : "") +
+        suffixAhNote(it) +
+        suffixSelectHtml(it, prefer && prefer.id, prefer && prefer.id) +
         "</div>" +
         '<div class="upgrade-row-actions">' +
         '<button type="button" class="btn btn-primary btn-sm" data-equip-id="' + escapeHtml(String(it.id)) + '">Equip</button>' +
@@ -1374,17 +1467,19 @@
     }).join("");
   }
 
-  function equipFromPanel(id) {
+  function equipFromPanel(id, suffixId) {
     if (!selectedSlot) return;
-    var item = findItemById(id);
-    if (!item) return;
+    var base = findItemById(id);
+    if (!base) return;
+    var item = Object.assign({}, base);
+    if (suffixId != null && suffixId !== "") item.suffixId = Number(suffixId);
     var warns = equipWarnings(item, ch(), selectedSlot).filter(function (w) { return w.indexOf("Classic reference") === -1; });
     state.equipment[selectedSlot] = item;
     if (item.slot === "twohand") state.equipment.offhand = null;
     save();
     slotShowAll = false;
     renderItems();
-    toast(warns.length ? ("Equipped " + item.name + " — " + warns.join(" ")) : ("Equipped " + item.name));
+    toast(warns.length ? ("Equipped " + itemDisplayName(item) + " — " + warns.join(" ")) : ("Equipped " + itemDisplayName(item)));
   }
 
   function clearSelectedSlot() {
@@ -2904,11 +2999,34 @@
         save();
         slotShowAll = false;
         renderSlotPanel(selectedSlot);
+        return;
+      }
+      if (tEl.classList && tEl.classList.contains("suffix-select")) {
+        var row = tEl.closest(".upgrade-row");
+        var sid = tEl.value;
+        if (row && row.classList.contains("is-equipped") && state.equipment[selectedSlot]) {
+          var worn = Object.assign({}, state.equipment[selectedSlot]);
+          worn.suffixId = sid ? Number(sid) : null;
+          state.equipment[selectedSlot] = worn;
+          save();
+          renderItems();
+          return;
+        }
+        if (row) {
+          var link = row.querySelector("a.item-name");
+          var it = findItemById(tEl.getAttribute("data-item-suffix"));
+          if (link && it) {
+            if (sid) link.setAttribute("data-suffix-id", sid);
+            else link.removeAttribute("data-suffix-id");
+            link.textContent = itemDisplayName(it, sid ? Number(sid) : null);
+          }
+        }
       }
     });
     document.addEventListener("click", function (e) {
       var tab = $("#tab-items");
       if (!tab || !tab.classList.contains("active")) return;
+      if (e.target.closest && e.target.closest(".suffix-select, .suffix-label, .suffix-row")) return;
       var slot = e.target.closest && e.target.closest("[data-equip-slot]");
       if (slot && tab.contains(slot)) {
         openSlotPanel(slot.getAttribute("data-equip-slot"));
@@ -2955,7 +3073,9 @@
       var eq = e.target.closest && e.target.closest("[data-equip-id]");
       if (eq && tab.contains(eq)) {
         e.preventDefault();
-        equipFromPanel(eq.getAttribute("data-equip-id"));
+        var row = eq.closest(".upgrade-row");
+        var sel = row && row.querySelector(".suffix-select");
+        equipFromPanel(eq.getAttribute("data-equip-id"), sel && sel.value);
       }
     });
 

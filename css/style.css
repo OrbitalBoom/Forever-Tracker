@@ -417,6 +417,41 @@ canvas.chart {
 .upgrade-row-reason { font-size: 13px; color: var(--uncommon); margin-top: 2px; }
 .upgrade-row-source { font-size: 13px; color: var(--ink-dim); margin-top: 2px; }
 .upgrade-row .item-ah { margin-top: 4px; font-size: 13px; }
+.suffix-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+  margin-top: 6px;
+}
+.suffix-count { font-size: 12px; color: var(--ink-dim); }
+.suffix-label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); margin: 0; }
+.suffix-select {
+  max-width: 100%;
+  font-size: 12px;
+  padding: 3px 6px;
+  background: #1a140c;
+  color: var(--ink);
+  border: 1px solid #4a3a22;
+  border-radius: 4px;
+}
+.best-suffix-tag {
+  display: inline-block;
+  margin-left: 6px;
+  vertical-align: middle;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 1px 7px;
+  border-radius: 99px;
+  border: 1px solid #3a5a2a;
+  color: var(--uncommon);
+}
+.suffix-price-note { font-size: 12px; margin-top: 2px; }
+.suffix-details { margin: 8px 0; font-size: 13px; }
+.suffix-details summary { cursor: pointer; color: var(--gold-2); }
+.suffix-list { margin: 6px 0 0; padding-left: 1.2em; color: var(--uncommon); }
+.suffix-list li { margin: 2px 0; }
+
 .upgrade-row-actions { display: flex; align-items: start; }
 
 .idb-fold {
