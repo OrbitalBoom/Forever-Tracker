@@ -360,8 +360,56 @@
   }
 
   /* ---------- tabs ---------- */
+  var GOLD_SUB_KEY = "wowForever.goldSubtab";
+  var GOLD_SUB_IDS = { log: "gold-log", farms: "gold-farms", flips: "gold-flips" };
+  var GOLD_SUB_ALIASES = {
+    "gold-log": "log", goldlog: "log",
+    "gold-farms": "farms", "gold-farm": "farms", farming: "farms", farms: "farms",
+    "gold-flips": "flips", "gold-flip": "flips", flips: "flips", "ah-flips": "flips",
+    ahflips: "flips", "ah-flip": "flips"
+  };
+  var goldSub = "log";
+
+  function resolveGoldSub(name) {
+    if (!name) return null;
+    return GOLD_SUB_ALIASES[String(name).toLowerCase()] || null;
+  }
+  function readStoredGoldSub() {
+    try {
+      var v = localStorage.getItem(GOLD_SUB_KEY);
+      if (v && GOLD_SUB_IDS[v]) return v;
+    } catch (e) {}
+    return "log";
+  }
+  function storeGoldSub(sub) {
+    try { localStorage.setItem(GOLD_SUB_KEY, sub); } catch (e) {}
+  }
+  function goldSubHash(sub) {
+    return GOLD_SUB_IDS[sub] || "gold-log";
+  }
+  function applyGoldSub(sub, opts) {
+    opts = opts || {};
+    if (!GOLD_SUB_IDS[sub]) sub = "log";
+    goldSub = sub;
+    storeGoldSub(sub);
+    $all(".gold-subtabs [data-gold-sub]").forEach(function (b) {
+      b.setAttribute("aria-selected", b.getAttribute("data-gold-sub") === sub ? "true" : "false");
+    });
+    $all("#tab-gold .gold-subpanel").forEach(function (panel) {
+      var on = panel.id === "gold-sub-" + sub;
+      if (on) panel.removeAttribute("hidden");
+      else panel.setAttribute("hidden", "");
+    });
+    if (opts.updateHash !== false) {
+      try { history.replaceState(null, "", "#" + goldSubHash(sub)); } catch (e) {}
+    }
+    if (opts.render) renderGold();
+  }
+
   function resolveTab(name) {
     if (!name) return null;
+    name = String(name).replace(/^#/, "");
+    if (resolveGoldSub(name)) return "gold";
     var aliases = { profession: "professions", prof: "professions", profs: "professions", farming: "gold", "gold-farms": "gold" };
     if (aliases[name]) name = aliases[name];
     var valid = ["character","goals","gold","professions","notes","items","talents","leveling"];
@@ -369,6 +417,7 @@
   }
 
   function showTab(name) {
+    var raw = name;
     name = resolveTab(name) || name;
     activeTab = name;
     $all(".tabs [data-tab]").forEach(function (b) {
@@ -377,9 +426,16 @@
     $all(".panel").forEach(function (p) {
       p.classList.toggle("active", p.id === "tab-" + name);
     });
+    if (name === "gold") {
+      var hash = (location.hash || "").replace("#", "");
+      var fromHash = resolveGoldSub(raw) || resolveGoldSub(hash);
+      applyGoldSub(fromHash || readStoredGoldSub() || "log", { updateHash: false, render: false });
+    }
     renderTab(name);
     try {
-      if (!(name === "items" && /^#item-\d+/.test(location.hash || ""))) {
+      if (name === "gold") {
+        history.replaceState(null, "", "#" + goldSubHash(goldSub));
+      } else if (!(name === "items" && /^#item-\d+/.test(location.hash || ""))) {
         history.replaceState(null, "", "#"+name);
       }
     } catch (e) {}
@@ -593,12 +649,12 @@
     var form = $("#goldForm");
     if (!form.date.value) form.date.value = todayISO();
     $("#goldSummary").innerHTML = pill("Running total", formatGold(goldTotal()));
-    drawGoldChart();
-    if (window.AhFlips) {
+    if (goldSub === "log") drawGoldChart();
+    if (goldSub === "flips" && window.AhFlips) {
       try { window.AhFlips.render(state, { save: save, formatGold: formatGold, escapeHtml: escapeHtml }); }
       catch (e) { console.error(e); }
     }
-    if (window.GoldFarms) {
+    if (goldSub === "farms" && window.GoldFarms) {
       try { window.GoldFarms.render(state, { save: save, formatGold: formatGold, escapeHtml: escapeHtml }); }
       catch (e) { console.error(e); }
     }
@@ -3164,6 +3220,12 @@
     $all(".tabs [data-tab]").forEach(function (b) {
       b.addEventListener("click", function () { showTab(b.getAttribute("data-tab")); });
     });
+    $all(".gold-subtabs [data-gold-sub]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var sub = b.getAttribute("data-gold-sub");
+        if (sub && sub !== goldSub) applyGoldSub(sub, { updateHash: true, render: true });
+      });
+    });
     $("#characterForm").addEventListener("input", onCharacterInput);
     $("#characterForm").addEventListener("change", onCharacterCommit);
     var levelInput = $("#characterForm").elements.level;
@@ -3594,6 +3656,17 @@
       var hash = (location.hash || "").replace("#", "");
       if (/^item-\d+/.test(hash)) return;
       var name = resolveTab(hash);
+      var sub = resolveGoldSub(hash);
+      if (name === "gold") {
+        if (activeTab !== "gold") {
+          showTab(hash || "gold");
+        } else if (sub && sub !== goldSub) {
+          applyGoldSub(sub, { updateHash: true, render: true });
+        } else {
+          try { history.replaceState(null, "", "#" + goldSubHash(sub || goldSub)); } catch (e) {}
+        }
+        return;
+      }
       if (name && name !== activeTab) showTab(name);
     });
 
@@ -3753,7 +3826,7 @@
     var tag = document.querySelector('script[src*="js/app.js"]');
     var src = tag && (tag.getAttribute("src") || "");
     var m = src.match(/[?&]v=([^&]+)/);
-    return m ? m[1] : "20261123c";
+    return m ? m[1] : "20261123d";
   }
 
   function ensureTalentTooltipsLoaded(cb) {

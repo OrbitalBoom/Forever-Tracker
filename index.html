@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Forever Tracker — Classic Era companion</title>
-  <link rel="stylesheet" href="css/style.css?v=20261123c">
+  <link rel="stylesheet" href="css/style.css?v=20261123d">
 </head>
 <body>
   <div class="app">
@@ -78,43 +78,55 @@
       <!-- Gold -->
       <section class="panel" id="tab-gold" role="tabpanel">
         <h2>Gold</h2>
-        <p class="lede">Log gold in g / s / c (100 copper = 1 silver, 100 silver = 1 gold). The running total and chart update as you add entries. The farming guide uses your level and, when you have them, the professions on the Professions tab.</p>
-        <div class="stat-row" id="goldSummary"></div>
-        <canvas class="chart" id="goldChart" width="1100" height="180" aria-label="Gold over time"></canvas>
-        <form id="goldForm" class="form-grid">
-          <label class="field">Date
-            <input type="date" name="date" required>
-          </label>
-          <label class="field">Gold
-            <input type="number" name="g" min="0" step="1" value="0">
-          </label>
-          <label class="field">Silver
-            <input type="number" name="s" min="0" max="99" step="1" value="0">
-          </label>
-          <label class="field">Copper
-            <input type="number" name="c" min="0" max="99" step="1" value="0">
-          </label>
-          <label class="field">Source / note
-            <input type="text" name="note" placeholder="Auction, raid, farm…">
-          </label>
-        </form>
-        <div class="row-actions">
-          <button type="button" class="btn btn-primary" id="btnAddGold">Add gold entry</button>
-          <label class="muted" style="display:flex;align-items:center;gap:6px">
-            <input type="checkbox" id="goldSpend"> This is a spend (subtract)
-          </label>
-        </div>
-        <div class="table-wrap" style="margin-top:16px">
-          <table class="data" id="goldTable"></table>
+        <div class="gold-subtabs" role="tablist" aria-label="Gold sections">
+          <button type="button" role="tab" id="goldSubTab-log" data-gold-sub="log" aria-controls="gold-sub-log" aria-selected="true">Gold Log</button>
+          <button type="button" role="tab" id="goldSubTab-farms" data-gold-sub="farms" aria-controls="gold-sub-farms" aria-selected="false">Farms</button>
+          <button type="button" role="tab" id="goldSubTab-flips" data-gold-sub="flips" aria-controls="gold-sub-flips" aria-selected="false">AH Flips</button>
         </div>
 
-        <h3>AH flip finder</h3>
-        <p class="lede">Items listed under their usual price on the US Normal Horde auction house, so you can buy and resell them. No estimates are invented — if a sale rate or deposit is unknown, it is left blank.</p>
-        <div id="ahFlips"></div>
+        <div class="gold-subpanel" id="gold-sub-log" role="tabpanel" aria-labelledby="goldSubTab-log">
+          <p class="lede">Log gold in g / s / c (100 copper = 1 silver, 100 silver = 1 gold). The running total and chart update as you add entries.</p>
+          <div class="stat-row" id="goldSummary"></div>
+          <canvas class="chart" id="goldChart" width="1100" height="180" aria-label="Gold over time"></canvas>
+          <form id="goldForm" class="form-grid">
+            <label class="field">Date
+              <input type="date" name="date" required>
+            </label>
+            <label class="field">Gold
+              <input type="number" name="g" min="0" step="1" value="0">
+            </label>
+            <label class="field">Silver
+              <input type="number" name="s" min="0" max="99" step="1" value="0">
+            </label>
+            <label class="field">Copper
+              <input type="number" name="c" min="0" max="99" step="1" value="0">
+            </label>
+            <label class="field">Source / note
+              <input type="text" name="note" placeholder="Auction, raid, farm…">
+            </label>
+          </form>
+          <div class="row-actions">
+            <button type="button" class="btn btn-primary" id="btnAddGold">Add gold entry</button>
+            <label class="muted" style="display:flex;align-items:center;gap:6px">
+              <input type="checkbox" id="goldSpend"> This is a spend (subtract)
+            </label>
+          </div>
+          <div class="table-wrap" style="margin-top:16px">
+            <table class="data" id="goldTable"></table>
+          </div>
+        </div>
 
-        <h3>Gold Farming</h3>
-        <p class="muted gf-lede">Best gold farms for your level, valued at today's auction prices.</p>
-        <div id="goldFarms"></div>
+        <div class="gold-subpanel" id="gold-sub-farms" role="tabpanel" aria-labelledby="goldSubTab-farms" hidden>
+          <h3 class="gold-sub-title">Farms</h3>
+          <p class="muted gf-lede">Best gold farms for your level, valued at today's auction prices. The guide uses your level and, when you have them, the professions on the Professions tab.</p>
+          <div id="goldFarms"></div>
+        </div>
+
+        <div class="gold-subpanel" id="gold-sub-flips" role="tabpanel" aria-labelledby="goldSubTab-flips" hidden>
+          <h3 class="gold-sub-title">AH flip finder</h3>
+          <p class="lede">Items listed under their usual price on the US Normal Horde auction house, so you can buy and resell them. No estimates are invented — if a sale rate or deposit is unknown, it is left blank.</p>
+          <div id="ahFlips"></div>
+        </div>
       </section>
 
       <!-- Professions -->
@@ -298,23 +310,23 @@
   </div>
   <div class="toast" id="toast" hidden></div>
 
-  <script src="js/data.js?v=20261123c"></script>
-  <script src="js/stat-weights-data.js?v=20261123c"></script>
-  <script src="js/item-weights.js?v=20261123c"></script>
-  <script src="js/items.js?v=20261123c"></script>
-  <script src="js/talents.js?v=20261123c"></script>
-  <script src="js/community-builds.js?v=20261123c"></script>
-  <script src="js/leveling-data.js?v=20261123c"></script>
-  <script src="js/app.js?v=20261123c"></script>
-  <script src="js/cloud-save.js?v=20261123c"></script>
-  <script src="js/professions-data.js?v=20261123c"></script>
-  <script src="data/prices.js?v=20261123c"></script>
-  <script src="js/professions.js?v=20261123c"></script>
-  <script src="js/ah-flips.js?v=20261123c"></script>
-  <script src="js/gold-farms-data.js?v=20261123c"></script>
-  <script src="js/gold-farms.js?v=20261123c"></script>
-  <script src="js/item-suffixes.js?v=20261123c"></script>
-  <script src="js/item-db.js?v=20261123c"></script>
-  <script src="js/item-tooltip.js?v=20261123c"></script>
+  <script src="js/data.js?v=20261123d"></script>
+  <script src="js/stat-weights-data.js?v=20261123d"></script>
+  <script src="js/item-weights.js?v=20261123d"></script>
+  <script src="js/items.js?v=20261123d"></script>
+  <script src="js/talents.js?v=20261123d"></script>
+  <script src="js/community-builds.js?v=20261123d"></script>
+  <script src="js/leveling-data.js?v=20261123d"></script>
+  <script src="js/app.js?v=20261123d"></script>
+  <script src="js/cloud-save.js?v=20261123d"></script>
+  <script src="js/professions-data.js?v=20261123d"></script>
+  <script src="data/prices.js?v=20261123d"></script>
+  <script src="js/professions.js?v=20261123d"></script>
+  <script src="js/ah-flips.js?v=20261123d"></script>
+  <script src="js/gold-farms-data.js?v=20261123d"></script>
+  <script src="js/gold-farms.js?v=20261123d"></script>
+  <script src="js/item-suffixes.js?v=20261123d"></script>
+  <script src="js/item-db.js?v=20261123d"></script>
+  <script src="js/item-tooltip.js?v=20261123d"></script>
 </body>
 </html>
