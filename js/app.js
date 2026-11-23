@@ -853,16 +853,21 @@
     }
     return (IW && IW.specsOf(cls)[0]) || ch().spec || "";
   }
+  /* Level and race adjustments for the sourced weights (see js/item-weights.js). */
+  function weightCtx() {
+    var c = ch();
+    return { level: c.level || 1, race: c.race || "" };
+  }
   function characterWeights() {
     var IW = window.ITEM_WEIGHTS;
     var c = ch();
-    if (IW) return IW.weightsFor(c.class, IW.canonSpec(c.class, c.spec) || c.spec);
-    return { ilvl: 1 };
+    if (IW) return IW.weightsFor(c.class, IW.canonSpec(c.class, c.spec) || c.spec, null, weightCtx());
+    return {};
   }
   function weightsFor(slotId) {
     var IW = window.ITEM_WEIGHTS;
     var id = slotId || selectedSlot;
-    if (IW && id) return IW.weightsFor(viewClass(), selectedBuild(id), id);
+    if (IW && id) return IW.weightsFor(viewClass(), selectedBuild(id), id, weightCtx());
     return characterWeights();
   }
   function suffixStatsOf(item, suffixId) {
@@ -909,8 +914,6 @@
       if (typeof s[k] === "number" && w[k]) score += s[k] * w[k];
     });
     if (item.weapon && item.weapon.dps && w.dps) score += item.weapon.dps * w.dps;
-    var known = extraStats ? Object.keys(extraStats || {}).length > 0 || hasStatData(item) : hasStatData(item);
-    if (known && item.itemLevel && w.ilvl) score += item.itemLevel * w.ilvl;
     return score;
   }
 
@@ -1040,7 +1043,7 @@
     }
   }
 
-  var SKIP_UPGRADE_NAME = /gamemaster|\bqa\s*test\b|\[ph\]|\(test\)|<ph>|\btodo\b|^\d+\s+(epic|green)\b|test staff|^test\s/i;
+  var SKIP_UPGRADE_NAME = /gamemaster|\bqa\s*test\b|\[ph\]|\(test\)|<ph>|\btodo\b|^\d+\s+(epic|green)\b|test staff|^test\s|^z{3,}\s/i;
   function isJunkUpgrade(item) {
     return !!(item && SKIP_UPGRADE_NAME.test(item.name || ""));
   }
@@ -1216,7 +1219,7 @@
     if (!bits.length) return "";
     var explain = "Counted for " + build + ": " + bits.map(function (b) {
       return b.label + " (×" + b.weight + ")";
-    }).join(", ") + ". Rough relative priorities, not a sim.";
+    }).join(", ") + ". Sourced weights (see Weights info), not a sim.";
     return '<button type="button" class="kind-tag good-for-tag" data-good-for title="' + escapeHtml(explain) + '">Good for ' +
       escapeHtml(build) + "</button>" +
       '<p class="good-for-explain muted" hidden>' + escapeHtml(explain) + "</p>";
@@ -1359,7 +1362,23 @@
       "</div>" +
       (family === "other" ? "" : '<div class="slot-chips" role="group" aria-label="Item type">' + chips + "</div>") +
       handChips +
-      browseNote;
+      browseNote +
+      weightsInfoHtml(cls, build);
+  }
+
+  function weightsInfoHtml(cls, build) {
+    var IW = window.ITEM_WEIGHTS;
+    if (!IW || !IW.infoHtml) return "";
+    var c = ch();
+    var body = IW.infoHtml(cls, build, weightCtx());
+    var shown = IW.weightsFor(cls, build, selectedSlot, weightCtx());
+    var rows = Object.keys(shown).filter(function (k) { return shown[k]; }).sort(function (a, b) { return shown[b] - shown[a]; });
+    var table = rows.length
+      ? '<p class="weights-info-table"><strong>Weights in use for ' + escapeHtml(build) + (c.race ? " (" + escapeHtml(c.race) + ", level " + (c.level || 1) + ")" : "") + ":</strong> " +
+        rows.map(function (k) { return escapeHtml((IW.labels[k] || k)) + " " + shown[k]; }).join(" · ") + "</p>"
+      : "";
+    return '<details class="weights-info"><summary>Weights: sourced, see info</summary><div class="weights-info-body">' +
+      body + table + "</div></details>";
   }
 
   function openSlotPanel(slotId) {

@@ -1378,3 +1378,12 @@ table.data tfoot th { text-align: left; }
   .slot-filters .field { flex: 1 1 calc(50% - 8px); }
   .slot-chip { padding: 6px 10px; }
 }
+
+/* Sourced stat weights note */
+.weights-info { margin: 8px 0 10px; font-size: 13px; }
+.weights-info > summary { cursor: pointer; display: inline-block; color: var(--muted, #9aa); border: 1px solid rgba(255,255,255,.18); border-radius: 999px; padding: 2px 10px; font-size: 12px; }
+.weights-info[open] > summary { color: inherit; }
+.weights-info-body { margin-top: 8px; padding: 10px 12px; border: 1px solid rgba(255,255,255,.14); border-radius: 8px; background: rgba(0,0,0,.25); line-height: 1.45; max-width: 760px; }
+.weights-info-body p { margin: 0 0 8px; }
+.weights-info-list { margin: 0 0 8px 18px; padding: 0; }
+.weights-info-body a { color: inherit; text-decoration: underline; }
