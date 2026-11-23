@@ -1,0 +1,800 @@
+{
+  "build": "1.60.1.71037",
+  "zephras": {
+    "rankExact": 1275,
+    "rankTotal": 1297,
+    "rankRate": 0.9830377794911334,
+    "talentExact": 453,
+    "talentTotal": 467
+  },
+  "sample": {
+    "talents": [
+      {
+        "class": "Warrior",
+        "tree": "Arms",
+        "name": "Improved Heroic Strike",
+        "id": 105958
+      },
+      {
+        "class": "Warrior",
+        "tree": "Arms",
+        "name": "Improved Slam",
+        "id": 110858
+      },
+      {
+        "class": "Warrior",
+        "tree": "Protection",
+        "name": "Last Stand",
+        "id": 105970
+      },
+      {
+        "class": "Paladin",
+        "tree": "Protection",
+        "name": "Holy Shield",
+        "id": 105628
+      },
+      {
+        "class": "Paladin",
+        "tree": "Protection",
+        "name": "Reckoning",
+        "id": 105627
+      },
+      {
+        "class": "Hunter",
+        "tree": "Beast Mastery",
+        "name": "Deadly Aspects",
+        "id": 104960
+      },
+      {
+        "class": "Hunter",
+        "tree": "Beast Mastery",
+        "name": "Endurance Training",
+        "id": 104976
+      },
+      {
+        "class": "Hunter",
+        "tree": "Beast Mastery",
+        "name": "Focused Fire",
+        "id": 104975
+      },
+      {
+        "class": "Hunter",
+        "tree": "Beast Mastery",
+        "name": "Improved Aspect of the Monkey",
+        "id": 104974
+      },
+      {
+        "class": "Hunter",
+        "tree": "Beast Mastery",
+        "name": "Improved Revive Pet",
+        "id": 104972
+      },
+      {
+        "class": "Hunter",
+        "tree": "Beast Mastery",
+        "name": "Pathfinding",
+        "id": 104973
+      },
+      {
+        "class": "Hunter",
+        "tree": "Beast Mastery",
+        "name": "Bestial Swiftness",
+        "id": 104970
+      },
+      {
+        "class": "Hunter",
+        "tree": "Beast Mastery",
+        "name": "Unleashed Fury",
+        "id": 104969
+      },
+      {
+        "class": "Hunter",
+        "tree": "Beast Mastery",
+        "name": "Improved Mend Pet",
+        "id": 104968
+      },
+      {
+        "class": "Hunter",
+        "tree": "Beast Mastery",
+        "name": "Ferocity",
+        "id": 104967
+      },
+      {
+        "class": "Hunter",
+        "tree": "Beast Mastery",
+        "name": "Summon Hawk",
+        "id": 104966
+      },
+      {
+        "class": "Hunter",
+        "tree": "Beast Mastery",
+        "name": "Spirit Bond",
+        "id": 104965
+      },
+      {
+        "class": "Hunter",
+        "tree": "Beast Mastery",
+        "name": "Intimidation",
+        "id": 104964
+      },
+      {
+        "class": "Hunter",
+        "tree": "Beast Mastery",
+        "name": "Bestial Discipline",
+        "id": 104963
+      },
+      {
+        "class": "Hunter",
+        "tree": "Beast Mastery",
+        "name": "Frenzy",
+        "id": 104962
+      },
+      {
+        "class": "Hunter",
+        "tree": "Beast Mastery",
+        "name": "Bestial Wrath",
+        "id": 104961
+      },
+      {
+        "class": "Hunter",
+        "tree": "Marksmanship",
+        "name": "Improved Stings",
+        "id": 110870
+      },
+      {
+        "class": "Hunter",
+        "tree": "Marksmanship",
+        "name": "Rapid Killing",
+        "id": 105005
+      },
+      {
+        "class": "Hunter",
+        "tree": "Marksmanship",
+        "name": "Lone Wolf",
+        "id": 105007
+      },
+      {
+        "class": "Hunter",
+        "tree": "Marksmanship",
+        "name": "Trueshot Aura",
+        "id": 105004
+      },
+      {
+        "class": "Hunter",
+        "tree": "Marksmanship",
+        "name": "Scatter Shot",
+        "id": 105000
+      },
+      {
+        "class": "Hunter",
+        "tree": "Marksmanship",
+        "name": "Sniper Shot",
+        "id": 104997
+      },
+      {
+        "class": "Rogue",
+        "tree": "Assassination",
+        "name": "Mutilate",
+        "id": 105709
+      },
+      {
+        "class": "Rogue",
+        "tree": "Combat",
+        "name": "Adrenaline Rush",
+        "id": 105724
+      },
+      {
+        "class": "Rogue",
+        "tree": "Subtlety",
+        "name": "Death Mark",
+        "id": 110866
+      },
+      {
+        "class": "Priest",
+        "tree": "Holy",
+        "name": "Prayer of Mending",
+        "id": 105851
+      },
+      {
+        "class": "Priest",
+        "tree": "Shadow Magic",
+        "name": "Spirit Tap",
+        "id": 105833
+      },
+      {
+        "class": "Priest",
+        "tree": "Shadow Magic",
+        "name": "Shadowform",
+        "id": 105817
+      },
+      {
+        "class": "Shaman",
+        "tree": "Restoration",
+        "name": "Mana Tide Totem",
+        "id": 104728
+      },
+      {
+        "class": "Mage",
+        "tree": "Fire",
+        "name": "Combustion",
+        "id": 105781
+      },
+      {
+        "class": "Mage",
+        "tree": "Frost",
+        "name": "Ice Barrier",
+        "id": 105762
+      },
+      {
+        "class": "Warlock",
+        "tree": "Demonology",
+        "name": "Demonic Sacrifice",
+        "id": 105900
+      },
+      {
+        "class": "Warlock",
+        "tree": "Demonology",
+        "name": "Soul Link",
+        "id": 105892
+      },
+      {
+        "class": "Druid",
+        "tree": "Balance",
+        "name": "Moonkin Form",
+        "id": 104937
+      },
+      {
+        "class": "Druid",
+        "tree": "Feral Combat",
+        "name": "Feral Charge",
+        "id": 104944
+      },
+      {
+        "class": "Druid",
+        "tree": "Restoration",
+        "name": "Swiftmend",
+        "id": 104912
+      }
+    ],
+    "zephrasExact": 79,
+    "zephrasTotal": 83
+  },
+  "wowhelm": {
+    "abilityMatch": 19,
+    "abilityTotal": 20,
+    "descMatch": 18,
+    "descTotal": 41
+  },
+  "wowhelmMismatches": [
+    {
+      "name": "Improved Slam",
+      "kind": "desc-rank1",
+      "ours": "Reduces the cooldown of your Slam ability by 2.5 sec, the cast time and global cooldown by 0.25 sec, and Slam no longer interrupts or delays your melee swing.",
+      "wowhelm": "Reduces the cooldown of your Slam ability by -5.0 sec, the cast time and global cooldown by -0.50 sec, and Slam no longer interrupts or delays your melee swing.",
+      "note": "Wowhelm talent text often uses un-curved SpellEffect (rank-1 stale) values"
+    },
+    {
+      "name": "Reckoning",
+      "kind": "desc-rank1",
+      "ours": "Gives you a 8% chance after Blocking and a 20% chance after receiving a non-periodic critical strike to gain an extra attack. Stores up to 4 extra attacks. Cannot occur from Blocks more than once every 1.5 sec.",
+      "wowhelm": "Gives you a 0% chance after Blocking and a 0% chance after receiving a non-periodic critical strike to gain an extra attack. Stores up to 4 extra attacks. Cannot occur from Blocks more than once every ? sec.",
+      "note": "Wowhelm talent text often uses un-curved SpellEffect (rank-1 stale) values"
+    },
+    {
+      "name": "Deadly Aspects",
+      "kind": "desc-rank1",
+      "ours": "While Aspect of the Hawk is active, Auto Shot has a 2% chance of increasing ranged attack speed by 30% for 12 sec. While Aspect of the Beast is active, all melee auto attacks have a 2% chance of increasing melee attack speed by 30% for 12 sec.",
+      "wowhelm": "While Aspect of the Hawk is active, Auto Shot has a 10% chance of increasing ranged attack speed by 30% for 12 sec. While Aspect of the Beast is active, all melee auto attacks have a 10% chance of increasing melee attack speed by 30% for 12 sec.",
+      "note": "Wowhelm talent text often uses un-curved SpellEffect (rank-1 stale) values"
+    },
+    {
+      "name": "Endurance Training",
+      "kind": "desc-rank1",
+      "ours": "Increases the Health and Armor of your pets by 3%.",
+      "wowhelm": "Increases the Health and Armor of your pets by 15%.",
+      "note": "Wowhelm talent text often uses un-curved SpellEffect (rank-1 stale) values"
+    },
+    {
+      "name": "Focused Fire",
+      "kind": "desc-rank1",
+      "ours": "Increases all damage you and your pet deal by 1% while your pet is active.",
+      "wowhelm": "Increases all damage you and your pet deal by 2% while your pet is active.",
+      "note": "Wowhelm talent text often uses un-curved SpellEffect (rank-1 stale) values"
+    },
+    {
+      "name": "Improved Aspect of the Monkey",
+      "kind": "desc-rank1",
+      "ours": "Increases the Dodge bonus of your Aspect of the Monkey by 2%. Additionally, your pet gains 50% of the effect of your Aspect of the Monkey ability.",
+      "wowhelm": "Increases the Dodge bonus of your Aspect of the Monkey by 4%. Additionally, your pet gains 50% of the effect of your Aspect of the Monkey ability.",
+      "note": "Wowhelm talent text often uses un-curved SpellEffect (rank-1 stale) values"
+    },
+    {
+      "name": "Improved Revive Pet",
+      "kind": "desc-rank1",
+      "ours": "Revive Pet's casting time is reduced by 3 sec, mana cost is reduced by 20%, and increases the health your pet returns with by an additional 15%.",
+      "wowhelm": "Revive Pet's casting time is reduced by 6 sec, mana cost is reduced by 40%, and increases the health your pet returns with by an additional 30%.",
+      "note": "Wowhelm talent text often uses un-curved SpellEffect (rank-1 stale) values"
+    },
+    {
+      "name": "Pathfinding",
+      "kind": "desc-rank1",
+      "ours": "Increases the speed bonus of your Aspect of the Cheetah and Aspect of the Pack by 3%.",
+      "wowhelm": "Increases the speed bonus of your Aspect of the Cheetah and Aspect of the Pack by 6%.",
+      "note": "Wowhelm talent text often uses un-curved SpellEffect (rank-1 stale) values"
+    },
+    {
+      "name": "Unleashed Fury",
+      "kind": "desc-rank1",
+      "ours": "Increases the damage done by your pets and hawks by 3%.",
+      "wowhelm": "Increases the damage done by your pets and hawks by 20%.",
+      "note": "Wowhelm talent text often uses un-curved SpellEffect (rank-1 stale) values"
+    },
+    {
+      "name": "Improved Mend Pet",
+      "kind": "desc-rank1",
+      "ours": "Gives your Mend Pet spell a 15% chance of cleansing 1 Curse, Disease, Magic, or Poison effect from your pet each time it heals and reduces the Mana cost by 10%.",
+      "wowhelm": "Gives your Mend Pet spell a 50% chance of cleansing 1 Curse, Disease, Magic, or Poison effect from your pet each time it heals and reduces the Mana cost by 20%.",
+      "note": "Wowhelm talent text often uses un-curved SpellEffect (rank-1 stale) values"
+    },
+    {
+      "name": "Ferocity",
+      "kind": "desc-rank1",
+      "ours": "Increases the critical strike chance of your pets and hawks by 2%.",
+      "wowhelm": "Increases the critical strike chance of your pets and hawks by 16%.",
+      "note": "Wowhelm talent text often uses un-curved SpellEffect (rank-1 stale) values"
+    },
+    {
+      "name": "Summon Hawk",
+      "kind": "desc-rank1",
+      "ours": "Command a hawk to dive-bomb your targeted enemy, dealing ${$s1+($rap*($s4/100))} Physical damage and continuing its assault for 18 sec. Only 2 hawks can be active at once. Summon Hawk shares its cooldown with Arcane Shot.",
+      "wowhelm": "Command a hawk to dive-bomb your targeted enemy, dealing ? Physical damage and continuing its assault for 18 sec. Only 2 hawks can be active at once. Summon Hawk shares its cooldown with Arcane Shot.",
+      "note": "Wowhelm talent text often uses un-curved SpellEffect (rank-1 stale) values"
+    },
+    {
+      "name": "Spirit Bond",
+      "kind": "desc-rank1",
+      "ours": "While your pet is active, you and your pet will regenerate 1% of total health every 10 sec.",
+      "wowhelm": "While your pet is active, you and your pet will regenerate 1% of total health every 5 sec.",
+      "note": "Wowhelm talent text often uses un-curved SpellEffect (rank-1 stale) values"
+    },
+    {
+      "name": "Bestial Discipline",
+      "kind": "desc-rank1",
+      "ours": "Increases the Focus regeneration of your pets by 10% and allows 25% of your Mana regeneration to continue while casting.",
+      "wowhelm": "Increases the Focus regeneration of your pets by 100% and allows 50% of your Mana regeneration to continue while casting.",
+      "note": "Wowhelm talent text often uses un-curved SpellEffect (rank-1 stale) values"
+    },
+    {
+      "name": "Improved Stings",
+      "kind": "desc-rank1",
+      "ours": "Increases the damage of your Serpent Sting ability by 6%, reduces the cooldown of your Viper Sting ability by 2 sec, and increases the duration of your Scorpid Sting ability by 15 sec.",
+      "wowhelm": "Increases the damage of your Serpent Sting ability by 20%, reduces the cooldown of your Viper Sting ability by -6 sec, and increases the duration of your Scorpid Sting ability by 45 sec.",
+      "note": "Wowhelm talent text often uses un-curved SpellEffect (rank-1 stale) values"
+    },
+    {
+      "name": "Rapid Killing",
+      "kind": "desc-rank1",
+      "ours": "Reduces the cooldown on your Rapid Fire ability by 1 min. In addition, when you kill a non-trivial enemy or it dies while afflicted by your Serpent Sting, you gain Rapid Killing, increasing the damage of your next Shot ability within 20 sec by 10%.",
+      "wowhelm": "Reduces the cooldown on your Rapid Fire ability by -2 min. In addition, when you kill a non-trivial enemy or it dies while afflicted by your Serpent Sting, you gain Rapid Killing, increasing the damage of your next Shot ability within 20 sec by 20%.",
+      "note": "Wowhelm talent text often uses un-curved SpellEffect (rank-1 stale) values"
+    },
+    {
+      "name": "Mutilate",
+      "kind": "ability",
+      "ours": {
+        "cost": "60 Energy",
+        "range": "Melee Range",
+        "cast": "Instant",
+        "cooldown": null,
+        "reqLevel": 40,
+        "costScales": false
+      },
+      "wowhelm": "60 Energy  5 yd range | Instant | Requires Level 40"
+    },
+    {
+      "name": "Death Mark",
+      "kind": "desc-rank1",
+      "ours": "Finishing move that marks the target, storing a portion of the damage dealt by your attacks per Combo Point. Garrote and Rupture damage is stored at twice the rate. After 6 sec, the stored damage is dealt, up to a maximum increased by Attack Power and Critical Strike chance:\r\n   1 point  : ${1*$<ratio>}% stored, ${((63+(1*102)+1*$<maxAP>*$apm)*($mcrit/100+1))*$<coup>} damage cap\r\n   2 points: ${2*$<ratio>}% stored, ${((63+(2*102)+2*$<maxAP>*$apm)*($mcrit/100+1))*$<coup>} damage cap\r\n   3 points: ${3*$<ratio>}% stored, ${((63+(3*102)+3*$<maxAP>*$apm)*($mcrit/100+1))*$<coup>} damage cap\r\n   4 points: ${4*$<ratio>}% stored, ${((63+(4*102)+4*$<maxAP>*$apm)*($mcrit/100+1))*$<coup>} damage cap\r\n   5 points: ${5*$<ratio>}% stored, ${((63+(5*102)+5*$<maxAP>*$apm)*($mcrit/100+1))*$<coup>} damage cap",
+      "wowhelm": "Finishing move that marks the target, storing a portion of the damage dealt by your attacks per Combo Point. Garrote and Rupture damage is stored at twice the rate. After 6 sec, the stored damage is dealt, up to a maximum increased by Attack Power and Critical Strike chance:\n   1 point  : ?% stored, ? damage cap\n   2 points: ?% stored, ? damage cap\n   3 points: ?% stored, ? damage cap\n   4 points: ?% stored, ? damage cap\n   5 points: ?% stored, ? damage cap",
+      "note": "Wowhelm talent text often uses un-curved SpellEffect (rank-1 stale) values"
+    },
+    {
+      "name": "Prayer of Mending",
+      "kind": "desc-rank1",
+      "ours": "Places a spell on the target that heals them for ${($m1+($bh*$bc))*$<mult>} the next time they take damage or receive non-periodic healing. When the heal occurs, Prayer of Mending jumps to a party or raid member within 20 yards. Jumps up to 5 times and lasts 30 sec after each jump. This spell can only be placed on one target at a time per caster.",
+      "wowhelm": "Places a spell on the target that heals them for ? the next time they take damage or receive non-periodic healing. When the heal occurs, Prayer of Mending jumps to a party or raid member within 20 yards. Jumps up to 5 times and lasts 30 sec after each jump. This spell can only be placed on one target at a time per caster.",
+      "note": "Wowhelm talent text often uses un-curved SpellEffect (rank-1 stale) values"
+    },
+    {
+      "name": "Spirit Tap",
+      "kind": "desc-rank1",
+      "ours": "Gives you a 20% chance to increase your Spirit by 100% for 15 sec after killing a non-trivial target or when an enemy afflicted by your Vampiric Embrace dies. For the duration, 50% of your Mana regeneration will continue while casting.",
+      "wowhelm": "Gives you a 0% chance to increase your Spirit by 100% for 15 sec after killing a non-trivial target or when an enemy afflicted by your Vampiric Embrace dies. For the duration, 50% of your Mana regeneration will continue while casting.",
+      "note": "Wowhelm talent text often uses un-curved SpellEffect (rank-1 stale) values"
+    },
+    {
+      "name": "Ice Barrier",
+      "kind": "desc-rank1",
+      "ours": "Shield yourself, absorbing ${$s1+($SPFR*0.1)*($11189s3/100+1)} damage and increasing your Frost damage by 15% for 1 min. While shielded, your Frost damage is increased by an additional 5% and you do not lose casting time when you take damage.",
+      "wowhelm": "Shield yourself, absorbing ? damage and increasing your Frost damage by 15% for 1 min. While shielded, your Frost damage is increased by an additional 5% and you do not lose casting time when you take damage.",
+      "note": "Wowhelm talent text often uses un-curved SpellEffect (rank-1 stale) values"
+    },
+    {
+      "name": "Demonic Sacrifice",
+      "kind": "desc-rank1",
+      "ours": "When activated, sacrifices your summoned Demon to enhance the opposing aspect of your power, granting you an effect that lasts 2 hrs. The effect is canceled if any Demon is summoned.\r\n\r\nImp: Increases your Shadow damage by 15%.\r\n\r\nVoidwalker: Restores 2% of your total Mana every 4 sec.\r\n\r\nSuccubus/Incubus: Increases your Fire damage by 15%.\r\n\r\nFelhunter: Restores 3% of your total Health every 4 sec.",
+      "wowhelm": "When activated, sacrifices your summoned Demon to enhance the opposing aspect of your power, granting you an effect that lasts 2 hours. The effect is canceled if any Demon is summoned.\nImp: Increases your Shadow damage by 15%.\nVoidwalker: Restores 2% of your total Mana every 4 sec.\nSuccubus/Incubus: Increases your Fire damage by 15%.\nFelhunter: Restores 3% of your total Health every 4 sec.",
+      "note": "Wowhelm talent text often uses un-curved SpellEffect (rank-1 stale) values"
+    },
+    {
+      "name": "Moonkin Form",
+      "kind": "desc-rank1",
+      "ours": "Shapeshift into Moonkin Form, increasing Omen of Clarity's chance to trigger by 100%, Armor contribution from items by 360%, and all party or raid members within 45 yards have their Critical Strike chance increased by 3%. Also protects the caster from Polymorph effects and prevents the use of healing spells.\r\n\r\nThe act of shapeshifting frees the caster of Polymorph and Movement Impairing effects.",
+      "wowhelm": "Shapeshift into Moonkin Form, increasing Omen of Clarity's chance to trigger by 100%, Armor contribution from items by 360%, and all party or raid members within 45 yards have their Critical Strike chance increased by 3%. Also protects the caster from Polymorph effects and prevents the use of healing spells.\nThe act of shapeshifting frees the caster of Polymorph and Movement Impairing effects.",
+      "note": "Wowhelm talent text often uses un-curved SpellEffect (rank-1 stale) values"
+    }
+  ],
+  "unresolvedTalents": [
+    {
+      "id": "104966",
+      "name": "Summon Hawk",
+      "class": "Hunter",
+      "tokens": [
+        "${$s1+($rap*($s4/100))}"
+      ]
+    },
+    {
+      "id": "105735",
+      "name": "Riposte",
+      "class": "Rogue",
+      "tokens": [
+        "$19718d"
+      ]
+    },
+    {
+      "id": "110866",
+      "name": "Death Mark",
+      "class": "Rogue",
+      "tokens": [
+        "${((63+(1*102)+1*$<maxAP>*$apm)*($mcrit/100+1))*$<coup>}",
+        "${((63+(2*102)+2*$<maxAP>*$apm)*($mcrit/100+1))*$<coup>}",
+        "${((63+(3*102)+3*$<maxAP>*$apm)*($mcrit/100+1))*$<coup>}",
+        "${((63+(4*102)+4*$<maxAP>*$apm)*($mcrit/100+1))*$<coup>}",
+        "${((63+(5*102)+5*$<maxAP>*$apm)*($mcrit/100+1))*$<coup>}",
+        "${1*$<ratio>}",
+        "${2*$<ratio>}",
+        "${3*$<ratio>}",
+        "${4*$<ratio>}",
+        "${5*$<ratio>}"
+      ]
+    },
+    {
+      "id": "105851",
+      "name": "Prayer of Mending",
+      "class": "Priest",
+      "tokens": [
+        "${($m1+($bh*$bc))*$<mult>}"
+      ]
+    },
+    {
+      "id": "104741",
+      "name": "Maelstrom Weapon",
+      "class": "Shaman",
+      "tokens": [
+        "${($mws*$s2/60)*100}"
+      ]
+    },
+    {
+      "id": "105762",
+      "name": "Ice Barrier",
+      "class": "Mage",
+      "tokens": [
+        "${$s1+($SPFR*0.1)*($11189s3/100+1)}"
+      ]
+    },
+    {
+      "id": "105896",
+      "name": "Demonic Brand",
+      "class": "Warlock",
+      "tokens": [
+        "$<maxDam>",
+        "$<minDam>"
+      ]
+    },
+    {
+      "id": "113563",
+      "name": "Shifting Power",
+      "class": "Druid",
+      "tokens": [
+        "$c",
+        "$s2"
+      ]
+    }
+  ],
+  "zephrasMismatchesHead": [
+    {
+      "class": "Hunter",
+      "tree": "Beast Mastery",
+      "name": "Summon Hawk",
+      "id": 104966,
+      "rank": 1,
+      "zephras": "Command a hawk to dive-bomb your targeted enemy, dealing ? Physical damage and continuing its assault for 18 sec. Only 2 hawks can be active at once. Summon Hawk shares its cooldown with Arcane Shot.",
+      "ours": "Command a hawk to dive-bomb your targeted enemy, dealing ${$s1+($rap*($s4/100))} Physical damage and continuing its assault for 18 sec. Only 2 hawks can be active at once. Summon Hawk shares its cooldown with Arcane Shot.",
+      "unresolved": [
+        "${$s1+($rap*($s4/100))}"
+      ],
+      "scaled": false
+    },
+    {
+      "class": "Rogue",
+      "tree": "Combat",
+      "name": "Riposte",
+      "id": 105735,
+      "rank": 1,
+      "zephras": "A strike that becomes active after parrying an opponent's attack.  This attack deals 150% weapon damage and disarms the target for ?.",
+      "ours": "A strike that becomes active after parrying an opponent's attack.  This attack deals 150% weapon damage and disarms the target for $19718d.",
+      "unresolved": [
+        "$19718d"
+      ],
+      "scaled": false
+    },
+    {
+      "class": "Rogue",
+      "tree": "Subtlety",
+      "name": "Master of Deception",
+      "id": 105761,
+      "rank": 1,
+      "zephras": "Reduces the chance enemies have to detect you while in Stealth mode as if you were 1 levels higher.",
+      "ours": "Reduces the chance enemies have to detect you while in Stealth mode as if you were 1 level higher.",
+      "unresolved": [],
+      "scaled": false
+    },
+    {
+      "class": "Rogue",
+      "tree": "Subtlety",
+      "name": "Heightened Senses",
+      "id": 105747,
+      "rank": 1,
+      "zephras": "Increases your Stealth detection as if you were 1 levels higher and reduces your chance to be hit by spells and ranged attacks by 2%.",
+      "ours": "Increases your Stealth detection as if you were 1 level higher and reduces your chance to be hit by spells and ranged attacks by 2%.",
+      "unresolved": [],
+      "scaled": false
+    },
+    {
+      "class": "Rogue",
+      "tree": "Subtlety",
+      "name": "Death Mark",
+      "id": 110866,
+      "rank": 1,
+      "zephras": "Finishing move that marks the target, storing a portion of the damage dealt by your attacks per Combo Point. Garrote and Rupture damage is stored at twice the rate. After 6 sec, the stored damage is dealt, up to a maximum increased by Attack Power and Critical Strike chance:\r\n   1 point  : 12% stored, ? damage cap\r\n   2 points: 24% stored, ? damage cap\r\n   3 points: 36% stored, ? damage cap\r\n   4 points: 48% stored, ? damage cap\r\n   5 points: 60% stored, ? damage cap",
+      "ours": "Finishing move that marks the target, storing a portion of the damage dealt by your attacks per Combo Point. Garrote and Rupture damage is stored at twice the rate. After 6 sec, the stored damage is dealt, up to a maximum increased by Attack Power and Critical Strike chance:\r\n   1 point  : ${1*$<ratio>}% stored, ${((63+(1*102)+1*$<maxAP>*$apm)*($mcrit/100+1))*$<coup>} damage cap\r\n   2 points: ${2*$<ratio>}% stored, ${((63+(2*102)+2*$<maxAP>*$apm)*($mcrit/100+1))*$<coup>} damage cap\r\n   3 points: ${3*$<ratio>}% stored, ${((63+(3*102)+3*$<maxAP>*$apm)*($mcrit/100+1))*$<coup>} damage cap\r\n   4 points: ${4*$<ratio>}% stored, ${((63+(4*102)+4*$<maxAP>*$apm)*($mcrit/100+1))*$<coup>} damage cap\r\n   5 points: ${5*$<ratio>}% stored, ${((63+(5*102)+5*$<maxAP>*$apm)*($mcrit/100+1))*$<coup>} damage cap",
+      "unresolved": [
+        "${1*$<ratio>}",
+        "${((63+(1*102)+1*$<maxAP>*$apm)*($mcrit/100+1))*$<coup>}",
+        "${2*$<ratio>}",
+        "${((63+(2*102)+2*$<maxAP>*$apm)*($mcrit/100+1))*$<coup>}",
+        "${3*$<ratio>}",
+        "${((63+(3*102)+3*$<maxAP>*$apm)*($mcrit/100+1))*$<coup>}",
+        "${4*$<ratio>}",
+        "${((63+(4*102)+4*$<maxAP>*$apm)*($mcrit/100+1))*$<coup>}",
+        "${5*$<ratio>}",
+        "${((63+(5*102)+5*$<maxAP>*$apm)*($mcrit/100+1))*$<coup>}"
+      ],
+      "scaled": false
+    },
+    {
+      "class": "Priest",
+      "tree": "Discipline",
+      "name": "Divine Aegis",
+      "id": 105840,
+      "rank": 1,
+      "zephras": "Your non-periodic critical heals create a protective shield on the target, absorbing 5% of the amount healed. Shields up to ? damage and lasts 12 sec.",
+      "ours": "Your non-periodic critical heals create a protective shield on the target, absorbing 5% of the amount healed. Shields up to 1200 damage and lasts 12 sec.",
+      "unresolved": [],
+      "scaled": true
+    },
+    {
+      "class": "Priest",
+      "tree": "Discipline",
+      "name": "Divine Aegis",
+      "id": 105840,
+      "rank": 2,
+      "zephras": "Your non-periodic critical heals create a protective shield on the target, absorbing 10% of the amount healed. Shields up to ? damage and lasts 12 sec.",
+      "ours": "Your non-periodic critical heals create a protective shield on the target, absorbing 10% of the amount healed. Shields up to 1200 damage and lasts 12 sec.",
+      "unresolved": [],
+      "scaled": true
+    },
+    {
+      "class": "Priest",
+      "tree": "Discipline",
+      "name": "Divine Aegis",
+      "id": 105840,
+      "rank": 3,
+      "zephras": "Your non-periodic critical heals create a protective shield on the target, absorbing 15% of the amount healed. Shields up to ? damage and lasts 12 sec.",
+      "ours": "Your non-periodic critical heals create a protective shield on the target, absorbing 15% of the amount healed. Shields up to 1200 damage and lasts 12 sec.",
+      "unresolved": [],
+      "scaled": true
+    },
+    {
+      "class": "Priest",
+      "tree": "Holy",
+      "name": "Prayer of Mending",
+      "id": 105851,
+      "rank": 1,
+      "zephras": "Places a spell on the target that heals them for ? the next time they take damage or receive non-periodic healing. When the heal occurs, Prayer of Mending jumps to a party or raid member within 20 yards. Jumps up to 5 times and lasts 30 sec after each jump. This spell can only be placed on one target at a time per caster.",
+      "ours": "Places a spell on the target that heals them for ${($m1+($bh*$bc))*$<mult>} the next time they take damage or receive non-periodic healing. When the heal occurs, Prayer of Mending jumps to a party or raid member within 20 yards. Jumps up to 5 times and lasts 30 sec after each jump. This spell can only be placed on one target at a time per caster.",
+      "unresolved": [
+        "${($m1+($bh*$bc))*$<mult>}"
+      ],
+      "scaled": false
+    },
+    {
+      "class": "Priest",
+      "tree": "Shadow Magic",
+      "name": "Vampiric Embrace",
+      "id": 105820,
+      "rank": 1,
+      "zephras": "Afflicts your target with Shadow energy that causes all party members to be healed for 20% of any Shadow spell damage you deal for 30 sec.",
+      "ours": "Afflicts your target with Shadow energy that causes all party members to be healed for 10% of any Shadow spell damage you deal for 30 sec. You receive 100% increased healing on yourself from this effect.",
+      "unresolved": [],
+      "scaled": false
+    },
+    {
+      "class": "Shaman",
+      "tree": "Enhancement",
+      "name": "Maelstrom Weapon",
+      "id": 104741,
+      "rank": 1,
+      "zephras": "When you deal damage with a melee attack, you have a ?% chance (based on weapon speed) to reduce the cast time and Mana cost of your next Lightning Bolt spell by 20%. Stacks up to 5 times. Lasts 30 sec.",
+      "ours": "When you deal damage with a melee attack, you have a ${($mws*$s2/60)*100}% chance (based on weapon speed) to reduce the cast time and Mana cost of your next Lightning Bolt spell by 20%. Stacks up to 5 times. Lasts 30 sec.",
+      "unresolved": [
+        "${($mws*$s2/60)*100}"
+      ],
+      "scaled": false
+    },
+    {
+      "class": "Shaman",
+      "tree": "Enhancement",
+      "name": "Maelstrom Weapon",
+      "id": 104741,
+      "rank": 2,
+      "zephras": "When you deal damage with a melee attack, you have a ?% chance (based on weapon speed) to reduce the cast time and Mana cost of your next Lightning Bolt spell by 20%. Stacks up to 5 times. Lasts 30 sec.",
+      "ours": "When you deal damage with a melee attack, you have a ${($mws*$s2/60)*100}% chance (based on weapon speed) to reduce the cast time and Mana cost of your next Lightning Bolt spell by 20%. Stacks up to 5 times. Lasts 30 sec.",
+      "unresolved": [
+        "${($mws*$s2/60)*100}"
+      ],
+      "scaled": false
+    },
+    {
+      "class": "Shaman",
+      "tree": "Enhancement",
+      "name": "Maelstrom Weapon",
+      "id": 104741,
+      "rank": 3,
+      "zephras": "When you deal damage with a melee attack, you have a ?% chance (based on weapon speed) to reduce the cast time and Mana cost of your next Lightning Bolt spell by 20%. Stacks up to 5 times. Lasts 30 sec.",
+      "ours": "When you deal damage with a melee attack, you have a ${($mws*$s2/60)*100}% chance (based on weapon speed) to reduce the cast time and Mana cost of your next Lightning Bolt spell by 20%. Stacks up to 5 times. Lasts 30 sec.",
+      "unresolved": [
+        "${($mws*$s2/60)*100}"
+      ],
+      "scaled": false
+    },
+    {
+      "class": "Shaman",
+      "tree": "Enhancement",
+      "name": "Maelstrom Weapon",
+      "id": 104741,
+      "rank": 4,
+      "zephras": "When you deal damage with a melee attack, you have a ?% chance (based on weapon speed) to reduce the cast time and Mana cost of your next Lightning Bolt spell by 20%. Stacks up to 5 times. Lasts 30 sec.",
+      "ours": "When you deal damage with a melee attack, you have a ${($mws*$s2/60)*100}% chance (based on weapon speed) to reduce the cast time and Mana cost of your next Lightning Bolt spell by 20%. Stacks up to 5 times. Lasts 30 sec.",
+      "unresolved": [
+        "${($mws*$s2/60)*100}"
+      ],
+      "scaled": false
+    },
+    {
+      "class": "Shaman",
+      "tree": "Enhancement",
+      "name": "Maelstrom Weapon",
+      "id": 104741,
+      "rank": 5,
+      "zephras": "When you deal damage with a melee attack, you have a ?% chance (based on weapon speed) to reduce the cast time and Mana cost of your next Lightning Bolt spell by 20%. Stacks up to 5 times. Lasts 30 sec.",
+      "ours": "When you deal damage with a melee attack, you have a ${($mws*$s2/60)*100}% chance (based on weapon speed) to reduce the cast time and Mana cost of your next Lightning Bolt spell by 20%. Stacks up to 5 times. Lasts 30 sec.",
+      "unresolved": [
+        "${($mws*$s2/60)*100}"
+      ],
+      "scaled": false
+    },
+    {
+      "class": "Mage",
+      "tree": "Frost",
+      "name": "Ice Barrier",
+      "id": 105762,
+      "rank": 1,
+      "zephras": "Shield yourself, absorbing ? damage and increasing your Frost damage by 15% for 1 min. While shielded, your Frost damage is increased by an additional 5% and you do not lose casting time when you take damage.",
+      "ours": "Shield yourself, absorbing ${$s1+($SPFR*0.1)*($11189s3/100+1)} damage and increasing your Frost damage by 15% for 1 min. While shielded, your Frost damage is increased by an additional 5% and you do not lose casting time when you take damage.",
+      "unresolved": [
+        "${$s1+($SPFR*0.1)*($11189s3/100+1)}"
+      ],
+      "scaled": false
+    },
+    {
+      "class": "Warlock",
+      "tree": "Demonology",
+      "name": "Demonic Brand",
+      "id": 105896,
+      "rank": 1,
+      "zephras": "Your Searing Pain generates 17% less threat and brands the target for 10 sec. Your pet's next 2 attacks against the target deal ? to ? Fire or Shadow damage based on the pet. If Shadow damage is dealt, it has high threat.",
+      "ours": "Your Searing Pain generates 17% less threat and brands the target for 10 sec. Your pet's next 2 attacks against the target deal $<minDam> to $<maxDam> Fire or Shadow damage based on the pet. If Shadow damage is dealt, it has high threat.",
+      "unresolved": [
+        "$<minDam>",
+        "$<maxDam>"
+      ],
+      "scaled": false
+    },
+    {
+      "class": "Warlock",
+      "tree": "Demonology",
+      "name": "Demonic Brand",
+      "id": 105896,
+      "rank": 2,
+      "zephras": "Your Searing Pain generates 33% less threat and brands the target for 10 sec. Your pet's next 4 attacks against the target deal ? to ? Fire or Shadow damage based on the pet. If Shadow damage is dealt, it has high threat.",
+      "ours": "Your Searing Pain generates 33% less threat and brands the target for 10 sec. Your pet's next 4 attacks against the target deal $<minDam> to $<maxDam> Fire or Shadow damage based on the pet. If Shadow damage is dealt, it has high threat.",
+      "unresolved": [
+        "$<minDam>",
+        "$<maxDam>"
+      ],
+      "scaled": false
+    },
+    {
+      "class": "Warlock",
+      "tree": "Demonology",
+      "name": "Demonic Brand",
+      "id": 105896,
+      "rank": 3,
+      "zephras": "Your Searing Pain generates 50% less threat and brands the target for 10 sec. Your pet's next 6 attacks against the target deal ? to ? Fire or Shadow damage based on the pet. If Shadow damage is dealt, it has high threat.",
+      "ours": "Your Searing Pain generates 50% less threat and brands the target for 10 sec. Your pet's next 6 attacks against the target deal $<minDam> to $<maxDam> Fire or Shadow damage based on the pet. If Shadow damage is dealt, it has high threat.",
+      "unresolved": [
+        "$<minDam>",
+        "$<maxDam>"
+      ],
+      "scaled": false
+    },
+    {
+      "class": "Warlock",
+      "tree": "Destruction",
+      "name": "Conflagrate",
+      "id": 105880,
+      "rank": 1,
+      "zephras": "Ignites a target that is already afflicted by your Immolate spell, dealing 84 to 106 Fire damage and consuming your Immolate effect.",
+      "ours": "Ignites a target that is already afflicted by your Immolate spell, dealing 111 to 142 Fire damage and consuming your Immolate effect.",
+      "unresolved": [],
+      "scaled": true
+    },
+    {
+      "class": "Druid",
+      "tree": "Feral Combat",
+      "name": "Feral Instinct",
+      "id": 104940,
+      "rank": 1,
+      "zephras": "Increases damage done by your Swipe ability by 10% and reduces the chance enemies have to detect you while Prowling as if you were 1 levels higher.",
+      "ours": "Increases damage done by your Swipe ability by 10% and reduces the chance enemies have to detect you while Prowling as if you were 1 level higher.",
+      "unresolved": [],
+      "scaled": false
+    },
+    {
+      "class": "Druid",
+      "tree": "Feral Combat",
+      "name": "Shifting Power",
+      "id": 113563,
+      "rank": 1,
+      "zephras": "Instantly convert ? Mana into ? Energy. Shifting Power's cost is reduced by effects that reduce the cost of Shapeshifting.",
+      "ours": "Instantly convert $c Mana into $s2 Energy. Shifting Power's cost is reduced by effects that reduce the cost of Shapeshifting.",
+      "unresolved": [
+        "$c",
+        "$s2"
+      ],
+      "scaled": false
+    }
+  ],
+  "zephrasMismatchCount": 22
+}

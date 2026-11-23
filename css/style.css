@@ -608,6 +608,77 @@ canvas.chart {
 }
 #talentTipFloat strong { color: var(--gold-2); font-size: 13px; }
 .talent-tip strong { color: var(--gold-2); font-size: 13px; }
+
+/* Classic-style talent tooltip (numbers from the live Forever client) */
+#talentTipFloat.classic-talent-tip {
+  width: 320px;
+  max-width: calc(100vw - 16px);
+  padding: 8px 10px 9px;
+  background: #0a0806;
+  border: 1px solid #c9a227;
+  color: #ffd100;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+#talentTipFloat.classic-talent-tip .tt-name {
+  display: block;
+  color: #ffd100;
+  font-weight: 700;
+  font-size: 13px;
+  margin: 0 0 2px;
+}
+#talentTipFloat.classic-talent-tip .tt-rank {
+  display: block;
+  color: #fff;
+  margin: 0 0 4px;
+}
+#talentTipFloat.classic-talent-tip .tt-req {
+  display: block;
+  color: #1eff00;
+  margin: 0 0 2px;
+}
+#talentTipFloat.classic-talent-tip .tt-req.is-missing { color: #ff2020; }
+#talentTipFloat.classic-talent-tip .tt-ability {
+  margin: 6px 0 6px;
+  color: #fff;
+}
+#talentTipFloat.classic-talent-tip .tt-ab-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #fff;
+}
+#talentTipFloat.classic-talent-tip .tt-ab-row span:last-child { text-align: right; }
+#talentTipFloat.classic-talent-tip .tt-req-level { color: #fff; margin-top: 2px; }
+#talentTipFloat.classic-talent-tip .tt-req-level.is-missing { color: #ff2020; }
+#talentTipFloat.classic-talent-tip .tt-desc {
+  color: #ffd100;
+  margin: 6px 0 0;
+  white-space: pre-wrap;
+}
+#talentTipFloat.classic-talent-tip .tt-next-label {
+  display: block;
+  color: #ffd100;
+  font-weight: 700;
+  margin: 8px 0 2px;
+}
+#talentTipFloat.classic-talent-tip .tt-next { color: #ffd100; white-space: pre-wrap; }
+#talentTipFloat.classic-talent-tip .tt-unresolved {
+  display: block;
+  color: #c0c0c0;
+  font-size: 11px;
+  font-style: italic;
+  margin-top: 6px;
+}
+#talentTipFloat.classic-talent-tip .tt-heat {
+  display: block;
+  color: #c9a227;
+  font-style: italic;
+  margin-top: 6px;
+  white-space: normal;
+}
+#talentTipFloat.classic-talent-tip .tt-heat em { color: #c9a227; }
 .builds { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; margin-top: 8px; }
 .build-card { text-align: left; width: 100%; }
 .build-card .role { font-size: 11px; color: var(--gold); letter-spacing: .08em; text-transform: uppercase; }

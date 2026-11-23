@@ -393,7 +393,7 @@
     else if (name === "professions") renderProfessionsTab();
     else if (name === "notes") renderNotes();
     else if (name === "items") { if (window.ItemDB) window.ItemDB.onTab(); else renderItems(); }
-    else if (name === "talents") renderTalents();
+    else if (name === "talents") { ensureTalentTooltipsLoaded(); renderTalents(); }
     else if (name === "leveling") renderLeveling();
   }
 
@@ -3742,21 +3742,162 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
 
+  /* Lazy-load precomputed Forever talent tooltips only on the Talents tab. */
+  var talentTooltipState = { loading: false, loaded: false, failed: false, wait: [] };
+
+  function talentTooltipCacheVer() {
+    var tag = document.querySelector('script[src*="js/app.js"]');
+    var src = tag && (tag.getAttribute("src") || "");
+    var m = src.match(/[?&]v=([^&]+)/);
+    return m ? m[1] : "20261123b";
+  }
+
+  function ensureTalentTooltipsLoaded(cb) {
+    if (window.WOW_TALENT_TOOLTIPS) {
+      talentTooltipState.loaded = true;
+      if (cb) cb();
+      return;
+    }
+    if (cb) talentTooltipState.wait.push(cb);
+    if (talentTooltipState.failed) {
+      talentTooltipState.wait.splice(0).forEach(function (fn) { try { fn(); } catch (err) {} });
+      return;
+    }
+    if (talentTooltipState.loading) return;
+    talentTooltipState.loading = true;
+    var s = document.createElement("script");
+    s.src = "js/talent-tooltips-data.js?v=" + encodeURIComponent(talentTooltipCacheVer());
+    s.async = true;
+    s.onload = function () {
+      talentTooltipState.loading = false;
+      talentTooltipState.loaded = !!window.WOW_TALENT_TOOLTIPS;
+      talentTooltipState.wait.splice(0).forEach(function (fn) { try { fn(); } catch (err) {} });
+    };
+    s.onerror = function () {
+      talentTooltipState.loading = false;
+      talentTooltipState.failed = true;
+      talentTooltipState.wait.splice(0).forEach(function (fn) { try { fn(); } catch (err) {} });
+    };
+    document.head.appendChild(s);
+  }
+
+  function talentViewTreesForTip() {
+    if (talentPreview) {
+      return treesFromOrder(talentPreview.order, pointsAtLevel(viewTalentLevel()));
+    }
+    return (talentStore().trees || {});
+  }
+
+  function talentDescAt(rec, rank1, level) {
+    var r = rec.ranks && rec.ranks[rank1 - 1];
+    if (!r) return { text: "", unresolved: [] };
+    var text = r.text || "";
+    if (r.byLevel && r.byLevel[String(level)] != null) text = r.byLevel[String(level)];
+    return { text: text, unresolved: r.unresolved || [] };
+  }
+
+  function formatForeverTalentTip(cell) {
+    var data = window.WOW_TALENT_TOOLTIPS;
+    if (!data || !cell) return null;
+    var id = String(cell.getAttribute("data-talent") || "");
+    var rec = data[id];
+    if (!rec) return null;
+    var classData = talentClassData();
+    var treeIdx = Number(cell.getAttribute("data-tree"));
+    var tree = classData && classData.trees && classData.trees[treeIdx];
+    var treeName = (tree && tree.name) || rec.tree;
+    var viewTrees = talentViewTreesForTip();
+    var rank = (viewTrees[treeName] && viewTrees[treeName][id]) || 0;
+    var maxRank = rec.maxRank || (tree && tree.talents && (tree.talents.filter(function (x) { return String(x.id) === id; })[0] || {}).maxRank) || rec.ranks.length;
+    var level = viewTalentLevel();
+    var spent = treeSpent(treeName, viewTrees);
+    var reqPoints = rec.reqPoints || 0;
+    var parts = [];
+    parts.push('<span class="tt-name">' + escapeHtml(rec.name) + "</span>");
+    parts.push('<span class="tt-rank">Rank ' + rank + "/" + maxRank + "</span>");
+    if (reqPoints) {
+      var reqMet = spent >= reqPoints;
+      parts.push('<span class="tt-req' + (reqMet ? "" : " is-missing") + '">Requires ' +
+        reqPoints + " point" + (reqPoints === 1 ? "" : "s") + " in " + escapeHtml(treeName) + "</span>");
+    }
+    if (rec.prereq && rec.prereq.id) {
+      var preName = (data[String(rec.prereq.id)] && data[String(rec.prereq.id)].name) || "another talent";
+      if (tree) {
+        var preT = tree.talents.find(function (x) { return String(x.id) === String(rec.prereq.id); });
+        if (preT) preName = preT.name;
+      }
+      var preRank = (viewTrees[treeName] && viewTrees[treeName][String(rec.prereq.id)]) || 0;
+      var preMet = preRank >= (rec.prereq.rank || 1);
+      parts.push('<span class="tt-req' + (preMet ? "" : " is-missing") + '">Requires ' +
+        (rec.prereq.rank || 1) + " point" + ((rec.prereq.rank || 1) === 1 ? "" : "s") +
+        " in " + escapeHtml(preName) + "</span>");
+    }
+    var ability = rec.ability;
+    if (rec.abilityAt29 && level === 29) ability = rec.abilityAt29;
+    if (ability) {
+      var rows = "";
+      var left = ability.cost || "";
+      var right = ability.range || "";
+      if (left || right) {
+        rows += '<div class="tt-ab-row"><span>' + escapeHtml(left) + "</span><span>" + escapeHtml(right) + "</span></div>";
+      }
+      var cleft = ability.cast || "";
+      var cright = ability.cooldown || "";
+      if (cleft || cright) {
+        rows += '<div class="tt-ab-row"><span>' + escapeHtml(cleft) + "</span><span>" + escapeHtml(cright) + "</span></div>";
+      }
+      if (ability.reqLevel) {
+        var lvOk = level >= ability.reqLevel;
+        rows += '<div class="tt-req-level' + (lvOk ? "" : " is-missing") + '">Requires Level ' +
+          ability.reqLevel + "</div>";
+      }
+      if (rows) parts.push('<div class="tt-ability">' + rows + "</div>");
+    }
+    var showRank = rank > 0 ? rank : 1;
+    var cur = talentDescAt(rec, showRank, level);
+    var unresolved = (cur.unresolved || []).slice();
+    parts.push('<div class="tt-desc">' + escapeHtml(cur.text).replace(/\r\n/g, "\n") + "</div>");
+    if (rank > 0 && rank < maxRank) {
+      var nxt = talentDescAt(rec, rank + 1, level);
+      parts.push('<span class="tt-next-label">Next rank:</span>');
+      parts.push('<div class="tt-next">' + escapeHtml(nxt.text).replace(/\r\n/g, "\n") + "</div>");
+      (nxt.unresolved || []).forEach(function (u) {
+        if (unresolved.indexOf(u) === -1) unresolved.push(u);
+      });
+    }
+    if (unresolved.length) {
+      parts.push('<span class="tt-unresolved">Some values could not be computed from the client data and are shown as raw tokens.</span>');
+    }
+    var src = cell.querySelector(".talent-tip");
+    if (src) {
+      var heat = [];
+      src.querySelectorAll("em").forEach(function (em) {
+        var tx = em.textContent || "";
+        if (/Community:|First picked|No published point order|average rank/.test(tx)) {
+          heat.push("<em>" + escapeHtml(tx) + "</em>");
+        }
+      });
+      if (heat.length) {
+        parts.push('<div class="tt-heat">' + heat.join("<br>") + "</div>");
+      }
+    }
+    return parts.join("");
+  }
+
   // Floating talent tooltip: lives on <body> with fixed positioning so it is never
   // clipped by the scrollable tree container; flips below and clamps to the viewport.
+  // Rich Classic-style text (real numbers at the selected level) is used once
+  // js/talent-tooltips-data.js has been lazy-loaded; otherwise the in-cell fallback.
   (function () {
     var tip = null;
+    var longPress = false;
+    var pressTimer = null;
     function ensure() {
       if (!tip) { tip = document.createElement("div"); tip.id = "talentTipFloat"; document.body.appendChild(tip); }
       return tip;
     }
     function hide() { if (tip) tip.style.display = "none"; }
-    function show(cell) {
-      var src = cell.querySelector(".talent-tip");
-      if (!src) return hide();
-      var el = ensure();
-      el.innerHTML = src.innerHTML;
-      el.style.display = "block";
+    function position(el, cell) {
       var r = cell.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight, m = 8;
       var vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
       var left = r.left + r.width / 2 - w / 2;
@@ -3766,24 +3907,46 @@
       if (top + h > vh - m) top = Math.max(m, vh - h - m);
       el.style.left = left + "px"; el.style.top = top + "px";
     }
+    function show(cell) {
+      if (!cell) return hide();
+      var el = ensure();
+      var html = formatForeverTalentTip(cell);
+      if (html) {
+        el.classList.add("classic-talent-tip");
+        el.innerHTML = html;
+      } else {
+        var src = cell.querySelector(".talent-tip");
+        if (!src) return hide();
+        el.classList.remove("classic-talent-tip");
+        el.innerHTML = src.innerHTML;
+      }
+      el.style.display = "block";
+      position(el, cell);
+    }
     document.addEventListener("mouseover", function (e) {
       var cell = e.target.closest && e.target.closest(".talent[data-talent]");
-      if (cell) show(cell); else hide();
+      if (cell) show(cell); else if (!longPress) hide();
     });
     document.addEventListener("focusin", function (e) {
       var cell = e.target.closest && e.target.closest(".talent[data-talent]");
       if (cell) show(cell);
     });
-    document.addEventListener("focusout", hide);
+    document.addEventListener("focusout", function () { if (!longPress) hide(); });
     window.addEventListener("scroll", hide, true);
     window.addEventListener("resize", hide);
     document.addEventListener("click", function (e) {
+      if (longPress) {
+        e.preventDefault();
+        e.stopPropagation();
+        longPress = false;
+        return;
+      }
       var cell = e.target.closest && e.target.closest(".talent[data-talent]");
       if (cell) setTimeout(function () {
         var fresh = document.querySelector('.talent[data-tree="' + cell.dataset.tree + '"][data-talent="' + cell.dataset.talent + '"]');
         if (fresh) show(fresh); else hide();
       }, 0);
-    });
+    }, true);
     document.addEventListener("contextmenu", function (e) {
       var cell = e.target.closest && e.target.closest(".talent[data-talent]");
       if (cell) setTimeout(function () {
@@ -3791,5 +3954,18 @@
         if (fresh) show(fresh); else hide();
       }, 0);
     });
+    document.addEventListener("touchstart", function (e) {
+      var cell = e.target.closest && e.target.closest(".talent[data-talent]");
+      clearTimeout(pressTimer);
+      longPress = false;
+      if (!cell) { hide(); return; }
+      pressTimer = setTimeout(function () {
+        longPress = true;
+        show(cell);
+      }, 400);
+    }, { passive: true });
+    document.addEventListener("touchend", function () { clearTimeout(pressTimer); });
+    document.addEventListener("touchcancel", function () { clearTimeout(pressTimer); });
+    document.addEventListener("touchmove", function () { clearTimeout(pressTimer); }, { passive: true });
   })();
 })();
