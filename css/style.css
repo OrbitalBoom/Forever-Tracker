@@ -1407,3 +1407,45 @@ table.data tfoot th { text-align: left; }
 .hide-pvp-items { display: inline-flex; align-items: center; gap: 6px; margin: 6px 0 0 4px; font-size: 13px; cursor: pointer; }
 .slot-filters + .hide-pvp-items, .slot-chips + .hide-pvp-items, .hide-pvp-items { margin: 8px 0 8px; }
 #itemFilters .hide-pvp-items { margin-left: 8px; }
+
+
+/* ---------- Community builds, consensus, heat map ---------- */
+.community-filters { flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+.community-filters label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-dim); }
+.community-filters select { min-width: 140px; }
+#communityBuildsPanel, #consensusBuildsPanel { margin-top: 22px; }
+.build-card-wrap { display: flex; flex-direction: column; gap: 4px; }
+.build-card-wrap .build-card { flex: 1; }
+.build-ext { font-size: 12px; color: var(--gold); text-decoration: none; }
+.build-ext:hover { text-decoration: underline; }
+.build-card.is-consensus { border-color: var(--gold); box-shadow: inset 3px 0 0 var(--gold); }
+.build-card .build-kind { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.talent.has-heat { background: color-mix(in srgb, var(--heat-color, #1c1610) 100%, #1c1610); }
+.talent .t-heatbar {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
+  background: var(--gold);
+  transform-origin: left center;
+  transform: scaleX(var(--heat-rate, 0));
+  pointer-events: none;
+}
+#talentHeatBar { align-items: center; gap: 12px; flex-wrap: wrap; }
+#talentHeatBar .heat-legend { font-size: 12px; color: var(--muted); max-width: 72ch; }
+#talentHeatBar .heat-swatches { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+#talentHeatBar .heat-swatches i {
+  display: inline-block; width: 72px; height: 8px; border-radius: 2px;
+  background: linear-gradient(to right, rgba(217,164,65,.08), rgba(217,164,65,.7));
+  border: 1px solid #3a2c18;
+}
+.heat-chart {
+  margin-top: 6px; height: 22px; position: relative;
+  background: #1a140e; border: 1px solid #3a2c18; border-radius: 3px;
+}
+.heat-chart b {
+  position: absolute; bottom: 0; width: 2px; background: var(--gold);
+  opacity: .9;
+}
+.heat-chart span.heat-axis {
+  position: absolute; left: 4px; right: 4px; bottom: 1px;
+  font-size: 9px; color: var(--muted); display: flex; justify-content: space-between;
+  pointer-events: none;
+}

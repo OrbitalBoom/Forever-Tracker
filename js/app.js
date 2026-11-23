@@ -27,6 +27,11 @@
   var talentViewLevel = null;
   var talentPreview = null;
   var buildOrderCache = {};
+  var communityClassFilter = "auto";
+  var communityTagFilter = "all";
+  var communitySort = "popular";
+  var talentHeatSpec = "auto";
+
 
 
   function emptyTalentState(cls) {
@@ -80,6 +85,55 @@
     return talentMode() === "classic"
       ? (window.WOW_TALENT_BUILDS_CLASSIC || [])
       : (window.WOW_TALENT_BUILDS_FOREVER || window.WOW_TALENT_BUILDS || []);
+  }
+
+  function communityBuilds() {
+    if (talentMode() !== "forever") return [];
+    return window.WOW_TALENT_COMMUNITY_BUILDS || [];
+  }
+
+  function communityConsensus() {
+    if (talentMode() !== "forever") return [];
+    return window.WOW_TALENT_COMMUNITY_CONSENSUS || [];
+  }
+
+  function allLoadableBuilds() {
+    return talentBuilds().concat(communityBuilds(), communityConsensus());
+  }
+
+  function communityHeatPack() {
+    return (talentMode() === "forever" && window.WOW_TALENT_COMMUNITY_HEAT) || {};
+  }
+
+  function heatEntry(cls, spec) {
+    if (!cls || !spec) return null;
+    return communityHeatPack()[cls + "|" + spec] || null;
+  }
+
+  function activeHeatSpec() {
+    if (talentHeatSpec && talentHeatSpec !== "auto") return talentHeatSpec;
+    var preview = talentPreview || restoreBuildPreview();
+    if (preview && preview.build && preview.build.spec && preview.build.class === ch().class) {
+      return preview.build.spec;
+    }
+    return ch().spec || "";
+  }
+
+  function communityPopularity(b) {
+    if (b && b.popularityScore != null) return Number(b.popularityScore) || 0;
+    var p = (b && b.popularity) || {};
+    return Number(p.opened || p.peopleDays || p.orders || 0) || 0;
+  }
+
+  function formatCount(n) {
+    if (n == null || isNaN(n)) return "";
+    return Number(n).toLocaleString("en-US");
+  }
+
+  function findLoadableBuild(id) {
+    if (!id) return null;
+    return allLoadableBuilds().find(function (x) { return x.id === id; }) ||
+      (state.savedTalentBuilds || []).find(function (x) { return x.id === id; }) || null;
   }
 
   function talentStore() {
@@ -1962,10 +2016,7 @@
   }
 
   function findBuildById(id) {
-    if (!id) return null;
-    var pub = talentBuilds().find(function (b) { return b.id === id; });
-    if (pub) return pub;
-    return (state.savedTalentBuilds || []).find(function (b) { return b.id === id; }) || null;
+    return findLoadableBuild(id);
   }
 
   function leaveBuildPreview(msg) {
@@ -2005,6 +2056,169 @@
       talentViewLevel = Math.max(10, Math.min(60, n));
     }
     renderTalents();
+  }
+
+  function heatChartHtml(info) {
+    var hist = (info && info.levelHistogram) || {};
+    var keys = Object.keys(hist);
+    if (!keys.length) return "";
+    var max = 0;
+    keys.forEach(function (k) { max = Math.max(max, Number(hist[k]) || 0); });
+    var marks = "";
+    keys.forEach(function (k) {
+      var lvl = parseInt(k, 10);
+      if (isNaN(lvl)) return;
+      var left = ((lvl - 10) / 50) * 100;
+      var h = Math.max(20, Math.round(100 * (Number(hist[k]) || 0) / max));
+      marks += '<b style="left:' + left.toFixed(2) + "%;height:" + h + '%"></b>';
+    });
+    return '<div class="heat-chart" title="When this talent is picked, from builds with a known point order">' +
+      marks + '<span class="heat-axis"><span>10</span><span>60</span></span></div>';
+  }
+
+  function specSourceNote(b) {
+    if (!b || !b.spec) return "";
+    if (b.specSource === "source") {
+      return "Spec: " + b.spec + " (source’s own label)";
+    }
+    if (b.specTie) {
+      return "Spec: " + b.spec + " (inferred; trees were tied, assigned by the tree with the most points)";
+    }
+    return "Spec: " + b.spec + " (inferred from the tree with the most points)";
+  }
+
+  function allocationNote(b) {
+    if (b && b.allocationKind === "point-order") return "Point order from the source share link";
+    if (b && b.orderSource === "community-consensus") return "Point order from the consensus path";
+    return "Final allocation only (no published point order)";
+  }
+
+  function renderBuildCard(b, opts) {
+    opts = opts || {};
+    var activeId = opts.activeId;
+    var canLoad = !b.class || b.class === ch().class;
+    var cite = b.sourceLabel || "";
+    var pop = b.popularity || {};
+    var popLine = "";
+    if (pop.opened != null) popLine = "Opened " + formatCount(pop.opened);
+    else if (pop.peopleDays != null) popLine = formatCount(pop.peopleDays) + " people-days";
+    else if (pop.orders != null) popLine = formatCount(pop.orders) + " leveling orders";
+    var ext = b.sourceUrl
+      ? '<a class="build-ext" href="' + escapeHtml(b.sourceUrl) + '" target="_blank" rel="noopener">Open on ' +
+        escapeHtml(b.sourceName || "source") + "</a>"
+      : "";
+    var kind = '<div class="build-kind">' + escapeHtml(allocationNote(b)) +
+      (b.spec ? " · " + escapeHtml(specSourceNote(b)) : "") +
+      (b.author ? " · " + escapeHtml(b.author) : "") + "</div>";
+    var inner = '<div class="role">' + escapeHtml(b.role || b.spec || "") +
+      (b.points ? " · " + escapeHtml(b.points) : "") + "</div>" +
+      "<strong>" + escapeHtml(b.name) + "</strong><p>" + escapeHtml(b.summary || "") + "</p>" +
+      (cite ? '<div class="build-cite">' + escapeHtml(cite) + "</div>" : "") +
+      (popLine ? '<div class="muted" style="font-size:11px;margin-top:4px">' + escapeHtml(popLine) + "</div>" : "") +
+      kind;
+    var card;
+    if (canLoad) {
+      card = '<button type="button" class="btn build-card' +
+        (activeId && activeId === b.id ? " is-active" : "") +
+        (opts.consensus ? " is-consensus" : "") +
+        '" data-load-build="' + escapeHtml(b.id) + '">' + inner + "</button>";
+    } else {
+      card = '<div class="btn build-card' + (opts.consensus ? " is-consensus" : "") +
+        '"><div class="muted" style="font-size:11px;margin-bottom:4px">' +
+        escapeHtml(b.class) + " — switch your character class to load this</div>" + inner + "</div>";
+    }
+    return '<div class="build-card-wrap">' + card + ext + "</div>";
+  }
+
+  function fillClassFilter(sel) {
+    if (!sel) return;
+    var cur = communityClassFilter || "auto";
+    var classes = ["Warrior","Paladin","Hunter","Rogue","Priest","Shaman","Mage","Warlock","Druid"];
+    var html = '<option value="auto">This character’s class</option><option value="all">All classes</option>';
+    classes.forEach(function (c) {
+      html += '<option value="' + c + '">' + c + "</option>";
+    });
+    sel.innerHTML = html;
+    sel.value = cur;
+  }
+
+  function renderCommunityBuildLists(preview) {
+    var panel = $("#communityBuildsPanel");
+    var consPanel = $("#consensusBuildsPanel");
+    var mode = talentMode();
+    if (!panel || !consPanel) return;
+    if (mode !== "forever") {
+      panel.hidden = true;
+      consPanel.hidden = true;
+      return;
+    }
+    panel.hidden = false;
+    consPanel.hidden = false;
+    var src = $("#communityBuildSource");
+    if (src) src.innerHTML = escapeHtml(window.WOW_TALENT_COMMUNITY_SOURCE || "");
+    fillClassFilter($("#communityClassFilter"));
+    var tagSel = $("#communityTagFilter");
+    if (tagSel) tagSel.value = communityTagFilter || "all";
+    var sortSel = $("#communitySort");
+    if (sortSel) sortSel.value = communitySort || "popular";
+
+    var wantClass = communityClassFilter === "all" ? null
+      : (communityClassFilter && communityClassFilter !== "auto" ? communityClassFilter : ch().class);
+    var list = communityBuilds().filter(function (b) {
+      if (wantClass && b.class !== wantClass) return false;
+      if (communityTagFilter && communityTagFilter !== "all") {
+        var tags = b.tags || [];
+        var role = (b.role || "");
+        if (tags.indexOf(communityTagFilter) === -1 && role.indexOf(communityTagFilter) === -1) return false;
+      }
+      return true;
+    });
+    list = list.slice().sort(function (a, b) {
+      if (communitySort === "newest") {
+        var da = a.sourceDate || "";
+        var db = b.sourceDate || "";
+        if (da !== db) return db < da ? -1 : 1;
+      }
+      // Don't compare raw leveling-order counts to link-opens; prefer opens,
+      // then people-days, then order counts, then tag totals.
+      function keys(x) {
+        var p = x.popularity || {};
+        var tags = 0;
+        if (p.tagCounts) Object.keys(p.tagCounts).forEach(function (k) { tags += p.tagCounts[k]; });
+        return [p.opened || 0, p.peopleDays || 0, p.orders || 0, tags];
+      }
+      var ka = keys(a), kb = keys(b);
+      for (var i = 0; i < ka.length; i++) {
+        if (kb[i] !== ka[i]) return kb[i] - ka[i];
+      }
+      return (a.name || "").localeCompare(b.name || "");
+    });
+    var box = $("#communityBuildList");
+    var activeId = preview && preview.build && preview.build.id;
+    if (box) {
+      if (!list.length) {
+        box.innerHTML = '<p class="muted">No community Forever builds in this filter. Talents Forever publishes popular, tagged, and level-30 listings; only allocations that are legal on the current trees are kept.</p>';
+      } else {
+        box.innerHTML = list.map(function (b) { return renderBuildCard(b, { activeId: activeId }); }).join("");
+      }
+    }
+
+    var consNote = $("#consensusBuildSource");
+    if (consNote) {
+      consNote.innerHTML = "Each consensus path is filled level by level from up to the 50 most popular 51-point community builds that lead in that spec. It is a derived snapshot, kept separate from published guides and from the individual community listings above. Sample sizes are whatever the public listings actually have — they are never padded to 50.";
+    }
+    var consWant = wantClass || ch().class;
+    var cons = communityConsensus().filter(function (b) {
+      return !consWant || b.class === consWant;
+    });
+    var consBox = $("#consensusBuildList");
+    if (consBox) {
+      if (!cons.length) {
+        consBox.innerHTML = '<p class="muted">No community-consensus path for this class yet.</p>';
+      } else {
+        consBox.innerHTML = cons.map(function (b) { return renderBuildCard(b, { activeId: activeId, consensus: true }); }).join("");
+      }
+    }
   }
 
   function applyBuild(build, opts) {
@@ -2220,6 +2434,8 @@
     var meta = TALENT_META || {};
     var unlocked = dualSpecUnlocked();
     var spec = state.talents.activeSpec || "primary";
+    var heatSpec = mode === "forever" ? activeHeatSpec() : "";
+    var heat = heatSpec ? heatEntry(ch().class, heatSpec) : null;
 
     var modeBar = $("#talentModeBar");
     if (modeBar) {
@@ -2236,6 +2452,44 @@
           (unlocked ? "" : " (lvl 40)") + "</button></div>"
         ) : "") +
         (meta.build ? '<span class="muted">Client ' + escapeHtml(meta.build) + " · " + (meta.talentCount || 467) + " talents</span>" : "");
+    }
+
+    var heatBar = $("#talentHeatBar");
+    if (heatBar) {
+      if (mode !== "forever" || !communityBuilds().length) {
+        heatBar.hidden = true;
+        heatBar.innerHTML = "";
+      } else {
+        heatBar.hidden = false;
+        var specs = (data.trees || []).map(function (tr) {
+          var short = tr.name === "Shadow Magic" ? "Shadow" : tr.name === "Elemental Combat" ? "Elemental" : tr.name === "Feral Combat" ? "Feral" : tr.name;
+          return short;
+        });
+        var opts = '<option value="off">Heat map off</option>' +
+          '<option value="auto"' + (talentHeatSpec === "auto" ? " selected" : "") + '>Auto (current spec)</option>' +
+          specs.map(function (s) {
+            return '<option value="' + escapeHtml(s) + '"' + (talentHeatSpec === s ? " selected" : "") + '>' + escapeHtml(s) + "</option>";
+          }).join("");
+        var legend = "";
+        if (talentHeatSpec === "off") {
+          legend = '<span class="heat-legend">Community heat map is off.</span>';
+        } else if (!heat) {
+          legend = '<span class="heat-legend">No community sample for ' + escapeHtml(heatSpec || "this spec") + " yet.</span>";
+        } else {
+          legend = '<span class="heat-legend">Community heat map: <strong>' + escapeHtml(heat.spec) + "</strong> · " +
+            heat.nSample + " build" + (heat.nSample === 1 ? "" : "s") +
+            (heat.n51 != null ? " (" + heat.n51 + " at 51 points" : "") +
+            (heat.nOrder != null ? ", " + heat.nOrder + " with a known point order for timing" : "") +
+            (heat.n51 != null ? ")" : "") +
+            (heat.cappedAt50 ? ", capped at the 50 most popular" : "") +
+            (heat.countedOn ? ". Counted " + escapeHtml(heat.countedOn) : "") +
+            ". Color is pick rate among builds that could take the talent. Hover a talent for average rank and when it is first picked.</span>" +
+            '<span class="heat-swatches">Rare <i></i> Common</span>';
+        }
+        heatBar.innerHTML = '<label>Heat map <select id="talentHeatSpec" aria-label="Community heat map spec">' + opts + "</select></label> " + legend;
+        var heatSel = $("#talentHeatSpec");
+        if (heatSel) heatSel.value = talentHeatSpec || "auto";
+      }
     }
 
     var remaining = Math.max(0, avail - spent);
@@ -2281,6 +2535,33 @@
           if (locked && !isNew && !upN) cls += " locked";
           if (isNew) cls += " is-new";
           else if (upN) cls += " is-upcoming";
+          var heatInfo = (heat && heat.talents && (heat.talents[String(t.id)] || heat.talents[t.id])) || null;
+          var heatStyle = "";
+          var heatBarEl = "";
+          var heatTip = "";
+          if (heatInfo && talentHeatSpec !== "off") {
+            cls += " has-heat";
+            var rate = Number(heatInfo.pickRate) || 0;
+            var heatColor = "rgba(217,164,65," + (0.08 + 0.62 * rate).toFixed(3) + ")";
+            heatStyle = ' style="--heat-color:' + heatColor + ";--heat-rate:" + rate.toFixed(3) + '"';
+            heatBarEl = '<span class="t-heatbar" aria-hidden="true"></span>';
+            var pct = Math.round(rate * 100);
+            heatTip = "<br><em>Community: taken in " + pct + "% of " + (heatInfo.nEligible || 0) +
+              " " + escapeHtml(heat.spec || "") + " builds that could reach it";
+            if (heatInfo.nTaken) {
+              heatTip += " · average rank " + (heatInfo.avgRank || 0) + "/" + t.maxRank + " when taken";
+            }
+            heatTip += "</em>";
+            if (heatInfo.nOrder) {
+              heatTip += "<br><em>First picked at about level " +
+                (heatInfo.medianFirstLevel != null ? heatInfo.medianFirstLevel : heatInfo.avgFirstLevel) +
+                " (from " + heatInfo.nOrder + " build" + (heatInfo.nOrder === 1 ? "" : "s") +
+                " with a known point order)</em>";
+              heatTip += heatChartHtml(heatInfo);
+            } else {
+              heatTip += "<br><em>No published point order in this sample, so timing is unknown.</em>";
+            }
+          }
           var desc = (t.ranks && t.ranks[Math.max(0, rank ? rank - 1 : 0)]) || "";
           var next = (t.ranks && t.ranks[rank]) ? "<br><em>Next: " + escapeHtml(t.ranks[rank]) + "</em>" : "";
           var req = t.prereq ? "<br>Requires " + t.prereq.rank + " in " + escapeHtml((tree.talents.find(function (x) { return x.id === t.prereq.id; }) || {}).name || "prereq") : "";
@@ -2289,12 +2570,13 @@
           else if (upN) badge = '<span class="t-badge t-badge-up">+' + upN + "</span>";
           cells += '<button type="button" class="' + cls + '" data-tree="' + idx + '" data-talent="' + t.id +
             '"' + (isNew ? ' data-hl="new"' : (upN ? ' data-hl="upcoming" data-up="' + upN + '"' : "")) +
-            ' aria-label="' + escapeHtml(t.name) + '">' + badge +
+            heatStyle +
+            ' aria-label="' + escapeHtml(t.name) + '">' + badge + heatBarEl +
             '<span class="t-name">' + escapeHtml(t.name) +
             '</span><span class="t-rank">' + rank + "/" + t.maxRank + "</span>" +
             '<div class="talent-tip"><strong>' + escapeHtml(t.name) + "</strong> · Rank " + rank + "/" + t.maxRank +
             (isNew ? " · New at Lv " + viewLvl : (upN ? " · +" + upN + " upcoming" : "")) +
-            "<br>" + escapeHtml(desc) + next + req + "</div></button>";
+            "<br>" + escapeHtml(desc) + next + req + heatTip + "</div></button>";
         }
       }
       var tag = treeIsNew && hl.newName
@@ -2326,6 +2608,8 @@
           (cite ? '<div class="build-cite">' + escapeHtml(cite) + "</div>" : "") + via + "</button>";
       }).join("");
     }
+
+    renderCommunityBuildLists(preview);
 
     var sb = $("#savedBuilds");
     var cur = sb.value;
@@ -3258,7 +3542,7 @@
       if (rt) { resetTree(rt); renderTalents(); return; }
       var lb = e.target.closest && e.target.closest("[data-load-build]");
       if (lb) {
-        var build = talentBuilds().find(function (x) { return x.id === lb.getAttribute("data-load-build"); });
+        var build = findLoadableBuild(lb.getAttribute("data-load-build"));
         if (build) { applyBuild(build); renderChrome(); renderTalents(); toast("Loaded " + build.name); }
         return;
       }
@@ -3430,6 +3714,30 @@
     getState: function () { return state; },
     save: save
   };
+
+  document.addEventListener("change", function (e) {
+    var t = e.target;
+    if (!t) return;
+    if (t.id === "communityClassFilter") {
+      communityClassFilter = t.value || "auto";
+      renderTalents();
+      return;
+    }
+    if (t.id === "communityTagFilter") {
+      communityTagFilter = t.value || "all";
+      renderTalents();
+      return;
+    }
+    if (t.id === "communitySort") {
+      communitySort = t.value || "popular";
+      renderTalents();
+      return;
+    }
+    if (t.id === "talentHeatSpec") {
+      talentHeatSpec = t.value || "auto";
+      renderTalents();
+    }
+  });
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
