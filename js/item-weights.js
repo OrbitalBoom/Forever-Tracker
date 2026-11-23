@@ -7,11 +7,21 @@
  *   - melee: hit, then strength or agility and crit, plus weapon DPS
  *   - healers: +healing, mana per 5, intellect, spirit
  *   - tanks: stamina, defense, avoidance, armor
+ *   - hunters: agility first (it gives attack power), then AP, stamina, and
+ *     intellect; strength is near zero because vanilla hunters do not convert
+ *     strength into ranged AP. A hunter's melee weapon is mostly a stat stick,
+ *     so its weapon DPS is weighted far below the stats on it. Ranged weapon
+ *     DPS still uses the normal dps coefficient.
+ *   - rogues: agility first, then strength (rogues do convert strength into
+ *     melee AP). Weapon DPS stays important.
+ *   - enhancement shaman: strength first, then agility; weapon DPS matters.
+ *   - feral druids: agility and strength both matter (cats get AP from both);
+ *     melee weapons are stat sticks, so they have no weapon-DPS weight.
  * Public write-ups of those qualitative priorities include Wowhead's Classic
  * class guides (https://www.wowhead.com/classic) and similar community
  * stat-priority lists. The numbers themselves are not copied from a published
  * table or sim; most of the per-spec rows were already used by this tracker
- * (moved here from js/data.js) and are kept as-is.
+ * (moved here from js/data.js). Hunter rows were revised so agility leads and melee DPS does not outrank stats.
  *
  * The spec list matches this site's character specs and Forever talent trees
  * (js/data.js, js/talents.js, client build 1.60.1.70938). Forever has the same
@@ -43,9 +53,9 @@
       Retribution: { str: 2, agi: 1, sta: 0.4, ap: 1, crit: 8, hit: 10, int: 0.5, sp: 0.6, dps: 2.2, ilvl: 0.8 }
     },
     Hunter: {
-      "Beast Mastery": { agi: 2.2, sta: 0.3, ap: 1, rap: 1, crit: 8, hit: 12, dps: 2.4, str: 0.3, ilvl: 0.8 },
-      Marksmanship: { agi: 2.2, sta: 0.3, ap: 1, rap: 1, crit: 8.5, hit: 12, dps: 2.5, ilvl: 0.8 },
-      Survival: { agi: 2.0, sta: 0.4, ap: 1, rap: 1, crit: 8, hit: 12, dps: 2.2, ilvl: 0.8 }
+      "Beast Mastery": { agi: 2.4, ap: 1, rap: 1, sta: 0.6, int: 0.4, crit: 8, hit: 12, dps: 2.2, meleeDps: 0.15, str: 0, ilvl: 0.2 },
+      Marksmanship: { agi: 2.4, ap: 1, rap: 1, sta: 0.6, int: 0.4, crit: 8.5, hit: 12, dps: 2.3, meleeDps: 0.15, str: 0, ilvl: 0.2 },
+      Survival: { agi: 2.2, ap: 1, rap: 1, sta: 0.7, int: 0.4, crit: 8, hit: 12, dps: 2.1, meleeDps: 0.15, str: 0, ilvl: 0.2 }
     },
     Rogue: {
       Assassination: { agi: 2.2, str: 1.0, sta: 0.3, ap: 1, crit: 8, hit: 14, dps: 2.8, skillDaggers: 3, ilvl: 0.8 },
@@ -74,8 +84,8 @@
     },
     Druid: {
       Balance: { int: 1.6, spi: 0.7, sta: 0.3, sp: 1, spNature: 1.1, spellCrit: 8, spellHit: 12, mp5: 0.8, ilvl: 0.8 },
-      "Feral DPS": { agi: 2.0, str: 1.4, sta: 0.4, ap: 1, fap: 1.1, crit: 8, hit: 12, ilvl: 0.8 },
-      "Feral Tank": { sta: 1.8, agi: 1.4, str: 0.9, ap: 0.3, fap: 0.4, armor: 0.06, defense: 3.5, dodge: 2.2, hit: 5, crit: 2, ilvl: 0.6 },
+      "Feral DPS": { agi: 2.0, str: 1.4, sta: 0.4, ap: 1, fap: 1.1, crit: 8, hit: 12, meleeDps: 0, ilvl: 0.8 },
+      "Feral Tank": { sta: 1.8, agi: 1.4, str: 0.9, ap: 0.3, fap: 0.4, armor: 0.06, defense: 3.5, dodge: 2.2, hit: 5, crit: 2, meleeDps: 0, ilvl: 0.6 },
       Restoration: { int: 1.5, spi: 1.3, sta: 0.3, mp5: 2, healing: 1.1, sp: 0.4, spellCrit: 5, ilvl: 0.7 }
     }
   };
@@ -105,7 +115,6 @@
     ],
     "Melee Agi": [
       ["Rogue", "Assassination"], ["Rogue", "Combat"], ["Rogue", "Subtlety"],
-      ["Hunter", "Beast Mastery"], ["Hunter", "Marksmanship"], ["Hunter", "Survival"],
       ["Druid", "Feral DPS"]
     ],
     "Melee Str": [
@@ -176,13 +185,42 @@
     return !!ROLES[name];
   }
 
-  function weightsFor(cls, build) {
-    if (build && ROLES[build]) return ROLES[build];
-    var spec = canonSpec(cls, build);
-    var bag = SPECS[cls] || {};
-    if (spec && bag[spec]) return bag[spec];
-    var first = Object.keys(bag)[0];
-    return (first && bag[first]) || { ilvl: 1 };
+  var MELEE_SLOTS = { mainhand: true, offhand: true, onehand: true, twohand: true };
+
+  function copyWeights(w) {
+    var out = {}, k;
+    if (!w) return out;
+    for (k in w) {
+      if (Object.prototype.hasOwnProperty.call(w, k)) out[k] = w[k];
+    }
+    return out;
+  }
+
+  function isMeleeWeaponSlot(slotId) {
+    return !!(slotId && MELEE_SLOTS[slotId]);
+  }
+
+  /* Swap in meleeDps on melee slots so hunter (and feral) weapons score as
+     stat sticks, while hunter ranged weapons keep the regular dps weight. */
+  function adjustWeightsForSlot(cls, weights, slotId) {
+    var w = copyWeights(weights);
+    if (isMeleeWeaponSlot(slotId) && w.meleeDps != null) w.dps = w.meleeDps;
+    return w;
+  }
+
+  function weightsFor(cls, build, slotId) {
+    var base, spec, bag, first;
+    if (build && ROLES[build]) base = ROLES[build];
+    else {
+      spec = canonSpec(cls, build);
+      bag = SPECS[cls] || {};
+      if (spec && bag[spec]) base = bag[spec];
+      else {
+        first = Object.keys(bag)[0];
+        base = (first && bag[first]) || { ilvl: 1 };
+      }
+    }
+    return adjustWeightsForSlot(cls, base, slotId);
   }
 
   function contributing(weights, item) {
@@ -211,6 +249,8 @@
     roleNames: roleNames,
     isRole: isRole,
     weightsFor: weightsFor,
+    adjustWeightsForSlot: adjustWeightsForSlot,
+    isMeleeWeaponSlot: isMeleeWeaponSlot,
     contributing: contributing
   };
 })();

@@ -862,7 +862,7 @@
   function weightsFor(slotId) {
     var IW = window.ITEM_WEIGHTS;
     var id = slotId || selectedSlot;
-    if (IW && id) return IW.weightsFor(viewClass(), selectedBuild(id));
+    if (IW && id) return IW.weightsFor(viewClass(), selectedBuild(id), id);
     return characterWeights();
   }
   function suffixStatsOf(item, suffixId) {
@@ -3277,7 +3277,7 @@
       if (s.id === "offhand" && equippedTwoHand()) return false;
       var current = state.equipment[s.id];
       if (current && current.id === item.id) return false;
-      var w = characterWeights();
+      var w = weightsFor(s.id);
       var curScore = current ? itemScore(current, w) : 0;
       return itemScore(item, w) > curScore + 0.05;
     });

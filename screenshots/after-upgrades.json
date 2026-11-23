@@ -1,0 +1,431 @@
+{
+  "phase": "after",
+  "errors": [],
+  "current": {
+    "id": 756,
+    "name": "Tunnel Pick",
+    "stats": {
+      "sta": 7,
+      "agi": 7
+    },
+    "dps": 19.84,
+    "ilvl": 29,
+    "slot": "twohand",
+    "type": "axe",
+    "req": 24
+  },
+  "currentScore": 29.776,
+  "currentBreakdown": {
+    "score": 21,
+    "parts": [
+      "sta 7×0.6=4.2",
+      "agi 7×2.4=16.8"
+    ]
+  },
+  "weights": {
+    "build": "Beast Mastery",
+    "class": "Hunter",
+    "weights": {
+      "agi": 2.4,
+      "ap": 1,
+      "rap": 1,
+      "sta": 0.6,
+      "int": 0.4,
+      "crit": 8,
+      "hit": 12,
+      "dps": 0.15,
+      "meleeDps": 0.15,
+      "str": 0,
+      "ilvl": 0.2
+    },
+    "rangedWeights": {
+      "agi": 2.4,
+      "ap": 1,
+      "rap": 1,
+      "sta": 0.6,
+      "int": 0.4,
+      "crit": 8,
+      "hit": 12,
+      "dps": 2.2,
+      "meleeDps": 0.15,
+      "str": 0,
+      "ilvl": 0.2
+    },
+    "raw": {
+      "agi": 2.4,
+      "ap": 1,
+      "rap": 1,
+      "sta": 0.6,
+      "int": 0.4,
+      "crit": 8,
+      "hit": 12,
+      "dps": 2.2,
+      "meleeDps": 0.15,
+      "str": 0,
+      "ilvl": 0.2
+    }
+  },
+  "at": [
+    {
+      "id": 3185,
+      "name": "Acrobatic Staff of Agility",
+      "quality": "uncommon",
+      "slot": "twohand",
+      "type": "staff",
+      "req": 29,
+      "ilvl": 34,
+      "stats": {},
+      "suffixStats": {
+        "agi": 14
+      },
+      "dps": 22.95,
+      "score": 43.8425,
+      "delta": 14.066500000000001,
+      "forever": false,
+      "breakdown": {
+        "score": 43.843,
+        "parts": [
+          "agi 14×2.4=33.6",
+          "dps 22.95×0.15=3.442",
+          "ilvl 34×0.2=6.8"
+        ]
+      }
+    },
+    {
+      "id": 15250,
+      "name": "Glimmering Flamberge of Agility",
+      "quality": "uncommon",
+      "slot": "twohand",
+      "type": "sword",
+      "req": 27,
+      "ilvl": 32,
+      "stats": {},
+      "suffixStats": {
+        "agi": 13
+      },
+      "dps": 21.72,
+      "score": 40.858,
+      "delta": 11.081999999999997,
+      "forever": false,
+      "breakdown": {
+        "score": 40.858,
+        "parts": [
+          "agi 13×2.4=31.2",
+          "dps 21.72×0.15=3.258",
+          "ilvl 32×0.2=6.4"
+        ]
+      }
+    },
+    {
+      "id": 3210,
+      "name": "Brutal War Axe of Agility",
+      "quality": "uncommon",
+      "slot": "twohand",
+      "type": "axe",
+      "req": 25,
+      "ilvl": 30,
+      "stats": {},
+      "suffixStats": {
+        "agi": 11
+      },
+      "dps": 20.28,
+      "score": 35.442,
+      "delta": 5.666,
+      "forever": false,
+      "breakdown": {
+        "score": 35.442,
+        "parts": [
+          "agi 11×2.4=26.4",
+          "dps 20.28×0.15=3.042",
+          "ilvl 30×0.2=6"
+        ]
+      }
+    },
+    {
+      "id": 6679,
+      "name": "Armor Piercer",
+      "quality": "uncommon",
+      "slot": "twohand",
+      "type": "polearm",
+      "req": 24,
+      "ilvl": 29,
+      "stats": {
+        "agi": 11
+      },
+      "suffixStats": null,
+      "dps": 19.81,
+      "score": 35.171499999999995,
+      "delta": 5.395499999999995,
+      "forever": false,
+      "breakdown": {
+        "score": 35.171,
+        "parts": [
+          "agi 11×2.4=26.4",
+          "dps 19.81×0.15=2.971",
+          "ilvl 29×0.2=5.8"
+        ]
+      }
+    },
+    {
+      "id": 3201,
+      "name": "Barbarian War Axe of Agility",
+      "quality": "uncommon",
+      "slot": "twohand",
+      "type": "axe",
+      "req": 23,
+      "ilvl": 28,
+      "stats": {},
+      "suffixStats": {
+        "agi": 11
+      },
+      "dps": 19.03,
+      "score": 34.8545,
+      "delta": 5.078500000000002,
+      "forever": false,
+      "breakdown": {
+        "score": 34.855,
+        "parts": [
+          "agi 11×2.4=26.4",
+          "dps 19.03×0.15=2.855",
+          "ilvl 28×0.2=5.6"
+        ]
+      }
+    },
+    {
+      "id": 3206,
+      "name": "Cavalier Two-hander of Agility",
+      "quality": "uncommon",
+      "slot": "twohand",
+      "type": "sword",
+      "req": 23,
+      "ilvl": 28,
+      "stats": {},
+      "suffixStats": {
+        "agi": 11
+      },
+      "dps": 18.97,
+      "score": 34.8455,
+      "delta": 5.0695000000000014,
+      "forever": false,
+      "breakdown": {
+        "score": 34.846,
+        "parts": [
+          "agi 11×2.4=26.4",
+          "dps 18.97×0.15=2.845",
+          "ilvl 28×0.2=5.6"
+        ]
+      }
+    },
+    {
+      "id": 2077,
+      "name": "Magician Staff of the Monkey",
+      "quality": "uncommon",
+      "slot": "twohand",
+      "type": "staff",
+      "req": 24,
+      "ilvl": 29,
+      "stats": {},
+      "suffixStats": {
+        "agi": 8,
+        "sta": 8
+      },
+      "dps": 19.67,
+      "score": 32.7505,
+      "delta": 2.9745000000000026,
+      "forever": false,
+      "breakdown": {
+        "score": 32.751,
+        "parts": [
+          "agi 8×2.4=19.2",
+          "sta 8×0.6=4.8",
+          "dps 19.67×0.15=2.951",
+          "ilvl 29×0.2=5.8"
+        ]
+      }
+    },
+    {
+      "id": 2072,
+      "name": "Dwarven Magestaff of Agility",
+      "quality": "uncommon",
+      "slot": "twohand",
+      "type": "staff",
+      "req": 22,
+      "ilvl": 27,
+      "stats": {},
+      "suffixStats": {
+        "agi": 10
+      },
+      "dps": 18.39,
+      "score": 32.158500000000004,
+      "delta": 2.382500000000004,
+      "forever": false,
+      "breakdown": {
+        "score": 32.159,
+        "parts": [
+          "agi 10×2.4=24",
+          "dps 18.39×0.15=2.759",
+          "ilvl 27×0.2=5.4"
+        ]
+      }
+    },
+    {
+      "id": 15249,
+      "name": "Polished Zweihander of Agility",
+      "quality": "uncommon",
+      "slot": "twohand",
+      "type": "sword",
+      "req": 21,
+      "ilvl": 26,
+      "stats": {},
+      "suffixStats": {
+        "agi": 10
+      },
+      "dps": 17.5,
+      "score": 31.825,
+      "delta": 2.0489999999999995,
+      "forever": false,
+      "breakdown": {
+        "score": 31.825,
+        "parts": [
+          "agi 10×2.4=24",
+          "dps 17.5×0.15=2.625",
+          "ilvl 26×0.2=5.2"
+        ]
+      }
+    }
+  ],
+  "soon": [
+    {
+      "id": 3197,
+      "name": "Stonecutter Claymore of Agility",
+      "quality": "uncommon",
+      "slot": "twohand",
+      "type": "sword",
+      "req": 30,
+      "ilvl": 35,
+      "stats": {},
+      "suffixStats": {
+        "agi": 14
+      },
+      "dps": 23.87,
+      "score": 44.1805,
+      "delta": 14.404500000000002,
+      "forever": false
+    },
+    {
+      "id": 1522,
+      "name": "Headhunting Spear",
+      "quality": "uncommon",
+      "slot": "twohand",
+      "type": "polearm",
+      "req": 31,
+      "ilvl": 36,
+      "stats": {
+        "agi": 11,
+        "spi": 6
+      },
+      "suffixStats": null,
+      "dps": 24.69,
+      "score": 37.3035,
+      "delta": 7.5275,
+      "forever": false
+    }
+  ],
+  "atCount": 9,
+  "soonCount": 2,
+  "uiRows": [
+    {
+      "name": "Tunnel Pick",
+      "meta": "Req 24 · axe · ilvl 29",
+      "reason": "49–74  (19.84 dps, 3.1s) · +7 Agi · +7 Sta",
+      "tag": "",
+      "soon": false
+    },
+    {
+      "name": "Acrobatic Staff of Agility",
+      "meta": "Req 29 · staff · ilvl 34",
+      "reason": "40–61  (22.95 dps, 2.2s) · +14 Agi · +5 ilvl",
+      "tag": "Good for Beast Mastery",
+      "soon": false
+    },
+    {
+      "name": "Glimmering Flamberge of Agility",
+      "meta": "Req 27 · sword · ilvl 32",
+      "reason": "55–84  (21.72 dps, 3.2s) · +13 Agi · +3 ilvl",
+      "tag": "Good for Beast Mastery",
+      "soon": false
+    },
+    {
+      "name": "Brutal War Axe of Agility",
+      "meta": "Req 25 · axe · ilvl 30",
+      "reason": "58–88  (20.28 dps, 3.6s) · +11 Agi · +1 ilvl",
+      "tag": "Good for Beast Mastery",
+      "soon": false
+    },
+    {
+      "name": "Armor Piercer",
+      "meta": "Req 24 · polearm · ilvl 29",
+      "reason": "41–62  (19.81 dps, 2.6s) · +11 Agi",
+      "tag": "Good for Beast Mastery",
+      "soon": false
+    },
+    {
+      "name": "Barbarian War Axe of Agility",
+      "meta": "Req 23 · axe · ilvl 28",
+      "reason": "47–71  (19.03 dps, 3.1s) · +11 Agi · -1 ilvl",
+      "tag": "Good for Beast Mastery",
+      "soon": false
+    },
+    {
+      "name": "Cavalier Two-hander of Agility",
+      "meta": "Req 23 · sword · ilvl 28",
+      "reason": "44–66  (18.97 dps, 2.9s) · +11 Agi · -1 ilvl",
+      "tag": "Good for Beast Mastery",
+      "soon": false
+    },
+    {
+      "name": "Magician Staff of the Monkey",
+      "meta": "Req 24 · staff · ilvl 29",
+      "reason": "47–71  (19.67 dps, 3s) · +8 Agi · +8 Sta",
+      "tag": "Good for Beast Mastery",
+      "soon": false
+    },
+    {
+      "name": "Dwarven Magestaff of Agility",
+      "meta": "Req 22 · staff · ilvl 27",
+      "reason": "41–62  (18.39 dps, 2.8s) · +10 Agi · -2 ilvl",
+      "tag": "Good for Beast Mastery",
+      "soon": false
+    },
+    {
+      "name": "Polished Zweihander of Agility",
+      "meta": "Req 21 · sword · ilvl 26",
+      "reason": "50–76  (17.5 dps, 3.6s) · +10 Agi · -3 ilvl",
+      "tag": "Good for Beast Mastery",
+      "soon": false
+    },
+    {
+      "name": "Dagger of Deals",
+      "meta": "Req 28 · dagger · ilvl 33",
+      "reason": "",
+      "tag": "Stats unknown",
+      "soon": false
+    },
+    {
+      "name": "Healer's Staff",
+      "meta": "Req 28 · staff · ilvl 33",
+      "reason": "",
+      "tag": "Stats unknown",
+      "soon": false
+    }
+  ],
+  "equippedLabel": "Tunnel Pick",
+  "headings": [
+    "Main Hand",
+    "Currently wearing",
+    "Upgrades at your level",
+    "Stats unknown",
+    "Coming soon",
+    "Coming soon — stats unknown"
+  ]
+}
