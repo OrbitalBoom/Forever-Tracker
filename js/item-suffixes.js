@@ -1,6 +1,6 @@
 /* Lazy-loaded Classic random-suffix helpers. Data: data/items/suffixes.js */
 (function () {
-  var VERSION = "20261123d";
+  var VERSION = "20261123e";
   var loading = null;
   var ready = false;
 

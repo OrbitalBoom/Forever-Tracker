@@ -19,7 +19,7 @@
   var THIN_QTY = 3;
   var loaded = false;
   var loading = null;
-  var historyStatus = "none"; /* none | bundled | live */
+  var historyStatus = "none"; /* none | bundled | live | merged */
   var lastRows = [];
 
   function $(s, root) { return (root || document).querySelector(s); }
@@ -39,7 +39,7 @@
     var tag = document.querySelector('script[src*="js/ah-flips.js"], script[src*="js/app.js"]');
     var src = tag && (tag.getAttribute("src") || "");
     var m = src && src.match(/[?&]v=([^&]+)/);
-    return m ? m[1] : "20261123d";
+    return m ? m[1] : "20261123e";
   }
   function loadScript(src) {
     return new Promise(function (resolve, reject) {
@@ -160,6 +160,109 @@
     var n = arr.filter(function (v) { return v != null && v > 0; }).length;
     if (med == null) return { usual: fallback, samples: n, source: "market" };
     return { usual: med, samples: n, source: "median" };
+  }
+
+  function sampleStamp(s) {
+    return (s && typeof s === "object") ? s.updated : s;
+  }
+  function stampMs(s) {
+    var t = Date.parse(sampleStamp(s) || "");
+    return isNaN(t) ? null : t;
+  }
+  function historyUpdatedMs(h) {
+    var t = stampMs(h && h.updated);
+    if (t != null) return t;
+    var samples = h && h.samples;
+    if (samples && samples.length) return stampMs(samples[samples.length - 1]);
+    return 0;
+  }
+
+  /* Union two (or more) history files by sample timestamp. When two samples
+   * share a time, the value from the history with the later `updated` field
+   * wins. Samples older than windowDays before the newest sample are dropped.
+   * Item arrays are rebuilt aligned to the merged sample list (null if missing). */
+  function mergePriceHistories() {
+    var sources = [];
+    for (var a = 0; a < arguments.length; a++) {
+      var h = arguments[a];
+      if (h && h.samples && h.samples.length && h.items) sources.push(h);
+    }
+    if (!sources.length) return null;
+    if (sources.length === 1) {
+      /* still trim? keep as-is when there is only one source */
+    }
+    sources.sort(function (x, y) { return historyUpdatedMs(x) - historyUpdatedMs(y); });
+
+    var slots = {};
+    sources.forEach(function (hist) {
+      var samples = hist.samples;
+      var items = hist.items;
+      for (var i = 0; i < samples.length; i++) {
+        var ts = sampleStamp(samples[i]);
+        var ms = stampMs(ts);
+        if (ms == null) continue;
+        var key = String(ms);
+        if (!slots[key]) slots[key] = { updated: ts, ms: ms, values: {} };
+        else slots[key].updated = ts;
+        Object.keys(items).forEach(function (id) {
+          var arr = items[id];
+          if (!arr || !arr.length || i >= arr.length) return;
+          slots[key].values[String(id)] = arr[i];
+        });
+      }
+    });
+
+    var keys = Object.keys(slots);
+    if (!keys.length) return null;
+    keys.sort(function (x, y) { return slots[x].ms - slots[y].ms; });
+    var windowDays = 7;
+    for (var s = sources.length - 1; s >= 0; s--) {
+      if (sources[s].windowDays) { windowDays = sources[s].windowDays; break; }
+    }
+    var newest = slots[keys[keys.length - 1]].ms;
+    var cutoff = newest - windowDays * 86400000;
+    keys = keys.filter(function (k) { return slots[k].ms >= cutoff; });
+
+    var samplesOut = keys.map(function (k) { return { updated: slots[k].updated }; });
+    var ids = {};
+    keys.forEach(function (k) {
+      Object.keys(slots[k].values).forEach(function (id) { ids[id] = true; });
+    });
+    var itemsOut = {};
+    Object.keys(ids).forEach(function (id) {
+      var col = [];
+      var any = false;
+      for (var i = 0; i < keys.length; i++) {
+        var has = Object.prototype.hasOwnProperty.call(slots[keys[i]].values, id);
+        var v = has ? slots[keys[i]].values[id] : null;
+        col.push(v == null ? null : v);
+        if (v != null) any = true;
+      }
+      if (any) itemsOut[id] = col;
+    });
+
+    function meta(key, fallback) {
+      for (var i = sources.length - 1; i >= 0; i--) {
+        if (sources[i][key] != null && sources[i][key] !== "") return sources[i][key];
+      }
+      return fallback;
+    }
+    return {
+      schema: meta("schema", 1),
+      region: meta("region", "US"),
+      ruleset: meta("ruleset", "Normal"),
+      faction: meta("faction", "Horde"),
+      house: meta("house", 114),
+      houseName: meta("houseName", "Horde Auction House"),
+      windowDays: windowDays,
+      units: meta("units", ""),
+      source: meta("source", ""),
+      updated: slots[keys[keys.length - 1]].updated,
+      sampleCount: samplesOut.length,
+      itemCount: Object.keys(itemsOut).length,
+      samples: samplesOut,
+      items: itemsOut
+    };
   }
 
   function historyRange() {
@@ -318,7 +421,9 @@
       (p.hideThin ? " checked" : "") + "> Hide thin listings (fewer than " + THIN_QTY +
       " listed, or under 1 sold/day)</label>";
     html += "</div>";
-    html += '<p class="muted ahf-meta">Showing ' + rows.length + " of " + all.length +
+    html += '<p class="muted ahf-meta" id="ahFlipsMeta"' +
+      (range ? ' data-history-count="' + range.count + '"' : "") +
+      ' data-history-status="' + esc(historyStatus) + '">Showing ' + rows.length + " of " + all.length +
       " flips" + (asOf ? " · as of " + esc(formatStampNY(asOf)) : "") +
       (range ? " · " + range.count + " history snapshots" : " · current snapshot only") + ".</p>";
 
@@ -401,12 +506,12 @@
     if (loading) return loading;
     var ver = cacheVer();
     var jobs = [];
-    if (!window.PRICE_HISTORY) {
+    var bundledHist = window.PRICE_HISTORY || null;
+    var liveHist = null;
+    if (!bundledHist) {
       jobs.push(loadScript("data/price-history.js?v=" + encodeURIComponent(ver)).then(function () {
-        if (window.PRICE_HISTORY) historyStatus = "bundled";
+        bundledHist = window.PRICE_HISTORY || bundledHist;
       }).catch(function () {}));
-    } else {
-      historyStatus = "bundled";
     }
     if (!window.ITEM_VENDOR) {
       jobs.push(loadScript("data/item-vendor.js?v=" + encodeURIComponent(ver)).catch(function () {}));
@@ -416,23 +521,32 @@
     } else {
       jobs.push(loadScript("data/items/index.js?v=" + encodeURIComponent(ver)).catch(function () {}));
     }
-    /* Prefer a newer history file from the prices-data branch when we can reach it. */
+    /* Merge the live prices-data history with the bundled copy; a newer live
+     * file must not replace a longer bundled window (early prices-data runs
+     * may only have one sample). */
     if (typeof fetch === "function" && location.protocol !== "file:") {
       var rp = repo();
       var bucket = Math.floor(Date.now() / 300000);
       var url = "https://raw.githubusercontent.com/" + rp.owner + "/" + rp.repo +
         "/prices-data/price-history.json?b=" + bucket;
       jobs.push(fetchJson(url).then(function (h) {
-        if (!h || !h.samples || !h.items) return;
-        var cur = window.PRICE_HISTORY;
-        if (!cur || !cur.updated || new Date(h.updated) > new Date(cur.updated)) {
-          window.PRICE_HISTORY = h;
-          historyStatus = "live";
-        }
+        if (h && h.samples && h.items) liveHist = h;
       }).catch(function () {}));
     }
-    loading = Promise.all(jobs).then(function () { loaded = true; loading = null; })
-      .catch(function () { loading = null; loaded = true; });
+    loading = Promise.all(jobs).then(function () {
+      if (bundledHist && liveHist) {
+        var merged = mergePriceHistories(bundledHist, liveHist);
+        window.PRICE_HISTORY = merged || bundledHist;
+        historyStatus = "merged";
+      } else if (liveHist) {
+        window.PRICE_HISTORY = liveHist;
+        historyStatus = "live";
+      } else if (bundledHist) {
+        window.PRICE_HISTORY = bundledHist;
+        historyStatus = "bundled";
+      }
+      loaded = true; loading = null;
+    }).catch(function () { loading = null; loaded = true; });
     return loading;
   }
 
@@ -462,6 +576,8 @@
   window.AhFlips = {
     render: render,
     rows: function () { return lastRows; },
-    defaults: DEFAULTS
+    defaults: DEFAULTS,
+    mergeHistories: mergePriceHistories,
+    historyStatus: function () { return historyStatus; }
   };
 })();

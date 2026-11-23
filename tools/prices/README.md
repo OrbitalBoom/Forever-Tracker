@@ -10,7 +10,7 @@ The `prices-data` branch is a single force-pushed commit, so it does not keep gi
 python3 tools/prices/update_price_history.py --root . --prev /tmp/price-history.prev.json
 ```
 
-The Action fetches the previous `price-history.json` from `prices-data` (if any), merges the new snapshot, drops samples older than 7 days, and publishes the file alongside `prices.json`. A merge failure still publishes the current prices. The Gold tab flip finder uses the median `marketValue` in that window as the “usual” price.
+The Action fetches the previous `price-history.json` from `prices-data` (if any) and also unions it with the checkout copy at `data/price-history.json` (from `main`), then merges the new snapshot, drops samples older than 7 days, and publishes the file alongside `prices.json`. The same union-by-timestamp logic is used in the flip finder so a one-sample live file cannot replace the bundled window. A merge failure still publishes the current prices. The Gold tab flip finder uses the median `marketValue` in that window as the “usual” price.
 
 To rebuild history from a folder of past `prices.json` snapshots (oldest is chosen by each file’s `updated` field):
 
