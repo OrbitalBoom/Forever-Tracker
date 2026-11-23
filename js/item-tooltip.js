@@ -1,6 +1,6 @@
 /* Self-hosted Classic-style item tooltip. Does not load Wowhead power.js. */
 (function () {
-  var VERSION = "20261122l";
+  var VERSION = "20261122m";
   var ICON = "https://render.worldofwarcraft.com/forever-us/icons/56/{icon}.jpg";
   var HOVER_DELAY = 80;
   var HOLD_MS = 420;
@@ -312,6 +312,8 @@
     }
     if (item.statSource === "wowhead-classic" || item.statSource === "classic-db") {
       extras.push('<span class="item-tt-classic-note">Stats: Classic 1.12 data</span>');
+    } else if (item.statSource === "forever-client-derived") {
+      extras.push('<span class="item-tt-classic-note">Stats calculated from Forever game data</span>');
     } else if (item.forever === false) {
       extras.push('<span class="item-tt-classic-note">Classic reference — not in the live Forever client</span>');
     }

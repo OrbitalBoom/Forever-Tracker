@@ -1382,7 +1382,8 @@ table.data tfoot th { text-align: left; }
   cursor: pointer;
   font-weight: 500;
 }
-.gf-unknown-tag {
+.gf-unknown-tag,
+.gf-effect-tag {
   margin-left: 6px;
   color: var(--muted);
 }

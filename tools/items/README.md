@@ -11,7 +11,7 @@ mkdir -p "$SRC/norgannon" "$SRC/cmangos"
 # Live Forever client item tables (wago.tools DB2)
 B=$(curl -s https://wago.tools/api/builds | python3 -c "import json,sys;print(json.load(sys.stdin)['wowf'][0]['version'])")
 export WAGO_BUILD=$B
-for t in ItemSparse Item SpellItemEnchantment RandPropPoints; do
+for t in ItemSparse Item SpellItemEnchantment RandPropPoints ItemDamageOneHand ItemDamageTwoHand ItemArmorQuality ItemArmorTotal ItemArmorShield ArmorLocation ItemEffect ItemXItemEffect Spell SpellMisc SpellDuration; do
   curl -sL -o "$SRC/$t.csv" "https://wago.tools/db2/$t/csv?build=$B&hotfixes=false&locale=enUS"
 done
 # Classic Era random-suffix tables. Forever 1.60 has no ItemRandomProperties / ItemRandomSuffix.
@@ -26,6 +26,9 @@ done
 cp -f "$SRC/ItemSparse.csv" "$SRC/forever/ItemSparse.csv"
 cp -f "$SRC/Item.csv" "$SRC/forever/Item.csv"
 cp -f "$SRC/SpellItemEnchantment.csv" "$SRC/forever/SpellItemEnchantment.csv" 2>/dev/null || true
+for t in RandPropPoints ItemDamageOneHand ItemDamageTwoHand ItemArmorQuality ItemArmorTotal ItemArmorShield ArmorLocation ItemEffect ItemXItemEffect Spell SpellMisc SpellDuration; do
+  cp -f "$SRC/$t.csv" "$SRC/forever/$t.csv" 2>/dev/null || true
+done
 
 # NorgannonDB (GPL-3.0) — Forever drops, vendors, quests, recipes
 # https://github.com/zmarotrix/NorgannonDB
@@ -53,7 +56,7 @@ ITEM_SRC=$SRC WAGO_BUILD=$B python3 tools/items/build_items.py
 
 Writes `data/items/meta.js`, `index.js`, `gear.js`, `suffixes.js` (lazy-loaded random-suffix tables), and `d0.js`… chunk files, and a stub `js/items.js`. After a rebuild, bump the `?v=` query on the script tags in `index.html` (including `js/item-db.js`).
 
-The upgrade finder only uses Forever-confirmed gear (items that have a player-facing `ItemSparse` row in the live client) plus the character's custom items. Classic-reference pieces stay searchable and are labelled as such. Numeric stats come from Classic tooltip or CMaNGOS `item_template` rows when those exist — the Forever client stores allocation weights, not raw amounts, so amounts are not invented. Named Classic gear (quality uncommon through legendary) that is in CMaNGOS but has no Forever `ItemSparse` row is included as Classic-reference even when it is missing from the Wowhead starter tooltip cache, which omitted many world-drop uncommons (for example Humbert's Helm). Icons are taken from Forever `Item.csv` when that table still has the id. If a full rebuild is not possible, `tools/items/add_classic_named_gear.py` adds only those missing pieces to the current `data/items` files.
+The upgrade finder only uses Forever-confirmed gear (items that have a player-facing `ItemSparse` row in the live client) plus the character's custom items. Classic-reference pieces stay searchable and are labelled as such. Numeric stats come from Classic tooltip or CMaNGOS `item_template` rows when those exist. Items with no Classic amounts get values derived by `forever_client_stats.py` from Forever `ItemSparse` allocations × `RandPropPoints`, plus `ItemDamage*` and `ItemArmor*` / `ArmorLocation`, tagged `statSource: forever-client-derived`. Classic numbers are never overwritten. See that module for the exact client formula and the validation gate (about 90%+ exact vs Classic/Wowhelm before shipping). After a rebuild, or to fill a current `data/items` tree without a full rebuild, `python3 tools/items/apply_derived_stats.py` applies the same fill. Named Classic gear (quality uncommon through legendary) that is in CMaNGOS but has no Forever `ItemSparse` row is included as Classic-reference even when it is missing from the Wowhead starter tooltip cache, which omitted many world-drop uncommons (for example Humbert's Helm). Icons are taken from Forever `Item.csv` when that table still has the id. If a full rebuild is not possible, `tools/items/add_classic_named_gear.py` adds only those missing pieces to the current `data/items` files.
 
 Live auction prices are *not* stored in these files; the UI reads `data/prices.js` and the `prices-data` branch. After this database exists, `tools/prices/fetch_prices.py` also keeps AH rows for item ids in the index (the hourly workflow itself is unchanged).
 

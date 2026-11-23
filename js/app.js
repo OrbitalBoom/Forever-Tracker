@@ -918,6 +918,9 @@
     }
     return !!(item && item.weapon && item.weapon.dps);
   }
+  function hasEffects(item) {
+    return !!(item && item.effects && item.effects.length);
+  }
   function itemScore(item, weights, extraStats) {
     var w = weights || (selectedSlot ? weightsFor(selectedSlot) : characterWeights());
     var s = item.stats || {};
@@ -1128,13 +1131,13 @@
   function upgradesFor(slotId) {
     var view = viewChar();
     var current = state.equipment[slotId];
-    if (slotId === "offhand" && equippedTwoHand()) return { blocked: true, at: [], soon: [], unknownAt: [], unknownSoon: [] };
+    if (slotId === "offhand" && equippedTwoHand()) return { blocked: true, at: [], soon: [], unknownAt: [], unknownSoon: [], effectAt: [], effectSoon: [] };
     var f = slotFilter(slotId);
     var sort = f.sort || "best";
     var weights = weightsFor(slotId);
     var curKnown = current && hasStatData(current);
     var curScore = curKnown ? itemScore(current, weights) : 0;
-    var at = [], soon = [], unknownAt = [], unknownSoon = [];
+    var at = [], soon = [], unknownAt = [], unknownSoon = [], effectAt = [], effectSoon = [];
     allItems().forEach(function (item) {
       if (!slotCandidate(item, slotId)) return;
       if (hidePvpItems() && isPvpItem(item)) return;
@@ -1160,7 +1163,12 @@
       var rec = { item: item, score: score, delta: score - curScore, atLevel: atLevel, req: req, unknown: !known, bestSuffix: best && best.roll };
       if (sort === "best") {
         if (!known) {
-          if (atLevel) unknownAt.push(rec); else unknownSoon.push(rec);
+          rec.effectOnly = hasEffects(item);
+          if (rec.effectOnly) {
+            if (atLevel) effectAt.push(rec); else effectSoon.push(rec);
+          } else {
+            if (atLevel) unknownAt.push(rec); else unknownSoon.push(rec);
+          }
           return;
         }
         if (curKnown && score <= curScore + 0.05) return;
@@ -1177,6 +1185,8 @@
     soon.sort(byChosen);
     unknownAt.sort(byIlvl);
     unknownSoon.sort(byIlvl);
+    effectAt.sort(byIlvl);
+    effectSoon.sort(byIlvl);
     var closest = current ? at.slice().sort(function (a, b) { return a.delta - b.delta; })[0] : null;
     return {
       blocked: false,
@@ -1184,6 +1194,8 @@
       soon: soon.slice(0, SOON_LIMIT),
       unknownAt: unknownAt.slice(0, 20),
       unknownSoon: unknownSoon.slice(0, 8),
+      effectAt: effectAt.slice(0, 20),
+      effectSoon: effectSoon.slice(0, 8),
       closest: closest,
       currentScore: curScore
     };
@@ -1225,6 +1237,9 @@
   }
 
   function goodForHtml(rec, slotId) {
+    if (rec.effectOnly) {
+      return '<span class="kind-tag gf-effect-tag">Effect only</span>';
+    }
     if (rec.unknown) {
       return '<span class="kind-tag gf-unknown-tag">Stats unknown</span>';
     }
@@ -1269,7 +1284,7 @@
 
   function upgradeCard(rec, slotId) {
     var it = rec.item;
-    var reason = rec.unknown ? "" : upgradeReason(rec, slotId);
+    var reason = (rec.unknown && !rec.effectOnly) ? "" : upgradeReason(rec, slotId);
     var view = viewChar();
     var saved = ch();
     var canSave = canEquipInSlot(it, saved, slotId, 0);
@@ -1280,7 +1295,7 @@
     else if (view.class !== saved.class && !canSave) notes.push("Your saved character is not normally able to use this.");
     var note = notes.length ? '<div class="upgrade-row-note muted">' + notes.map(escapeHtml).join(" · ") + "</div>" : "";
     var actions = '<button type="button" class="btn btn-primary btn-sm" data-equip-id="' + escapeHtml(String(it.id)) + '">Equip</button>';
-    return '<div class="upgrade-row' + (rec.atLevel ? "" : " soon") + (rec.unknown ? " is-unknown" : "") + '" data-item-id="' + escapeHtml(String(it.id)) + '" data-compare-slot="' + escapeHtml(String(slotId)) + '">' +
+    return '<div class="upgrade-row' + (rec.atLevel ? "" : " soon") + (rec.effectOnly ? " is-effect-only" : rec.unknown ? " is-unknown" : "") + '" data-item-id="' + escapeHtml(String(it.id)) + '" data-compare-slot="' + escapeHtml(String(slotId)) + '">' +
       itemIconHtml(it) +
       '<div class="upgrade-row-main">' +
       '<a href="#item-' + it.id + '" data-item-id="' + escapeHtml(String(it.id)) + '" class="item-name ' + qualityClass(it.quality) + '"' +
@@ -1414,8 +1429,8 @@
   }
 
   function equippedCard(it, slotId) {
-    var rec = { item: it, score: 0, delta: 0, atLevel: true, req: effectiveReq(it), unknown: !hasStatData(it) };
-    var reason = rec.unknown ? "" : formatStats(it);
+    var rec = { item: it, score: 0, delta: 0, atLevel: true, req: effectiveReq(it), unknown: !hasStatData(it), effectOnly: !hasStatData(it) && hasEffects(it) };
+    var reason = (rec.unknown && !rec.effectOnly) ? "" : formatStats(it);
     var warns = equipWarnings(it, ch(), slotId).filter(function (w) { return w.indexOf("Classic reference") === -1; });
     return '<div class="upgrade-row is-equipped" data-item-id="' + escapeHtml(String(it.id)) + '" data-compare-slot="' + escapeHtml(String(slotId)) + '">' +
       itemIconHtml(it) +
@@ -1465,12 +1480,18 @@
       var unkAt = u.unknownAt || [];
       var sort = slotFilter(slotId).sort || "best";
       html += "<h4>" + (sort === "best" ? "Upgrades at your level" : "At your level") + "</h4>";
-      if (!atList.length && !unkAt.length) {
+      if (!atList.length && !unkAt.length && !(u.effectAt && u.effectAt.length)) {
         html += "<p class=\"muted\">No upgrades for this slot at your level with these filters. Try All, or search above to equip something you already have.</p>";
       } else {
         atList.forEach(function (r) { html += upgradeCard(r, slotId); });
         if (!slotShowAll && u.at.length > AT_LEVEL_PAGE) {
           html += '<p><button type="button" class="btn btn-sm" data-slot-more>Show more (' + (u.at.length - AT_LEVEL_PAGE) + ")</button></p>";
+        }
+        var effAt = u.effectAt || [];
+        if (effAt.length) {
+          html += "<h4>Effect only</h4>";
+          html += "<p class=\"muted\">These items have an on-use or equip effect but no numeric stats, so they are listed after scored upgrades.</p>";
+          (slotShowAll ? effAt : effAt.slice(0, 6)).forEach(function (r) { html += upgradeCard(r, slotId); });
         }
         if (unkAt.length) {
           html += "<h4>Stats unknown</h4>";
@@ -1481,6 +1502,10 @@
       if (u.soon.length) {
         html += "<h4>Coming soon</h4>";
         u.soon.forEach(function (r) { html += upgradeCard(r, slotId); });
+      }
+      if (u.effectSoon && u.effectSoon.length) {
+        html += "<h4>Coming soon — effect only</h4>";
+        u.effectSoon.forEach(function (r) { html += upgradeCard(r, slotId); });
       }
       if (u.unknownSoon && u.unknownSoon.length) {
         html += "<h4>Coming soon — stats unknown</h4>";

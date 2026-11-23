@@ -1,6 +1,6 @@
 /* Item search, detail cards, and lazy loading for data/items/*.js */
 (function () {
-  var VERSION = "20261122l";
+  var VERSION = "20261122m";
   var ICON = "https://render.worldofwarcraft.com/forever-us/icons/56/{icon}.jpg";
   var loaded = false;
   var loading = null;
@@ -283,8 +283,10 @@
       statNote = '<p class="muted idb-stat-note">Stats are from Classic sources' +
         (item.statSource === "classic-db" ? " (CMaNGOS item_template)" : " (Wowhead Classic tooltips)") +
         " and may differ if Forever changed the item.</p>";
+    } else if (item.statSource === "forever-client-derived") {
+      statNote = '<p class="muted idb-stat-note">Stats calculated from Forever game data (client allocation tables). Classic tooltip amounts were not available for this piece.</p>';
     } else if (item.slot && !(item.stats && Object.keys(item.stats).length) && !item.weapon) {
-      statNote = '<p class="muted idb-stat-note">Numeric stats for this piece are not in the Classic sources we have; the Forever client only stores allocation weights.</p>';
+      statNote = '<p class="muted idb-stat-note">Numeric stats for this piece are not in the Classic sources we have, and could not be derived from the Forever client tables.</p>';
     }
 
     var p = priceOf(item.id);

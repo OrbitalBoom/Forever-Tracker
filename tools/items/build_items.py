@@ -22,6 +22,9 @@ import csv, gzip, json, os, re, sys, time
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
+import sys as _sys_for_items
+_sys_for_items.path.insert(0, str(Path(__file__).resolve().parent))
+from forever_client_stats import ForeverClientStats, SOURCE as FOREVER_DERIVED_SOURCE
 
 ROOT = Path(sys.argv[1] if len(sys.argv) > 1 else Path(__file__).resolve().parents[2]).resolve()
 TOOLS = Path(__file__).resolve().parent
@@ -33,6 +36,8 @@ def find_src() -> Path:
     for p in [Path(env) if env else None, TOOLS / "cache", Path("/tmp/item-db-src")]:
         if p and (p / "ItemSparse.csv").exists():
             return p
+        if p and (p / "forever" / "ItemSparse.csv").exists():
+            return p / "forever"
         if p and (p / "norgannon" / "items.lua").exists() and (p.parent / "ItemSparse.csv").exists():
             return p.parent
     # norgannon nested
@@ -443,6 +448,12 @@ def main():
     print("loading ItemSparse / Item")
     sparse = load_csv_by_id(sparse_path)
     item_rows = load_csv_by_id(item_path)
+    try:
+        deriver = ForeverClientStats(SRC)
+        print("Forever client stat derivation ready (build tables in", deriver.dir, ")")
+    except Exception as exc:
+        deriver = None
+        print("Forever client stat derivation unavailable:", exc)
     build_id = os.environ.get("WAGO_BUILD", "1.60.1.71037")
 
     wow_items = load_wow_items()
@@ -728,6 +739,23 @@ def main():
         classes = list(wow.get("classes") or []) if wow else []
         unique = bool(wow.get("unique")) if wow else False
 
+        if deriver is not None:
+            derived = deriver.derive(iid)
+            had_classic_stats = bool(stats)
+            had_classic_weapon = bool(weapon)
+            if not had_classic_stats and derived.get("stats"):
+                stats = dict(derived["stats"])
+                stat_source = FOREVER_DERIVED_SOURCE
+            if not had_classic_weapon and derived.get("weapon"):
+                weapon = dict(derived["weapon"])
+                if not stat_source:
+                    stat_source = FOREVER_DERIVED_SOURCE
+            if derived.get("skill_effects"):
+                have = set(effects)
+                for line in derived["skill_effects"]:
+                    if line not in have:
+                        effects.append(line)
+
         # sources from Norgannon
         drops = []
         drec = (nrec.get("drops") or {}) if nrec else {}
@@ -940,7 +968,7 @@ def main():
             "chunks": n_chunks,
         },
         "sources": [
-            {"name": "wago.tools DB2 ItemSparse and Item", "build": build_id, "role": "Forever client item facts (name, quality, ilvl, req, slot, vendor prices, icon file id)"},
+            {"name": "wago.tools DB2 ItemSparse, Item, RandPropPoints, ItemDamage*, ItemArmorQuality, ItemArmorTotal, ItemArmorShield, ArmorLocation", "build": build_id, "role": "Forever client item facts (name, quality, ilvl, req, slot, vendor prices, icon file id) and tables used to derive missing stat/weapon/armor amounts"},
             {"name": "zmarotrix/NorgannonDB", "license": "GPL-3.0", "role": "Forever drops, vendors, quest uses/rewards, recipes"},
             {"name": "LibProfessionDB / js/professions-data.js", "role": "Forever recipe reagents and products"},
             {"name": "Napalmsteak/WoW-Classic-Item-Caches (Wowhead Classic tooltips)", "role": "Classic-reference stats, weapon damage, on-equip text, class restrictions"},
@@ -951,7 +979,7 @@ def main():
         "notes": [
             "forever=true means the item has a player-facing ItemSparse record in the live Forever client.",
             "Items only in Classic databases or the previous tooltip cache are marked Classic-reference and are excluded from the upgrade finder by default.",
-            "Stat amounts on gear come from Classic tooltip/DB sources, not from Forever ItemSparse (the client stores allocation weights, not raw amounts). They may differ if Forever changed a piece.",
+            "Stat amounts prefer Classic Wowhead/CMaNGOS when those sources have numbers. Items with no Classic stats get amounts derived from Forever ItemSparse StatPercentEditor x RandPropPoints (and ItemDamage*/ItemArmor* for weapons and armor), marked statSource forever-client-derived. Classic numbers are kept when both exist, even if the Forever allocation differs.",
             "Drop chances are copied from NorgannonDB (QuestieDB / pfQuest / DungeonJournal / Collector). A chance of 0 means 'drops, chance unknown'.",
             "Live auction prices are not stored here; the UI reads data/prices.js and the prices-data branch.",
         ],
