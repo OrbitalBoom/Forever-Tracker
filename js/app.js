@@ -594,6 +594,10 @@
     if (!form.date.value) form.date.value = todayISO();
     $("#goldSummary").innerHTML = pill("Running total", formatGold(goldTotal()));
     drawGoldChart();
+    if (window.AhFlips) {
+      try { window.AhFlips.render(state, { save: save, formatGold: formatGold, escapeHtml: escapeHtml }); }
+      catch (e) { console.error(e); }
+    }
     if (window.GoldFarms) {
       try { window.GoldFarms.render(state, { save: save, formatGold: formatGold, escapeHtml: escapeHtml }); }
       catch (e) { console.error(e); }
@@ -3749,7 +3753,7 @@
     var tag = document.querySelector('script[src*="js/app.js"]');
     var src = tag && (tag.getAttribute("src") || "");
     var m = src.match(/[?&]v=([^&]+)/);
-    return m ? m[1] : "20261123b";
+    return m ? m[1] : "20261123c";
   }
 
   function ensureTalentTooltipsLoaded(cb) {

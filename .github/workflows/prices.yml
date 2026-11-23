@@ -1,8 +1,11 @@
 # Refreshes WoW: Forever auction prices (US, Normal ruleset, Horde AH) for the
-# Professions tab. Publishes data/prices.json + data/prices.js to the
-# `prices-data` branch as a single force-pushed commit, so main's history does
-# not grow and the site's own deploys are untouched. The site reads the file
-# from raw.githubusercontent.com and falls back to the copy in main.
+# Professions tab and the Gold tab flip finder. Publishes data/prices.json +
+# data/prices.js, and a compact 7-day marketValue history (price-history.json
+# + price-history.js), to the `prices-data` branch as a single force-pushed
+# commit, so main's history does not grow and the site's own deploys are
+# untouched. The branch itself still has no git history; the rolling window
+# lives inside price-history.json. The site reads these files from
+# raw.githubusercontent.com and falls back to the copies in main.
 name: Refresh auction prices
 
 on:
@@ -53,16 +56,42 @@ jobs:
           PRICE_FALLBACK: ${{ vars.PRICE_FALLBACK || 'on' }}
         run: python3 tools/prices/fetch_prices.py .
 
+      # The prices-data branch is still a single force-pushed commit (no git
+      # history). A compact 7-day marketValue summary is carried inside
+      # price-history.json so the AH flip finder can use a median usual price.
+      # A failure here must not block publishing prices.json.
+      - name: Merge 7-day price history
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          set -e
+          prev=""
+          git fetch --depth 1 origin prices-data || true
+          if git cat-file -e origin/prices-data:price-history.json 2>/dev/null; then
+            git show origin/prices-data:price-history.json > /tmp/price-history.prev.json
+            prev=/tmp/price-history.prev.json
+          fi
+          if [ -n "$prev" ]; then
+            python3 tools/prices/update_price_history.py --root . --prev "$prev" \
+              || echo "history merge failed; publishing prices.json only"
+          else
+            python3 tools/prices/update_price_history.py --root . \
+              || echo "history merge failed; publishing prices.json only"
+          fi
+
       - name: Publish to prices-data branch
         if: steps.gate.outputs.run == 'true'
         run: |
           set -e
           test -s data/prices.json || { echo "no prices.json"; exit 1; }
           mkdir -p /tmp/out && cp data/prices.json data/prices.js /tmp/out/
+          if [ -s data/price-history.json ] && [ -s data/price-history.js ]; then
+            cp data/price-history.json data/price-history.js /tmp/out/
+          fi
           cd /tmp/out
           git init -q -b prices-data
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add prices.json prices.js
+          if [ -f price-history.json ]; then git add price-history.json price-history.js; fi
           git commit -q -m "Auction prices $(date -u +%Y-%m-%dT%H:%MZ)"
           git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" prices-data
