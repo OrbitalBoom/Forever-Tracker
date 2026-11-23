@@ -1,6 +1,6 @@
 /* Lazy-loaded Classic random-suffix helpers. Data: data/items/suffixes.js */
 (function () {
-  var VERSION = "20261122h";
+  var VERSION = "20261122i";
   var loading = null;
   var ready = false;
 
@@ -128,19 +128,21 @@
   function itemMatchesSearch(item, query) {
     query = (query || "").trim().toLowerCase();
     if (!query) return false;
-    var name = ((item && item.name) || "").toLowerCase();
+    var name = (item && item.name) || "";
+    var matchName = (typeof window.itemNameMatches === "function")
+      ? function (n, q) { return window.itemNameMatches(n, q); }
+      : function (n, q) { return String(n || "").toLowerCase().replace(/['’`]/g, "").indexOf(String(q || "").toLowerCase().replace(/['’`]/g, "")) !== -1; };
     var ids = suffixIdsMatching(query);
     if (ids.length) {
       var base = query.replace(SUFFIX_PHRASE, " ").replace(/\s+/g, " ").trim();
-      if (base && name.indexOf(base) === -1) return false;
+      if (base && !matchName(name, base)) return false;
       var have = {};
       rolls(groupOf(item)).forEach(function (r) { have[r.id] = true; have[String(r.id)] = true; });
       return ids.some(function (id) { return have[id] || have[String(id)]; });
     }
-    if (name.indexOf(query) !== -1) return true;
+    if (matchName(name, query)) return true;
     if (item && item.suffixId) {
-      var full = displayName(item, item.suffixId).toLowerCase();
-      if (full.indexOf(query) !== -1) return true;
+      if (matchName(displayName(item, item.suffixId), query)) return true;
     }
     return false;
   }

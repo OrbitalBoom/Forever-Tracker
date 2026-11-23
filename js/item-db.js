@@ -1,6 +1,6 @@
 /* Item search, detail cards, and lazy loading for data/items/*.js */
 (function () {
-  var VERSION = "20261122h";
+  var VERSION = "20261122i";
   var ICON = "https://render.worldofwarcraft.com/forever-us/icons/56/{icon}.jpg";
   var loaded = false;
   var loading = null;
@@ -148,10 +148,13 @@
     for (var i = 0; i < index.length; i++) {
       var it = index[i];
       if (cat && cat !== "all" && it.cat !== cat) continue;
-      if (q && it.n.toLowerCase().indexOf(q) === -1 && String(it.id) !== q) {
-        if (!window.ItemSuffixes) continue;
-        var g = gearById[it.id];
-        if (!g || !ItemSuffixes.itemMatchesSearch({ id: it.id, name: it.n, suffixGroup: g.suffixGroup }, q)) continue;
+      if (q && String(it.id) !== q) {
+        var nameHit = (typeof window.itemNameMatches === "function") ? window.itemNameMatches(it.n, q) : (it.n.toLowerCase().indexOf(q) !== -1);
+        if (!nameHit) {
+          if (!window.ItemSuffixes) continue;
+          var g = gearById[it.id];
+          if (!g || !ItemSuffixes.itemMatchesSearch({ id: it.id, name: it.n, suffixGroup: g.suffixGroup }, q)) continue;
+        }
       }
       out.push(it);
       if (out.length >= limit) break;

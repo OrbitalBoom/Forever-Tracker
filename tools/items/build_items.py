@@ -584,6 +584,8 @@ def main():
                 return rec[0]
         if iid in wow_items:
             return wow_items[iid].get("name") or fallback
+        if iid in cmangos and cmangos[iid].get("name"):
+            return cmangos[iid]["name"]
         return fallback or ("Item " + str(iid))
 
     # Build candidate id set
@@ -596,6 +598,14 @@ def main():
     for iid, rec in n_items.items():
         cls = iint(rec.get("class"), -1)
         if cls in (0, 2, 4, 5, 7, 9, 12, 13):
+            ids.add(int(iid))
+    # Named Classic gear missing from Forever ItemSparse and from the Wowhead
+    # starter tooltip cache (that cache omits many world-drop uncommons).
+    for iid, rec in cmangos.items():
+        inv = iint(rec.get("InventoryType"))
+        q = iint(rec.get("Quality"))
+        name = rec.get("name") or ""
+        if inv in GEAR_INV and 2 <= q < 6 and not skip_name(name) and not re.search(r"\bTEST\b", name, re.I):
             ids.add(int(iid))
     # anything used as a reagent or produced
     ids.update(uses_recipes.keys())
@@ -679,6 +689,9 @@ def main():
         # Classic-reference named gear from the tooltip cache / Norgannon, not in the client
         if not forever:
             if wow and wow.get("quality") in ("uncommon", "rare", "epic", "legendary"):
+                keep = True
+                cat = "gear"
+            elif tmpl and iint(tmpl.get("InventoryType")) in GEAR_INV and 2 <= iint(tmpl.get("Quality")) < 6 and not skip_name(tmpl.get("name") or "") and not re.search(r"\bTEST\b", tmpl.get("name") or "", re.I):
                 keep = True
                 cat = "gear"
             elif cat in ("reagent", "consumable", "quest") and (iid in uses_recipes or iid in quest_uses or iid in quest_rewards or is_key):

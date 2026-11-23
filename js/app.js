@@ -250,6 +250,49 @@
 
   /* ---------- character helpers ---------- */
   function ch() { return state.character || defaultState().character; }
+
+  function normItemText(s) {
+    return String(s == null ? "" : s).toLowerCase().replace(/['’`´]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+  }
+  function itemEditDistance(a, b) {
+    if (a === b) return 0;
+    var la = a.length, lb = b.length, i, j;
+    if (Math.abs(la - lb) > 2) return 99;
+    var prev = [], cur = [], tmp;
+    for (j = 0; j <= lb; j++) prev[j] = j;
+    for (i = 1; i <= la; i++) {
+      cur[0] = i;
+      for (j = 1; j <= lb; j++) {
+        cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1));
+      }
+      tmp = prev; prev = cur; cur = tmp;
+    }
+    return prev[lb];
+  }
+  function itemTokenClose(qt, nt) {
+    if (!qt || !nt) return false;
+    if (nt.indexOf(qt) !== -1 || qt.indexOf(nt) === 0 && nt.length >= 3) return true;
+    if (qt.length >= 4 && nt.length >= 4) {
+      var d = itemEditDistance(qt, nt);
+      if (d <= 1) return true;
+      if (d <= 2 && Math.min(qt.length, nt.length) >= 7) return true;
+    }
+    return false;
+  }
+  function itemNameMatches(name, query) {
+    var q = normItemText(query), n = normItemText(name);
+    if (!q) return false;
+    if (n.indexOf(q) !== -1) return true;
+    if (String(name) === String(query)) return true;
+    var qtoks = q.split(/\s+/), ntoks = n.split(/\s+/);
+    return qtoks.every(function (qt) {
+      if (n.indexOf(qt) !== -1) return true;
+      return ntoks.some(function (nt) { return itemTokenClose(qt, nt); });
+    });
+  }
+  window.itemNameMatches = itemNameMatches;
+  window.normItemText = normItemText;
+
   function classColor(name) { return (DATA.classColors && DATA.classColors[name]) || "var(--gold)"; }
 
   function fillSelect(sel, values, current) {
@@ -1419,13 +1462,14 @@
     var c = ch();
     var hits = allItems().filter(function (it) {
       if (!itemFitsSlot(it, selectedSlot)) return false;
-      if (window.ItemSuffixes) return ItemSuffixes.itemMatchesSearch(it, q);
-      return it.name.toLowerCase().indexOf(q) !== -1;
+      if (window.ItemSuffixes && ItemSuffixes.itemMatchesSearch(it, q)) return true;
+      return itemNameMatches(it.name, q) || String(it.id) === q;
     }).sort(function (a, b) {
-      var an = (a.name || "").toLowerCase();
-      var bn = (b.name || "").toLowerCase();
-      var as = an.indexOf(q) === 0 ? 0 : 1;
-      var bs = bn.indexOf(q) === 0 ? 0 : 1;
+      var an = normItemText(a.name || "");
+      var bn = normItemText(b.name || "");
+      var nq = normItemText(q);
+      var as = an.indexOf(nq) === 0 ? 0 : 1;
+      var bs = bn.indexOf(nq) === 0 ? 0 : 1;
       if (as !== bs) return as - bs;
       return (a.name || "").localeCompare(b.name || "");
     }).slice(0, 50);
