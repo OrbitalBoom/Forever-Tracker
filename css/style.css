@@ -890,6 +890,9 @@ footer.site-footer {
 /* ---------- profession guide ---------- */
 .prof-guide { margin-top: 8px; }
 .pg-toolbar { align-items: flex-end; flex-wrap: wrap; }
+.pg-prof-name { font-weight: 600; color: var(--gold-2); padding-bottom: 6px; margin-right: 8px; }
+.pg-prof-switch { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-right: 8px; }
+.pg-hint { margin: 0 0 12px; }
 .pg-opts { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 8px 0; font-size: .92rem; color: var(--ink-dim); }
 .pg-opts label.check, .prof-guide label.check { display: flex; align-items: center; gap: 6px; cursor: pointer; }
 .pg-price { margin: 6px 0 10px; }
@@ -1308,7 +1311,6 @@ table.data tfoot th { text-align: left; }
 .pg-step.is-past, .pg-step.done { opacity: .55; }
 .pg-caught-up { margin: 0 0 10px; }
 .pg-hint { margin: 8px 0 0; }
-.prof-select-yours { font-weight: 600; }
 
 .gf-hide-dungeons {
   margin: 0;

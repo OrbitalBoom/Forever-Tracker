@@ -59,7 +59,6 @@
   var rendered = false;
   var lastPlan = null;
   var lastMineKey = null;
-  var browseOther = false;
   var pendingScroll = false;
 
   ORDER.forEach(function (pid) {
@@ -155,20 +154,14 @@
     opts = opts || {};
     var g = st();
     var mine = guidedIds();
-    var key = mine.join(",");
-    var listChanged = lastMineKey !== null && lastMineKey !== key;
-    lastMineKey = key;
+    lastMineKey = mine.join(",");
     var prev = g.prof;
     if (opts.addedName) {
       var aid = profIdByName(opts.addedName);
-      if (aid) { g.prof = aid; browseOther = false; }
-      else if (mine.length && mine.indexOf(g.prof) === -1) { g.prof = mine[0]; browseOther = false; }
+      if (aid) g.prof = aid;
+      else if (mine.length && mine.indexOf(g.prof) === -1) g.prof = mine[0];
     } else if (mine.length) {
-      var inMine = mine.indexOf(g.prof) !== -1;
-      if (!g.prof || (!inMine && (!browseOther || listChanged))) {
-        g.prof = mine[0];
-        browseOther = false;
-      }
+      if (mine.indexOf(g.prof) === -1) g.prof = mine[0];
     }
     if (g.prof !== prev) save();
     return g;
@@ -391,40 +384,36 @@
     return D.professions[pid].name + (pid === 186 ? " (smelting)" : "");
   }
 
-  function profOptions(sel) {
+  function profSwitcherHtml(sel) {
     var mine = guidedIds();
-    function opt(pid) {
-      var n = profLabel(pid);
-      var cp = charProf(pid);
-      if (cp) n += " — skill " + (cp.skill || 0);
-      return '<option value="' + pid + '"' + (pid === sel ? " selected" : "") + ">" + esc(n) + "</option>";
+    if (!mine.length) return "";
+    if (mine.length === 1) {
+      var only = mine[0];
+      var cp = charProf(only);
+      return '<div class="pg-prof-name">' + esc(profLabel(only)) +
+        (cp ? " — skill " + (cp.skill || 0) : "") + "</div>";
     }
-    var html = "";
-    if (mine.length) {
-      html += '<optgroup label="Yours" class="prof-select-yours">';
-      mine.forEach(function (pid) { html += opt(pid); });
-      html += "</optgroup>";
-    }
-    html += '<optgroup label="All guides">';
-    ORDER.forEach(function (pid) {
-      if (!D.professions[pid] || mine.indexOf(pid) !== -1) return;
-      html += opt(pid);
-    });
-    html += "</optgroup>";
-    return html;
+    return '<div class="pg-prof-switch" role="tablist" aria-label="Your professions">' +
+      mine.map(function (pid) {
+        var on = pid === sel;
+        var c = charProf(pid);
+        return '<button type="button" class="btn btn-sm' + (on ? " btn-primary" : "") +
+          '" data-pgprof="' + pid + '"' + (on ? ' aria-current="true"' : "") + ">" +
+          esc(profLabel(pid)) + (c ? " (" + (c.skill || 0) + ")" : "") + "</button>";
+      }).join("") + "</div>";
   }
 
   function guideHint() {
     var s = APP().getState();
     var listed = (s.professions || []).filter(function (p) { return p && p.name; });
     if (!listed.length) {
-      return '<p class="pg-hint muted">Add a profession and its skill <a href="#professions">above</a> and this guide will start at that skill, mark earlier steps as done, and show what to craft next (with auction prices when we have them).</p>';
+      return '<p class="pg-hint muted">You haven’t set any professions yet. Add them and their skill <a href="#professions">above</a> (Add profession), and this guide will follow those skills.</p>';
     }
     var gather = gatheringProfs();
     if (!guidedIds().length && gather.length) {
       return '<p class="pg-hint muted">Your listed profession' + (gather.length === 1 ? " is" : "s are") + " " +
         esc(gather.map(function (p) { return p.name + " (" + (p.skill || 0) + ")"; }).join(", ")) +
-        ". Gathering has no 1–300 craft guide here. Add a craft profession above, or pick one in the list to browse.</p>";
+        ". Gathering has no 1–300 craft guide here. Add a crafting profession above if you have one.</p>";
     }
     return "";
   }
@@ -441,11 +430,18 @@
   function render() {
     var root = $("#profGuide");
     if (!root || !APP()) return;
-    var g = st(), o = g.opts, pid = g.prof;
-    var skill = currentSkill(pid);
+    var g = syncSelectedProfession();
+    var mine = guidedIds();
     var html = guideHint();
+    if (!mine.length) {
+      root.innerHTML = html;
+      rendered = true;
+      return;
+    }
+    var o = g.opts, pid = g.prof;
+    var skill = currentSkill(pid);
     html += '<div class="route-toolbar pg-toolbar">' +
-      '<label class="field">Profession<select id="pgProf">' + profOptions(pid) + "</select></label>" +
+      profSwitcherHtml(pid) +
       '<label class="field">Current skill<input type="number" id="pgSkill" min="1" max="300" value="' + skill + '"></label>' +
       '<label class="field">Optimize for<select id="pgMode"><option value="gold"' + (o.mode === "gold" ? " selected" : "") + '>Lowest gold cost (AH prices)</option><option value="count"' + (o.mode === "count" ? " selected" : "") + ">Fewest raw materials</option></select></label>" +
       '<button type="button" class="btn btn-sm" id="pgRefresh">Refresh prices</button>' +
@@ -714,15 +710,7 @@
       var t = e.target;
       if (!t.closest || !t.closest("#profGuide")) return;
       var g = st();
-      if (t.id === "pgProf") {
-        g.prof = parseInt(t.value, 10);
-        g.roi.level = null;
-        browseOther = guidedIds().indexOf(g.prof) === -1;
-        save();
-        pendingScroll = true;
-        render();
-      }
-      else if (t.id === "pgSkill") { setSkill(g.prof, t.value); pendingScroll = true; render(); }
+      if (t.id === "pgSkill") { setSkill(g.prof, t.value); pendingScroll = true; render(); }
       else if (t.id === "pgMode") { g.opts.mode = t.value; save(); render(); }
       else if (t.getAttribute("data-pgopt")) { g.opts[t.getAttribute("data-pgopt")] = t.checked; save(); render(); }
       else if (t.getAttribute("data-pgstep")) {
@@ -739,6 +727,17 @@
       var t = e.target;
       if (!t.closest || !t.closest("#profGuide")) return;
       var g = st();
+      var sw = t.closest("[data-pgprof]");
+      if (sw) {
+        var next = parseInt(sw.getAttribute("data-pgprof"), 10);
+        if (guidedIds().indexOf(next) === -1) return;
+        g.prof = next;
+        g.roi.level = null;
+        save();
+        pendingScroll = true;
+        render();
+        return;
+      }
       var v = t.closest("[data-pgview]");
       if (v) { g.view = v.getAttribute("data-pgview"); save(); render(); return; }
       var th = t.closest("[data-pgsort]");

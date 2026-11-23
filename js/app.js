@@ -573,7 +573,7 @@
   function renderProfessions() {
     var box = $("#professions");
     if (!state.professions.length) {
-      box.innerHTML = "<p class=\"muted\">No professions yet. Add one and the guide below will start at your skill. Classic caps at 300.</p>";
+      box.innerHTML = "<p class=\"muted\">No professions yet. Use Add profession below to enter the ones your character has, and their skill. Classic caps at 300.</p>";
       return;
     }
     box.innerHTML = state.professions.map(function (p) {
