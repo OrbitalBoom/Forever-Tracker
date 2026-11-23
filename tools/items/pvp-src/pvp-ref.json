@@ -1,0 +1,257 @@
+{
+  "bgAreas": {
+    "2597": {
+      "map": 30,
+      "name": "Alterac Valley",
+      "parent": 0
+    },
+    "2817": {
+      "map": 30,
+      "name": "***On Map Dungeon***",
+      "parent": 0
+    },
+    "2917": {
+      "map": 450,
+      "name": "Hall of Legends",
+      "parent": 0
+    },
+    "2918": {
+      "map": 449,
+      "name": "Champions' Hall",
+      "parent": 0
+    },
+    "2957": {
+      "map": 30,
+      "name": "Irondeep Mine",
+      "parent": 2597
+    },
+    "2958": {
+      "map": 30,
+      "name": "Stonehearth Outpost",
+      "parent": 2597
+    },
+    "2959": {
+      "map": 30,
+      "name": "Dun Baldar",
+      "parent": 2597
+    },
+    "2960": {
+      "map": 30,
+      "name": "Icewing Pass",
+      "parent": 2597
+    },
+    "2961": {
+      "map": 30,
+      "name": "Frostwolf Village",
+      "parent": 2597
+    },
+    "2962": {
+      "map": 30,
+      "name": "Tower Point",
+      "parent": 2597
+    },
+    "2963": {
+      "map": 30,
+      "name": "Coldtooth Mine",
+      "parent": 2597
+    },
+    "2964": {
+      "map": 30,
+      "name": "Winterax Hold",
+      "parent": 2597
+    },
+    "2977": {
+      "map": 30,
+      "name": "Iceblood Garrison",
+      "parent": 2597
+    },
+    "2978": {
+      "map": 30,
+      "name": "Frostwolf Keep",
+      "parent": 2597
+    },
+    "3017": {
+      "map": 30,
+      "name": "Frost Dagger Pass",
+      "parent": 2597
+    },
+    "3057": {
+      "map": 30,
+      "name": "Field of Strife",
+      "parent": 2597
+    },
+    "3058": {
+      "map": 30,
+      "name": "Icewing Cavern",
+      "parent": 2597
+    },
+    "3277": {
+      "map": 489,
+      "name": "Warsong Gulch",
+      "parent": 0
+    },
+    "3297": {
+      "map": 30,
+      "name": "Frostwolf Graveyard",
+      "parent": 2597
+    },
+    "3298": {
+      "map": 30,
+      "name": "Frostwolf Pass",
+      "parent": 2597
+    },
+    "3299": {
+      "map": 30,
+      "name": "Dun Baldar Pass",
+      "parent": 2597
+    },
+    "3300": {
+      "map": 30,
+      "name": "Iceblood Graveyard",
+      "parent": 2597
+    },
+    "3301": {
+      "map": 30,
+      "name": "Snowfall Graveyard",
+      "parent": 2597
+    },
+    "3302": {
+      "map": 30,
+      "name": "Stonehearth Graveyard",
+      "parent": 2597
+    },
+    "3303": {
+      "map": 30,
+      "name": "Stormpike Graveyard",
+      "parent": 2597
+    },
+    "3304": {
+      "map": 30,
+      "name": "Icewing Bunker",
+      "parent": 2597
+    },
+    "3305": {
+      "map": 30,
+      "name": "Stonehearth Bunker",
+      "parent": 2597
+    },
+    "3306": {
+      "map": 30,
+      "name": "Wildpaw Ridge",
+      "parent": 2597
+    },
+    "3318": {
+      "map": 30,
+      "name": "Rock of Durotan",
+      "parent": 2597
+    },
+    "3320": {
+      "map": 489,
+      "name": "Warsong Lumber Mill",
+      "parent": 3277
+    },
+    "3321": {
+      "map": 489,
+      "name": "Silverwing Hold",
+      "parent": 3277
+    },
+    "3337": {
+      "map": 30,
+      "name": "Wildpaw Cavern",
+      "parent": 2597
+    },
+    "3338": {
+      "map": 30,
+      "name": "The Veiled Cleft",
+      "parent": 2597
+    },
+    "3358": {
+      "map": 529,
+      "name": "Arathi Basin",
+      "parent": 0
+    },
+    "3417": {
+      "map": 529,
+      "name": "Trollbane Hall",
+      "parent": 3358
+    },
+    "3418": {
+      "map": 529,
+      "name": "Defiler's Den",
+      "parent": 3358
+    },
+    "3420": {
+      "map": 529,
+      "name": "Farm",
+      "parent": 3358
+    },
+    "3421": {
+      "map": 529,
+      "name": "Blacksmith",
+      "parent": 3358
+    },
+    "3422": {
+      "map": 529,
+      "name": "Lumber Mill",
+      "parent": 3358
+    },
+    "3423": {
+      "map": 529,
+      "name": "Gold Mine",
+      "parent": 3358
+    },
+    "3424": {
+      "map": 529,
+      "name": "Stables",
+      "parent": 3358
+    }
+  },
+  "bgFactionTemplates": {
+    "1214": 729,
+    "1215": 729,
+    "1216": 730,
+    "1217": 730,
+    "1334": 730,
+    "1335": 729,
+    "1514": 890,
+    "1515": 889,
+    "1534": 730,
+    "1554": 729,
+    "1577": 509,
+    "1596": 730,
+    "1597": 729,
+    "1598": 510,
+    "1599": 509,
+    "1641": 889,
+    "1642": 890,
+    "412": 510
+  },
+  "bgFactions": {
+    "509": "The League of Arathor",
+    "510": "The Defilers",
+    "729": "Frostwolf Clan",
+    "730": "Stormpike Guard",
+    "889": "Warsong Outriders",
+    "890": "Silverwing Sentinels"
+  },
+  "bgMaps": {
+    "30": "Alterac Valley",
+    "449": "Champions' Hall",
+    "450": "Hall of Legends",
+    "489": "Warsong Gulch",
+    "529": "Arathi Basin"
+  },
+  "build": "1.60.1.71037",
+  "honorCurrencyId": 1792,
+  "honorHalls": {
+    "2917": "Hall of Legends",
+    "2918": "Champions' Hall"
+  },
+  "markOfHonorItems": {
+    "19322": "Warsong Mark of Honor",
+    "20558": "Warsong Gulch Mark of Honor",
+    "20559": "Arathi Basin Mark of Honor",
+    "20560": "Alterac Valley Mark of Honor",
+    "274895": "Darkspear Islands Mark of Honor"
+  }
+}

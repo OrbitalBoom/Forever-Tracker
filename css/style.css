@@ -386,6 +386,19 @@ canvas.chart {
 }
 .wearing-tag { color: var(--gold-2); border-color: var(--gold); }
 .classic-ref-tag { color: var(--muted); }
+.pvp-tag {
+  display: inline-block;
+  margin-left: 6px;
+  vertical-align: middle;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  padding: 1px 7px;
+  border-radius: 99px;
+  border: 1px solid #a44;
+  color: #e88;
+  background: rgba(160, 40, 40, .18);
+}
 .slot-search-hit { border-left-color: var(--gold-dk); }
 
 .slot-panel-tools {
@@ -1177,6 +1190,7 @@ table.data tfoot th { text-align: left; }
 .idb-badge.upgrade { color: var(--ok); border-color: var(--ok); }
 .idb-badge.forever { color: var(--gold-2); }
 .idb-badge.classic { color: var(--warn); }
+.idb-badge.pvp { color: #e88; border-color: #a44; }
 #itemDetail {
   margin: 14px 0 18px; padding: 14px 16px; background: var(--panel-2);
   border: 1px solid var(--gold-dk); border-radius: 8px;
@@ -1387,3 +1401,8 @@ table.data tfoot th { text-align: left; }
 .weights-info-body p { margin: 0 0 8px; }
 .weights-info-list { margin: 0 0 8px 18px; padding: 0; }
 .weights-info-body a { color: inherit; text-decoration: underline; }
+
+.item-tt-pvp { color: #e88; font-weight: 600; }
+.hide-pvp-items { display: inline-flex; align-items: center; gap: 6px; margin: 6px 0 0 4px; font-size: 13px; cursor: pointer; }
+.slot-filters + .hide-pvp-items, .slot-chips + .hide-pvp-items, .hide-pvp-items { margin: 8px 0 8px; }
+#itemFilters .hide-pvp-items { margin-left: 8px; }

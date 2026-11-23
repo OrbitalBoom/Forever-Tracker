@@ -989,6 +989,17 @@ window.WOW_ITEMS = window.WOW_ITEMS || [];
     print("  index", sz(OUT / "index.js"), "gear", sz(OUT / "gear.js"), "chunks", n_chunks,
           "chunk0", sz(OUT / "d0.js") if n_chunks else 0, "total", total)
     print("  counts", dict(counts), "forever", forever_n, "classic", len(index) - forever_n, "gear", len(gear))
+
+    try:
+        from flag_pvp_items import compute_pvp_only, apply_to_data
+        print("flagging PvP-only items")
+        result = compute_pvp_only(src=SRC, root=ROOT)
+        ids = set(result["pvpOnly"])
+        patched = apply_to_data(ROOT, ids)
+        print("  pvp-only", len(ids), "index/gear/chunks patched", patched)
+    except Exception as e:
+        print("  PvP flags skipped:", e)
+
     print("elapsed", round(time.time() - t0, 1), "s")
 
     # sanity: Wool Cloth

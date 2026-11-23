@@ -1,6 +1,6 @@
 /* Self-hosted Classic-style item tooltip. Does not load Wowhead power.js. */
 (function () {
-  var VERSION = "20261122k";
+  var VERSION = "20261122l";
   var ICON = "https://render.worldofwarcraft.com/forever-us/icons/56/{icon}.jpg";
   var HOVER_DELAY = 80;
   var HOLD_MS = 420;
@@ -306,6 +306,9 @@
       if (cmp) extras.push(esc(cmp));
     } else {
       extras.push("Currently equipped");
+    }
+    if (item.pvp) {
+      extras.push('<span class="item-tt-pvp">PvP — battleground, honor rank, or PvP vendor only</span>');
     }
     if (item.statSource === "wowhead-classic" || item.statSource === "classic-db") {
       extras.push('<span class="item-tt-classic-note">Stats: Classic 1.12 data</span>');

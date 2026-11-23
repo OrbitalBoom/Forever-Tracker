@@ -111,7 +111,7 @@
       profGuide: {},
       goldFarmFavs: [],
       goldFarmPrefs: {},
-      itemFilters: { class: null, slots: {} }
+      itemFilters: { class: null, slots: {}, hidePvp: false }
     };
   }
 
@@ -803,9 +803,23 @@
   }
 
   function itemFiltersRoot() {
-    if (!state.itemFilters || typeof state.itemFilters !== "object") state.itemFilters = { class: null, slots: {} };
+    if (!state.itemFilters || typeof state.itemFilters !== "object") state.itemFilters = { class: null, slots: {}, hidePvp: false };
     if (!state.itemFilters.slots || typeof state.itemFilters.slots !== "object") state.itemFilters.slots = {};
     return state.itemFilters;
+  }
+  function hidePvpItems() { return !!itemFiltersRoot().hidePvp; }
+  function setHidePvpItems(on) {
+    itemFiltersRoot().hidePvp = !!on;
+    save();
+  }
+  function isPvpItem(item) { return !!(item && item.pvp); }
+  function pvpTagHtml(item) {
+    if (!isPvpItem(item)) return "";
+    return '<span class="pvp-tag" title="Only available from battlegrounds, honor ranks, or PvP vendors">PvP</span> ';
+  }
+  function hidePvpCheckboxHtml(id) {
+    return '<label class="check hide-pvp-items"><input type="checkbox" id="' + id + '"' +
+      (hidePvpItems() ? " checked" : "") + '> Hide PvP items</label>';
   }
   function viewClass() {
     return itemFiltersRoot().class || ch().class || "Warrior";
@@ -1095,6 +1109,7 @@
     var counts = {}, hands = { "1h": 0, "2h": 0 }, qualities = {};
     allItems().forEach(function (item) {
       if (!slotCandidate(item, slotId)) return;
+      if (hidePvpItems() && isPvpItem(item)) return;
       var typ = item.type;
       if (typ) counts[typ] = (counts[typ] || 0) + 1;
       var hand = itemHandChip(item);
@@ -1122,6 +1137,7 @@
     var at = [], soon = [], unknownAt = [], unknownSoon = [];
     allItems().forEach(function (item) {
       if (!slotCandidate(item, slotId)) return;
+      if (hidePvpItems() && isPvpItem(item)) return;
       var req = effectiveReq(item);
       var atLevel = req <= (view.level || 1);
       var windowPts = atLevel ? 0 : LEVEL_WINDOW;
@@ -1271,6 +1287,7 @@
       (rec.bestSuffix ? ' data-suffix-id="' + escapeHtml(String(rec.bestSuffix.id)) + '"' : "") + '>' +
       escapeHtml(rec.bestSuffix ? itemDisplayName(it, rec.bestSuffix.id) : it.name) + "</a> " +
       (isClassicRef(it) ? '<span class="classic-ref-tag">Classic reference</span> ' : "") +
+      pvpTagHtml(it) +
       suffixBestTag(rec) + " " +
       goodForHtml(rec, slotId) +
       '<div class="upgrade-row-meta">Req ' + rec.req +
@@ -1362,6 +1379,7 @@
       "</div>" +
       (family === "other" ? "" : '<div class="slot-chips" role="group" aria-label="Item type">' + chips + "</div>") +
       handChips +
+      hidePvpCheckboxHtml("slotHidePvp") +
       browseNote +
       weightsInfoHtml(cls, build);
   }
@@ -1406,6 +1424,7 @@
       (it.suffixId != null ? ' data-suffix-id="' + escapeHtml(String(it.suffixId)) + '"' : "") + '>' +
       escapeHtml(itemDisplayName(it)) + "</a> " +
       (isClassicRef(it) ? '<span class="classic-ref-tag">Classic reference</span> ' : "") +
+      pvpTagHtml(it) +
       '<span class="wearing-tag">Equipped</span>' +
       '<div class="upgrade-row-meta">Req ' + (rec.req != null ? rec.req : "?") +
       (it.type ? " · " + escapeHtml(it.type) : "") +
@@ -1516,6 +1535,7 @@
         (prefer ? ' data-suffix-id="' + escapeHtml(String(prefer.id)) + '"' : "") + '>' +
         escapeHtml(prefer ? itemDisplayName(it, prefer.id) : it.name) + "</a> " +
         (isClassicRef(it) ? '<span class="classic-ref-tag">Classic reference</span> ' : "") +
+      pvpTagHtml(it) +
         '<div class="upgrade-row-meta">Req ' + (req != null ? req : "?") +
         (it.type ? " · " + escapeHtml(it.type) : "") +
         (it.itemLevel ? " · ilvl " + it.itemLevel : "") +
@@ -3064,6 +3084,14 @@
         renderSlotPanel(selectedSlot);
         return;
       }
+      if (tEl.id === "slotHidePvp") {
+        setHidePvpItems(tEl.checked);
+        var other = document.getElementById("itemDbHidePvp");
+        if (other) other.checked = tEl.checked;
+        slotShowAll = false;
+        renderSlotPanel(selectedSlot);
+        return;
+      }
       if (tEl.classList && tEl.classList.contains("suffix-select")) {
         var row = tEl.closest(".upgrade-row");
         var sid = tEl.value;
@@ -3287,6 +3315,7 @@
     var c = ch();
     if (!item || !c.class) return false;
     if (item.forever === false && !item.custom) return false;
+    if (hidePvpItems() && isPvpItem(item)) return false;
     if (isJunkUpgrade(item)) return false;
     var need = effectiveReq(item);
     if (need == null || need > (c.level || 1)) return false;
@@ -3317,6 +3346,10 @@
   }
   window.ForeverItems = {
     isUpgrade: isUpgradeItem,
+    isPvpItem: isPvpItem,
+    hidePvpItems: hidePvpItems,
+    setHidePvpItems: setHidePvpItems,
+    pvpTagHtml: pvpTagHtml,
     equipItem: equipItemInSlot,
     render: renderItems,
     qualityClass: qualityClass,

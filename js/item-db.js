@@ -1,6 +1,6 @@
 /* Item search, detail cards, and lazy loading for data/items/*.js */
 (function () {
-  var VERSION = "20261122k";
+  var VERSION = "20261122l";
   var ICON = "https://render.worldofwarcraft.com/forever-us/icons/56/{icon}.jpg";
   var loaded = false;
   var loading = null;
@@ -148,6 +148,7 @@
     for (var i = 0; i < index.length; i++) {
       var it = index[i];
       if (cat && cat !== "all" && it.cat !== cat) continue;
+      if (window.ForeverItems && ForeverItems.hidePvpItems && ForeverItems.hidePvpItems() && it.pvp) continue;
       if (q && String(it.id) !== q) {
         var nameHit = (typeof window.itemNameMatches === "function") ? window.itemNameMatches(it.n, q) : (it.n.toLowerCase().indexOf(q) !== -1);
         if (!nameHit) {
@@ -200,7 +201,8 @@
     }
     box.innerHTML = '<ul class="idb-list">' + hits.map(function (it) {
       var badge = "";
-      if (it.f !== 1) badge = '<span class="idb-badge classic">Classic reference</span>';
+      if (it.pvp) badge += '<span class="idb-badge pvp">PvP</span>';
+      if (it.f !== 1) badge += '<span class="idb-badge classic">Classic reference</span>';
       var gearItem = (window.ITEM_GEAR || []).find(function (g) { return g.id === it.id; });
       if (gearItem && isUpgrade(gearItem)) badge += '<span class="idb-badge upgrade">Upgrade</span>';
       var sub = [];
@@ -250,6 +252,7 @@
       ? '<span class="idb-badge forever">Forever-confirmed</span>'
       : '<span class="idb-badge classic">Classic reference — not in the live Forever client</span>';
     var upgrade = isUpgrade(item) ? '<span class="idb-badge upgrade">Upgrade</span>' : "";
+    var pvpBadge = item.pvp ? '<span class="idb-badge pvp">PvP</span>' : "";
     var metaBits = [];
     if (item.itemLevel) metaBits.push("ilvl " + item.itemLevel);
     if (item.reqLevel) metaBits.push("requires level " + item.reqLevel);
@@ -372,7 +375,7 @@
     box.innerHTML =
       '<div class="idb-card-head" data-item-id="' + item.id + '">' + iconHtml(item.icon, quality, item.name) +
       '<div><h3 class="item-name ' + qClass(quality) + '">' + esc(item.name) + "</h3>" +
-      "<div>" + srcNote + upgrade + "</div>" +
+      "<div>" + srcNote + pvpBadge + upgrade + "</div>" +
       '<div class="muted">' + esc(metaBits.join(" · ")) + "</div></div></div>" +
       (stats.length ? '<p class="idb-stats">' + esc(stats.join(" · ")) + "</p>" : "") +
       suffixDetailHtml(item) +
@@ -445,6 +448,20 @@
         renderResults();
       });
     });
+    var hideBox = $("#itemDbHidePvp");
+    if (hideBox && !hideBox._idbBound) {
+      hideBox._idbBound = true;
+      if (window.ForeverItems && ForeverItems.hidePvpItems) hideBox.checked = !!ForeverItems.hidePvpItems();
+      hideBox.addEventListener("change", function () {
+        if (window.ForeverItems && ForeverItems.setHidePvpItems) ForeverItems.setHidePvpItems(hideBox.checked);
+        var other = document.getElementById("slotHidePvp");
+        if (other) other.checked = hideBox.checked;
+        renderResults();
+        if (window.ForeverItems && ForeverItems.render) ForeverItems.render();
+      });
+    } else if (hideBox && window.ForeverItems && ForeverItems.hidePvpItems) {
+      hideBox.checked = !!ForeverItems.hidePvpItems();
+    }
     var results = $("#itemResults");
     if (results && !results._idbBound) {
       results._idbBound = true;
