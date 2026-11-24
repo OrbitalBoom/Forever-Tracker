@@ -2,7 +2,7 @@ const fs = require("fs");
 const http = require("http");
 const path = require("path");
 
-const ROOT = process.env.FOREVER_ROOT || "/workspace/wow-forever-pets-dash";
+const ROOT = process.env.FOREVER_ROOT || "/workspace/wow-forever-petrank";
 const PORT = Number(process.env.FOREVER_PORT) || 8798;
 const OUT = path.join(ROOT, "screenshots", "tip-lock");
 const puppeteer = require("/tmp/pptr/node_modules/puppeteer-core");

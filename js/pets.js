@@ -412,6 +412,7 @@
     }
     var html = "";
     html += renderCurrentPet(d);
+    if (window.PetRank) html += PetRank.renderHtml();
     html += renderTalentsNotice(d);
     html += renderLoyalty(d);
     html += renderFamilies(d, ui.familyFilter, ui.openFamily);
@@ -419,6 +420,7 @@
     html += sourcesFooter(d);
     root.innerHTML = html;
     bind(root);
+    if (window.PetRank) PetRank.bind(root);
   }
 
   function bind(root) {
@@ -471,8 +473,11 @@
   function notableById(id) {
     var d = data();
     if (!d) return null;
-    for (var i = 0; i < (d.notable || []).length; i++) {
-      if (d.notable[i].id === id) return d.notable[i];
+    var lists = [d.tameable || [], d.notable || []];
+    for (var li = 0; li < lists.length; li++) {
+      for (var i = 0; i < lists[li].length; i++) {
+        if (lists[li][i].id === id) return lists[li][i];
+      }
     }
     return null;
   }

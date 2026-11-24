@@ -17,3 +17,8 @@ Sources:
 - CMaNGOS classic-db (GPL-3.0) and NorgannonDB 1.9 (GPL-3.0) for tameable beasts, zones, and spawn points. Label as Classic data, may differ in Forever.
 
 Do not invent ranks, levels, coordinates, or training-point pools.
+
+
+## Pet ranking data
+
+Family damage/armor/health come from Forever Tamed Pet Passive SpellEffect values. Attack times come from CMaNGOS `creature_template.MeleeBaseAttackTime` (Classic; may differ in Forever). The full tameable list is `tameable` in `js/pets-data.js`.

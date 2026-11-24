@@ -6,7 +6,8 @@ Sources (never invents numbers or locations):
     PetLoyalty, TalentTab, SkillLine, SkillLineAbility, Spell, SpellName,
     SpellLevels, SpellEffect, SpellMisc, SpellDuration, LevelExperience.
   * CMaNGOS classic-db (GPL-3.0) creature_template (tameable flag, family,
-    level, PetSpellDataId) plus Classic CreatureSpellData (1.13.7.38704 via
+    level, PetSpellDataId, MeleeBaseAttackTime) plus Classic CreatureSpellData
+    (1.13.7.38704 via
     wago.tools) for the spells a beast already knows when tamed.
     Forever 1.60.1.71091 does not ship CreatureSpellData.
   * NorgannonDB 1.9 (GPL-3.0; QuestieDB + CMaNGOS) for zone names and
@@ -408,6 +409,41 @@ def main():
                 seen.append(a["name"])
         fam["specialNames"] = seen
 
+    # Family damage / armor / health come from each family's unique
+    # "Tamed Pet Passive (DND)" spell on its skill line. Aura IDs are
+    # identified from Forever tooltip text on other spells:
+    #   79  — "Damage increased by $s1%" (spell 8875)
+    #   142 — armor % (Toughness; "Increases your pet's armor by $1%")
+    #   133 — "Max Health increased by $s1%" (spell 19581)
+    # EffectBasePointsF is stored as-is (no +1 guess). Spell 409365
+    # ("Attack speed.") has 0 stored points and is not treated as a modifier.
+    AURA_DAMAGE, AURA_ARMOR, AURA_HEALTH = 79, 142, 133
+    SKIP_TPP = {8875, 19580, 19581, 19582, 19589, 19591, 20782, 20784, 409365}
+    family_modifiers = {}
+    for fam in hunter_fam:
+        mods = {"damagePct": 0, "armorPct": 0, "healthPct": 0, "spellId": None}
+        for r in sla_by_line.get(fam["skillLine"], []):
+            sid = i(r["Spell"])
+            if sid in SKIP_TPP:
+                continue
+            if "Tamed Pet Passive" not in (spell_name.get(sid) or ""):
+                continue
+            found = {"damagePct": 0, "armorPct": 0, "healthPct": 0, "spellId": sid}
+            for e in effects_by.get(sid, []):
+                aura = i(e.get("EffectAura"))
+                bp = fnum(e.get("EffectBasePointsF"))
+                val = int(bp) if bp == int(bp) else bp
+                if aura == AURA_DAMAGE:
+                    found["damagePct"] = val
+                elif aura == AURA_ARMOR:
+                    found["armorPct"] = val
+                elif aura == AURA_HEALTH:
+                    found["healthPct"] = val
+            if found["spellId"]:
+                mods = found
+        fam["modifiers"] = mods
+        family_modifiers[str(fam["id"])] = mods
+
     loyalty = []
     for r in loyalty_raw:
         lid = i(r["ID"])
@@ -466,6 +502,7 @@ def main():
         if not (flags & TAMEABLE_FLAG):
             continue
         psd = i(row[idx["PetSpellDataId"]]) if "PetSpellDataId" in idx else 0
+        bat = i(row[idx["MeleeBaseAttackTime"]]) if "MeleeBaseAttackTime" in idx else 0
         templates[entry] = {
             "id": entry,
             "name": row[idx["Name"]] if "Name" in idx else f"NPC {entry}",
@@ -475,6 +512,7 @@ def main():
             "tameable": True,
             "petSpellDataId": psd,
             "rank": i(row[idx["Rank"]]) if "Rank" in idx else 0,
+            "attackTimeMs": bat if bat > 0 else None,
         }
         needed_ids.add(entry)
         if psd and psd not in spelldata:
@@ -506,7 +544,7 @@ def main():
             ability_index[a["id"]] = a
 
     sources_by_spell = defaultdict(list)
-    notable_npcs = {}
+    all_npcs = {}
     for entry, tmpl in templates.items():
         psd = tmpl["petSpellDataId"]
         raw_spells = spelldata.get(psd, [])
@@ -526,8 +564,6 @@ def main():
                 "rank": ab.get("rank"),
                 "level": ab.get("level"),
             })
-        if not taught:
-            continue
         nrec = npcs.get(entry) or {}
         spawns = nrec.get("spawns") or {}
         best_zid, best_pts = None, []
@@ -553,19 +589,7 @@ def main():
             zone_name = zones.get(zid2)
             if best_zid is None:
                 best_zid = zid2
-        for ab in taught:
-            sources_by_spell[ab["id"]].append({
-                "id": entry,
-                "name": tmpl["name"],
-                "minLevel": tmpl["minLevel"],
-                "maxLevel": tmpl["maxLevel"],
-                "familyId": tmpl["familyId"],
-                "zone": zone_name,
-                "zoneId": best_zid,
-                "spawnCount": len(best_pts),
-                "elite": bool(tmpl.get("rank")),
-            })
-        notable_npcs[entry] = {
+        rec = {
             "id": entry,
             "name": tmpl["name"],
             "minLevel": tmpl["minLevel"],
@@ -579,7 +603,21 @@ def main():
             "points": best_pts,
             "mapSize": sizes.get(best_zid) if best_zid is not None else None,
             "elite": bool(tmpl.get("rank")),
+            "attackTimeMs": tmpl.get("attackTimeMs"),
         }
+        all_npcs[entry] = rec
+        for ab in taught:
+            sources_by_spell[ab["id"]].append({
+                "id": entry,
+                "name": tmpl["name"],
+                "minLevel": tmpl["minLevel"],
+                "maxLevel": tmpl["maxLevel"],
+                "familyId": tmpl["familyId"],
+                "zone": zone_name,
+                "zoneId": best_zid,
+                "spawnCount": len(best_pts),
+                "elite": bool(tmpl.get("rank")),
+            })
 
     for sid, lst in sources_by_spell.items():
         lst.sort(key=lambda x: (x["minLevel"], x["maxLevel"], x["id"]))
@@ -588,19 +626,17 @@ def main():
     for sid, lst in sources_by_spell.items():
         if sid in ability_index and lst:
             featured_ids.add(lst[0]["id"])
-            # a couple of alternates if the lowest-level one has no zone
             for alt in lst[1:3]:
                 if not lst[0].get("zone"):
                     featured_ids.add(alt["id"])
 
-    notable = [notable_npcs[k] for k in sorted(featured_ids, key=lambda k: (
-        notable_npcs[k]["minLevel"], notable_npcs[k]["name"], k
+    notable = [all_npcs[k] for k in sorted(featured_ids, key=lambda k: (
+        all_npcs[k]["minLevel"], all_npcs[k]["name"], k
     ))]
-    # Keep spawn points only on featured rows (maps); drop from anyone else.
-    featured_set = set(featured_ids)
-    for entry, recn in notable_npcs.items():
-        if entry not in featured_set:
-            recn["points"] = []
+
+    tameable = [all_npcs[k] for k in sorted(all_npcs, key=lambda k: (
+        all_npcs[k]["minLevel"], all_npcs[k]["name"], k
+    ))]
 
     meta = {
         "build": args.build,
@@ -617,13 +653,13 @@ def main():
                     "SpellLevels", "SpellEffect", "SpellMisc", "SpellDuration",
                     "LevelExperience",
                 ],
-                "role": "Families, diet, loyalty ranks, ability ranks/levels/training-point costs, tooltips, XP-to-level, and the pet-talent check.",
+                "role": "Families, diet, loyalty ranks, ability ranks/levels/training-point costs, tooltips, XP-to-level, the pet-talent check, and family damage/armor/health modifiers from Tamed Pet Passive (DND) SpellEffect values.",
             },
             {
                 "name": "CMaNGOS classic-db",
                 "license": "GPL-3.0",
                 "tables": ["creature_template"],
-                "role": "Tameable flag, family, level range, and PetSpellDataId on Classic creatures. Classic data, may differ in Forever.",
+                "role": "Tameable flag, family, level range, PetSpellDataId, and MeleeBaseAttackTime (the tamed pet's base attack time in 1.12 CMaNGOS Pet.cpp). Classic data, may differ in Forever.",
             },
             {
                 "name": "Classic client CreatureSpellData",
@@ -643,6 +679,8 @@ def main():
             "Vanilla 1.12 also had no pet talents; pets used training points and loyalty. Ability training-point costs come from SkillLineAbility; required levels come from SpellLevels.",
             "Tame locations and 'abilities learned by taming' come from Classic creature data and may differ in Forever.",
             "A token in a tooltip that could not be resolved from SpellEffect / SpellDuration is left in the raw text. Numbers are never invented.",
+            "Pet attack speed after taming is taken from CMaNGOS creature_template.MeleeBaseAttackTime. CMaNGOS Pet.cpp (GPL-3.0) assigns that value with SetAttackTime(BASE_ATTACK, cInfo->MeleeBaseAttackTime) and scales per-swing damage with attack time: mDmg = (GetAttackTime(BASE_ATTACK) * petlevel) / 2000. Forever 1.60.1.71091 Creature / CreatureDifficulty tables have no attack-time field. Every family skill line also has Forever spell 409365 (Tamed Pet Passive (DND), aura text 'Attack speed.') with EffectBasePointsF 0; that stored 0 is not treated as a rewritten attack speed, and no Forever table was found that flattens all pets to one speed.",
+            "Family damage, armor, and health percentages come from each family's unique Tamed Pet Passive (DND) in the Forever client, using SpellEffect.EffectBasePointsF for auras 79 / 142 / 133 as identified from other Forever tooltip text. Values are the stored fields, not a guessed tooltip +1 formula.",
         ],
     }
 
@@ -652,6 +690,18 @@ def main():
         "loyalty": loyalty,
         "sharedAbilities": shared,
         "families": hunter_fam,
+        "familyModifiers": family_modifiers,
+        "tameable": tameable,
+        "attackSpeed": {
+            "field": "MeleeBaseAttackTime",
+            "unit": "ms",
+            "source": "CMaNGOS classic-db creature_template.MeleeBaseAttackTime",
+            "license": "GPL-3.0",
+            "label": "Classic creature base attack time (CMaNGOS). May differ in Forever.",
+            "petCpp": "CMaNGOS mangos-classic src/game/Entities/Pet.cpp InitStatsForLevel: SetAttackTime(BASE_ATTACK, cInfo->MeleeBaseAttackTime); per-swing damage mDmg = (GetAttackTime(BASE_ATTACK) * petlevel) / 2000.",
+            "baselineMs": 2000,
+            "foreverNote": "Forever 1.60.1.71091 Creature and CreatureDifficulty have no attack-time column. Spell 409365 'Attack speed.' is on every family skill line with EffectBasePointsF 0 and is not used as a replacement speed.",
+        },
         "notable": notable,
         "teachSources": {
             str(sid): lst[:5]  # up to 5 lowest-level teachers; compact
@@ -680,7 +730,9 @@ def main():
     kb = out.stat().st_size // 1024
     print(f"wrote {out} ({kb} KB)")
     print(f"  families={len(hunter_fam)} shared={len(shared)} notable={len(notable)} "
-          f"hasPetTalents={has_pet_talents} xpLevels={len(xp_by_level)}")
+          f"tameable={len(tameable)} hasPetTalents={has_pet_talents} xpLevels={len(xp_by_level)}")
+    for fid, mods in family_modifiers.items():
+        print(f"  modifiers family {fid}: {mods}")
     for fam in hunter_fam:
         print(f"  - {fam['name']}: diet={fam['diet']} special={fam['specialNames']} abs={len(fam['abilities'])} classic={fam['classicFamily']}")
 

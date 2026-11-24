@@ -2,7 +2,7 @@ const fs = require("fs");
 const http = require("http");
 const path = require("path");
 
-const ROOT = process.env.FOREVER_ROOT || "/workspace/wow-forever-pets-dash";
+const ROOT = process.env.FOREVER_ROOT || "/workspace/wow-forever-petrank";
 const PORT = Number(process.env.FOREVER_PORT) || 8799;
 const PHASE = process.env.MOBILE_PHASE || "after";
 const OUT = path.join(ROOT, "screenshots", "mobile", PHASE === "desktop" ? "desktop" : PHASE);

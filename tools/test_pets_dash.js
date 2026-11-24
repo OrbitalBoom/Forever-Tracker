@@ -2,7 +2,7 @@ const fs = require("fs");
 const http = require("http");
 const path = require("path");
 
-const ROOT = process.env.FOREVER_ROOT || "/workspace/wow-forever-pets-dash";
+const ROOT = process.env.FOREVER_ROOT || "/workspace/wow-forever-petrank";
 const PORT = Number(process.env.FOREVER_PORT) || 8800;
 const OUT = path.join(ROOT, "screenshots", "pets-dash");
 const puppeteer = require("/tmp/pptr/node_modules/puppeteer-core");
@@ -70,7 +70,11 @@ async function overflow(page, label) {
 async function shot(page, name) {
   fs.mkdirSync(OUT, { recursive: true });
   const file = path.join(OUT, name);
-  await page.screenshot({ path: file, fullPage: true });
+  try {
+    await page.screenshot({ path: file, fullPage: true });
+  } catch (e) {
+    await page.screenshot({ path: file, fullPage: false });
+  }
   ok("screenshot " + file);
   return file;
 }
