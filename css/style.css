@@ -1323,9 +1323,62 @@ table.data tfoot th { text-align: left; }
   pointer-events: none;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.7);
 }
-.item-tt.is-pinned {
+.item-tt.is-pinned,
+.item-tt.is-locked {
   pointer-events: auto;
   z-index: 90;
+}
+.item-tt.is-locked,
+.item-tt.is-pinned {
+  border-color: rgba(255, 209, 0, 0.85);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 209, 0, 0.4), 0 0 14px rgba(255, 209, 0, 0.28);
+}
+.item-tt-dwell {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 5px 5px 0 0;
+  pointer-events: none;
+  background: rgba(255, 209, 0, 0.16);
+}
+.item-tt-dwell-bar {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: #ffd100;
+  box-shadow: 0 0 6px 1px rgba(255, 209, 0, 0.7);
+  transform: scaleX(0);
+  transform-origin: left center;
+  opacity: 0;
+}
+.item-tt.is-dwelling .item-tt-dwell-bar { opacity: 1; }
+.item-tt.is-pinned .item-tt-dwell,
+.item-tt.is-locked .item-tt-dwell {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.item-tt-lock-icon {
+  position: absolute;
+  top: 7px;
+  right: 34px;
+  width: 12px;
+  height: 12px;
+  color: #ffd100;
+  pointer-events: none;
+  line-height: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .item-tt-dwell-bar {
+    transform: none;
+    transition: none;
+  }
+  .item-tt.is-pinned .item-tt-dwell,
+  .item-tt.is-locked .item-tt-dwell {
+    transition: none;
+  }
 }
 .item-tt-close {
   position: absolute;
