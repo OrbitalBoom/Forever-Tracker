@@ -73,17 +73,164 @@
     var m = matchItemName(l.name);
     return m ? { id: m.id, quality: m.q, index: m, how: "name" } : null;
   }
-  function itemLinkHtml(name, resolved) {
+  function itemLinkHtml(name, resolved, spot) {
     if (!resolved || resolved.id == null) return escapeHtml(name);
     var q = resolved.quality ? " q-" + resolved.quality : "";
+    var farmAttr = (spot && spot.id) ? ' data-farm-id="' + escapeHtml(String(spot.id)) + '"' : "";
     return '<a class="gf-item-link' + q + '" href="#item-' + resolved.id +
-      '" data-item-id="' + resolved.id + '" data-item-pin="1">' + escapeHtml(name) + "</a>";
+      '" data-item-id="' + resolved.id + '" data-item-pin="1"' + farmAttr + ">" + escapeHtml(name) + "</a>";
   }
   function lootLineHtml(spot) {
     var loot = spot.loot || [];
     if (!loot.length) return "See details for loot";
-    var parts = loot.slice(0, 3).map(function (l) { return itemLinkHtml(l.name, resolveLoot(l)); });
+    var parts = loot.slice(0, 3).map(function (l) { return itemLinkHtml(l.name, resolveLoot(l), spot); });
     return parts.join(", ") + (loot.length > 3 ? "…" : "");
+  }
+
+  function parseNpcList(s) {
+    if (!s) return [];
+    var out = [];
+    String(s).split(/,\s*/).forEach(function (part) {
+      part = part.trim();
+      if (!part) return;
+      var m = part.match(/^(.*?)\s*\((\d+)\)\s*$/);
+      if (m) out.push({ name: m[1].trim(), id: Number(m[2]) });
+      else out.push({ name: part, id: null });
+    });
+    return out;
+  }
+  function fmtDropPct(p) {
+    var pct = Number(p) * 100;
+    if (!isFinite(pct)) return "";
+    var n;
+    if (pct >= 1) n = Math.round(pct * 10) / 10;
+    else if (pct >= 0.1) n = Math.round(pct * 100) / 100;
+    else n = Math.round(pct * 1000) / 1000;
+    var s = String(n);
+    if (s.indexOf(".") >= 0) s = s.replace(/0+$/, "").replace(/\.$/, "");
+    return s + "%";
+  }
+  function fmtQtyNum(n) {
+    if (n == null || isNaN(n)) return "";
+    var r = Math.round(Number(n) * 100) / 100;
+    var s = String(r);
+    if (s.indexOf(".") >= 0) s = s.replace(/0+$/, "").replace(/\.$/, "");
+    return s;
+  }
+  function killsPhrase(ev) {
+    if (!ev || ev <= 0) return null;
+    var k = 1 / ev;
+    if (ev >= 1.05) return "about " + fmtQtyNum(Math.round(k * 10) / 10) + " kills per item";
+    if (k < 1.05) return "about 1 per kill";
+    if (k < 2) return "~1 in " + fmtQtyNum(Math.round(k * 10) / 10) + " kills";
+    return "~1 in " + Math.round(k) + " kills";
+  }
+  function fmtMinutes(min) {
+    if (min == null || !isFinite(min) || min <= 0) return null;
+    if (min >= 90) return "about " + fmtQtyNum(Math.round((min / 60) * 10) / 10) + " hr per drop";
+    if (min >= 10) return "about " + Math.round(min) + " min per drop";
+    if (min >= 2) return "about " + Math.round(min) + " min per drop";
+    return "about " + fmtQtyNum(Math.round(min * 10) / 10) + " min per drop";
+  }
+  function findFarm(farmId) {
+    var spots = window.GOLD_FARMS || [];
+    for (var i = 0; i < spots.length; i++) {
+      if (spots[i].id === farmId) return spots[i];
+    }
+    return null;
+  }
+  function findFarmLoot(spot, itemId) {
+    if (!spot || itemId == null) return null;
+    var loot = spot.loot || [];
+    var sid = String(itemId);
+    for (var i = 0; i < loot.length; i++) {
+      if (loot[i].id != null && String(loot[i].id) === sid) return loot[i];
+    }
+    return null;
+  }
+  function dropIsClassicSource(loot) {
+    var note = (loot && loot.chanceNote) || "";
+    /* A dated Forever-era guide rate (e.g. Conquest Capped, Nov 2026) is not Classic 1.12. */
+    if (/Conquest Capped/i.test(note) && /20\d\d/.test(note) && !/1\.12/i.test(note) && !/Classic data/i.test(note)) {
+      return false;
+    }
+    return true;
+  }
+  function dropSourceShort(spot, loot) {
+    var note = (loot && loot.chanceNote) || "";
+    var cite = (spot && spot.dropSource && spot.dropSource.citation) || "";
+    if (/Conquest Capped/i.test(note)) {
+      var m = note.match(/^([^.]*(?:20\d\d)?[^.]*)/);
+      return (m && m[1] ? m[1].replace(/:\s.*$/, "").trim() : "Conquest Capped") + " (this camp's guide rate)";
+    }
+    if (/ByteTavern/i.test(note)) return "ByteTavern Classic data";
+    if (/Rate kept from this camp/i.test(note)) return "This camp's existing guide source (Forever or Classic)";
+    if (/ZugZugDB/i.test(note) || /ZugZugDB/i.test(cite)) {
+      return "ZugZugDB Classic 1.12 loot tables (seeded from VMaNGOS)";
+    }
+    if (/Classic data/i.test(note) || /1\.12/i.test(note) || /1\.12/i.test(cite)) {
+      return "Classic 1.12 loot data";
+    }
+    return "This farm's sourced loot data";
+  }
+
+  function dropTipHtml(farmId, itemId) {
+    var spot = findFarm(farmId);
+    if (!spot) return "";
+    var loot = findFarmLoot(spot, itemId);
+    var lines = [];
+    lines.push('<div class="item-tt-farm-title">On this farm: ' + escapeHtml(spot.name) + "</div>");
+    if (!loot || loot.chance == null || !(Number(loot.chance) > 0)) {
+      lines.push('<div class="item-tt-farm-line">Drop rate unknown</div>');
+      return '<div class="item-tt-sep"></div><div class="item-tt-farm">' + lines.join("") + "</div>";
+    }
+    var chance = Number(loot.chance);
+    var qty = loot.qty != null ? Number(loot.qty) : 1;
+    if (!isFinite(qty) || qty <= 0) qty = 1;
+    var ev = loot.yieldPerKill ? chance : chance * qty;
+    var mobs = parseNpcList(spot.dropSource && spot.dropSource.npcs);
+    var weighting = spot.dropSource && spot.dropSource.weighting;
+    var rateLine;
+    if (loot.yieldPerKill) {
+      rateLine = "Expected " + fmtQtyNum(chance) + " per kill";
+    } else {
+      rateLine = "Drop rate: " + fmtDropPct(chance) + " per kill";
+    }
+    if (loot.qtyMin != null && loot.qtyMax != null && Number(loot.qtyMin) !== Number(loot.qtyMax)) {
+      rateLine += ", " + loot.qtyMin + "–" + loot.qtyMax + " (avg " + fmtQtyNum(qty) + ")";
+    }
+    lines.push('<div class="item-tt-farm-line">' + escapeHtml(rateLine) + "</div>");
+    if (mobs.length === 1) {
+      lines.push('<div class="item-tt-farm-line">Per mob: ' + escapeHtml(mobs[0].name) + "</div>");
+    } else if (mobs.length > 1) {
+      var who = mobs.map(function (m) { return m.name; }).join(", ");
+      var avg = weighting === "spawns" ? "Spawn-weighted average" : (weighting === "equal" ? "Equal-weighted average" : "Average");
+      var cover = "";
+      var am = ((loot.chanceNote || "").match(/Averaged over (\d+ of \d+) listed mob types[^.]+/i) || [])[1];
+      if (am) avg += " over the " + am + " that have a published rate";
+      lines.push('<div class="item-tt-farm-line">' + escapeHtml(avg) + " across " + escapeHtml(who) + ".</div>");
+    }
+    if (!loot.yieldPerKill && (loot.qtyMin != null && loot.qtyMax != null && Number(loot.qtyMin) !== Number(loot.qtyMax) || qty !== 1)) {
+      lines.push('<div class="item-tt-farm-line">Expected ' + escapeHtml(fmtQtyNum(ev)) + " per kill</div>");
+    }
+    var kills = killsPhrase(ev);
+    if (kills) lines.push('<div class="item-tt-farm-kills">Expected kills per 1 drop: ' + escapeHtml(kills) + "</div>");
+    var kph = spot.sourced && spot.sourced.killsPerHour != null ? Number(spot.sourced.killsPerHour) : null;
+    if (kph && kph > 0 && ev > 0) {
+      var perHour = ev * kph;
+      var mins = 60 / perHour;
+      var hourLine = "At this camp's sourced " + fmtQtyNum(kph) + " kills/hour: ~" +
+        fmtQtyNum(Math.round(perHour * 10) / 10) + " per hour";
+      var tdrop = fmtMinutes(mins);
+      if (tdrop) hourLine += " · " + tdrop;
+      lines.push('<div class="item-tt-farm-line">' + escapeHtml(hourLine) + "</div>");
+    }
+    var src = dropSourceShort(spot, loot);
+    lines.push('<div class="item-tt-farm-source">Source: ' + escapeHtml(src) + "</div>");
+    if (dropIsClassicSource(loot)) {
+      lines.push('<div class="item-tt-farm-note">Classic drop data, may differ in Forever.</div>');
+    }
+    return '<div class="item-tt-sep"></div><div class="item-tt-farm">' + lines.join("") + "</div>";
   }
 
   function goldText(copper, opts) {
@@ -897,7 +1044,7 @@
         ? goldText(r.price, { compact: true })
         : ((r.priceKind === "AH" ? "AH " : "vendor ") + goldText(r.price, { compact: true }));
       var resolved = r.id ? resolveLoot({ id: r.id, name: r.name }) : resolveLoot({ name: r.name });
-      var name = itemLinkHtml(r.name, resolved);
+      var name = itemLinkHtml(r.name, resolved, spot);
       if (r.becauseProf && hasProfsFilled()) {
         name += ' <span class="gf-because">your ' + escapeHtml(r.becauseProf) + "</span>";
       }
@@ -941,7 +1088,7 @@
       else if (l.vendor != null) bits.push("vendor " + goldText(l.vendor, { compact: true }));
       else if (l.id) bits.push("no AH price in this snapshot");
       var resolved = resolveLoot(l);
-      var label = itemLinkHtml(l.name, resolved);
+      var label = itemLinkHtml(l.name, resolved, spot);
       if (!resolved) label = "<span>" + escapeHtml(l.name) + "</span>";
       return "<li>" + label +
         (bits.length ? ' <span class="muted">(' + escapeHtml(bits.join(" · ")) + ")</span>" : "") + "</li>";
@@ -1229,7 +1376,7 @@
     var tag = document.querySelector('script[src*="js/gold-farms.js"], script[src*="js/app.js"]');
     var src = tag && (tag.getAttribute("src") || "");
     var m = src && src.match(/[?&]v=([^&]+)/);
-    return m ? m[1] : "20261124d";
+    return m ? m[1] : "20261124e";
   }
   function ensureSpawns() {
     if (window.GOLD_FARM_SPAWNS) return Promise.resolve(window.GOLD_FARM_SPAWNS);
@@ -1660,6 +1807,8 @@
     hasProfsFilled: hasProfsFilled,
     skillOf: skillOf,
     openMap: openFarmMap,
-    lastMapDraw: function () { return lastMapDraw; }
+    lastMapDraw: function () { return lastMapDraw; },
+    dropTipHtml: dropTipHtml,
+    findFarm: findFarm
   };
 })();

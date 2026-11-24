@@ -69,7 +69,7 @@ async function openFarms(page, base) {
   await sleep(100);
   // Wait for ItemDB index so drop names become links.
   await page.waitForFunction(() => {
-    return document.querySelector('a.gf-item-link[data-item-id="7069"]');
+    return document.querySelector('a.gf-item-link[data-item-id="7069"][data-farm-id="arathi-thundering-exiles"]');
   }, { timeout: 20000 });
 }
 
@@ -94,6 +94,8 @@ async function tipInfo(page) {
       hasStack: /Per stack of /i.test(text),
       hasTrend: /7-day/i.test(text),
       hasDbLink: !!tip.querySelector("a.item-tt-db"),
+      hasFarm: !!tip.querySelector(".item-tt-farm"),
+      farmText: (tip.querySelector(".item-tt-farm") && tip.querySelector(".item-tt-farm").innerText) || "",
     };
   });
 }
@@ -140,7 +142,7 @@ async function tipInfo(page) {
   if (!coverage.airLinks) fail("Elemental Air link not found on desktop farms list", coverage);
   if (coverage.burningPitchIsLink) fail("Burning Pitch (not in item DB) should stay plain text");
 
-  const air = await page.$('a.gf-item-link[data-item-id="7069"]');
+  const air = await page.$('a.gf-item-link[data-item-id="7069"][data-farm-id="arathi-thundering-exiles"]');
   if (!air) { fail("no Elemental Air handle"); }
   await air.scrollIntoViewIfNeeded();
   await sleep(200);
@@ -164,10 +166,18 @@ async function tipInfo(page) {
   ["hasMin","hasUsual","hasListed","hasSold","hasUpdated","hasVendor","hasStack","hasTrend","hasDbLink"].forEach((k) => {
     if (!hoverInfo[k]) fail("hover tooltip missing " + k, hoverInfo);
   });
-  await page.screenshot({ path: path.join(OUT, "elemental-air-desktop-hover.png"), fullPage: false });
-  // tighter crop around the row + tooltip
+  if (!hoverInfo.hasFarm) fail("farm section missing on farm-context hover", hoverInfo);
+  const farm = hoverInfo.farmText;
+  if (!/Thundering Exiles/i.test(farm)) fail("farm title missing", farm);
+  if (!/13%/.test(farm)) fail("expected 13% drop rate", farm);
+  if (!/Thundering Exile/.test(farm)) fail("expected per-mob Thundering Exile", farm);
+  if (!/~1 in 8 kills/i.test(farm)) fail("expected ~1 in 8 kills", farm);
+  if (!/100 kills\/hour/i.test(farm) || !/~13 per hour/i.test(farm)) fail("expected 100 kph / ~13 per hour", farm);
+  if (!/Classic drop data, may differ in Forever/i.test(farm)) fail("classic disclaimer missing", farm);
+  if (!/guide source/i.test(farm) && !/ZugZugDB/i.test(farm)) fail("source missing", farm);
+  await page.screenshot({ path: path.join(OUT, "elemental-air-thundering-desktop-hover.png"), fullPage: false });
   const tipHandle = await page.$("#itemTooltip");
-  if (tipHandle) await tipHandle.screenshot({ path: path.join(OUT, "elemental-air-desktop-tooltip.png") });
+  if (tipHandle) await tipHandle.screenshot({ path: path.join(OUT, "elemental-air-thundering-desktop-tooltip.png") });
   console.log("wrote desktop hover screenshots");
 
   // Click should pin
@@ -177,6 +187,22 @@ async function tipInfo(page) {
   console.log("pinned after click", { pinned: pinned.pinned, hiddenClose: pinned.hiddenClose });
   if (!pinned.pinned) fail("click did not pin tooltip");
   if (pinned.hiddenClose) fail("pinned tooltip should show close button");
+
+  // Same item outside a farm context must not show the farm section.
+  await page.evaluate(() => {
+    if (window.ItemTooltip) {
+      ItemTooltip.hide();
+      ItemTooltip.show(7069, 420, 240);
+    }
+  });
+  await page.waitForFunction(() => {
+    const tip = document.getElementById("itemTooltip");
+    return tip && !tip.hidden && /Elemental Air/i.test(tip.innerText || "");
+  }, { timeout: 10000 });
+  await sleep(300);
+  const dbInfo = await tipInfo(page);
+  console.log("non-farm tooltip farm?", dbInfo.hasFarm, dbInfo.farmText);
+  if (dbInfo.hasFarm) fail("tooltip opened without a farm id must not include the farm drop section", dbInfo.farmText);
 
   await page.close();
 
@@ -191,7 +217,7 @@ async function tipInfo(page) {
   });
   phone.on("pageerror", (e) => console.error("PHONE PAGEERROR", e.message));
   await openFarms(phone, base);
-  const phoneAir = await phone.$('a.gf-item-link[data-item-id="7069"]');
+  const phoneAir = await phone.$('a.gf-item-link[data-item-id="7069"][data-farm-id="arathi-thundering-exiles"]');
   if (!phoneAir) fail("no Elemental Air link on phone");
   await phoneAir.scrollIntoViewIfNeeded();
   await sleep(250);
@@ -214,9 +240,14 @@ async function tipInfo(page) {
   ["hasMin","hasUsual","hasVendor","hasDbLink"].forEach((k) => {
     if (!tapInfo[k]) fail("phone tooltip missing " + k, tapInfo);
   });
-  await phone.screenshot({ path: path.join(OUT, "elemental-air-phone-tap.png"), fullPage: false });
+  if (!tapInfo.hasFarm) fail("phone farm section missing", tapInfo);
+  if (!/13%/.test(tapInfo.farmText) || !/~1 in 8 kills/i.test(tapInfo.farmText)) {
+    fail("phone farm rate/kills missing", tapInfo.farmText);
+  }
+  if (!/Classic drop data, may differ in Forever/i.test(tapInfo.farmText)) fail("phone classic disclaimer missing");
+  await phone.screenshot({ path: path.join(OUT, "elemental-air-thundering-phone-tap.png"), fullPage: false });
   const phoneTip = await phone.$("#itemTooltip");
-  if (phoneTip) await phoneTip.screenshot({ path: path.join(OUT, "elemental-air-phone-tooltip.png") });
+  if (phoneTip) await phoneTip.screenshot({ path: path.join(OUT, "elemental-air-thundering-phone-tooltip.png") });
   console.log("wrote phone tap screenshots");
 
   await browser.close();

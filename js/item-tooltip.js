@@ -1,6 +1,6 @@
 /* Self-hosted Classic-style item tooltip. Does not load Wowhead power.js. */
 (function () {
-  var VERSION = "20261124d";
+  var VERSION = "20261124e";
   var ICON = "https://render.worldofwarcraft.com/forever-us/icons/56/{icon}.jpg";
   var HOVER_DELAY = 80;
   var HOLD_MS = 420;
@@ -417,6 +417,10 @@
     if (extras.length) {
       lines.push('<div class="item-tt-sep"></div><div class="item-tt-extra">' + extras.join("<br>") + "</div>");
     }
+    if (opts.farmId && !opts.asEquipped && window.GoldFarms && GoldFarms.dropTipHtml) {
+      var farmHtml = GoldFarms.dropTipHtml(opts.farmId, item.id);
+      if (farmHtml) lines.push(farmHtml);
+    }
 
     return lines.join("");
   }
@@ -528,14 +532,17 @@
     }
   }
 
-  function openTip(id, slot, x, y, suffixId) {
+  function tipOpts(slot, suffixId, farmId) {
+    return { slot: slot, suffixId: suffixId, farmId: farmId || null };
+  }
+  function openTip(id, slot, x, y, suffixId, farmId) {
     if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
     ensureEls();
     var gen = ++reqGen;
-    current = { id: id, slot: slot, x: x, y: y, suffixId: suffixId };
+    current = { id: id, slot: slot, x: x, y: y, suffixId: suffixId, farmId: farmId || null };
     var seed = indexItem(id) || { id: id, name: "Item " + id, quality: "common", _partial: true };
     cache[String(id)] = cache[String(id)] || seed;
-    renderTooltip(tip, seed, { slot: slot, suffixId: suffixId });
+    renderTooltip(tip, seed, tipOpts(slot, suffixId, farmId));
     tip.hidden = false;
     if (tip) tip.classList.toggle("is-pinned", pinned);
     place(x, y);
@@ -544,7 +551,7 @@
       if (gen !== reqGen) return;
       var item = cache[String(id)] || seed;
       if (item && !item._partial) {
-        renderTooltip(tip, item, { slot: slot, suffixId: suffixId });
+        renderTooltip(tip, item, tipOpts(slot, suffixId, farmId));
         place(current ? current.x : x, current ? current.y : y);
       }
     });
@@ -552,13 +559,13 @@
       if (gen !== reqGen) return;
       var item = d || seed;
       if (!d) { seed._failed = true; item = seed; }
-      renderTooltip(tip, item, { slot: slot, suffixId: suffixId });
+      renderTooltip(tip, item, tipOpts(slot, suffixId, farmId));
       place(current ? current.x : x, current ? current.y : y);
       showCompareIfNeeded(item, slot, current ? current.x : x, current ? current.y : y);
     }).catch(function () {
       if (gen !== reqGen) return;
       seed._failed = true;
-      renderTooltip(tip, seed, { slot: slot, suffixId: suffixId });
+      renderTooltip(tip, seed, tipOpts(slot, suffixId, farmId));
     });
   }
 
@@ -587,7 +594,8 @@
       var worn = equippedIn(el.getAttribute("data-equip-slot"));
       if (worn && worn.suffixId != null) suffixId = worn.suffixId;
     }
-    return { el: el, id: id, slot: slot, suffixId: suffixId };
+    var farmId = el.getAttribute("data-farm-id") || null;
+    return { el: el, id: id, slot: slot, suffixId: suffixId, farmId: farmId };
   }
 
   function stillInside(e, el) {
@@ -601,11 +609,11 @@
     if (!hook) return;
     lastPointer = { x: e.clientX, y: e.clientY, type: e.pointerType || "mouse" };
     if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
-    if (current && String(current.id) === String(hook.id) && current.slot === hook.slot && String(current.suffixId || "") === String(hook.suffixId || "")) return;
+    if (current && String(current.id) === String(hook.id) && current.slot === hook.slot && String(current.suffixId || "") === String(hook.suffixId || "") && String(current.farmId || "") === String(hook.farmId || "")) return;
     if (showTimer) clearTimeout(showTimer);
     showTimer = setTimeout(function () {
       showTimer = null;
-      openTip(hook.id, hook.slot, lastPointer.x, lastPointer.y, hook.suffixId);
+      openTip(hook.id, hook.slot, lastPointer.x, lastPointer.y, hook.suffixId, hook.farmId);
     }, HOVER_DELAY);
   }
 
@@ -648,7 +656,7 @@
       holdTimer = null;
       suppressClick = true;
       setPinned(true);
-      openTip(hook.id, hook.slot, e.clientX, e.clientY, hook.suffixId);
+      openTip(hook.id, hook.slot, e.clientX, e.clientY, hook.suffixId, hook.farmId);
     }, HOLD_MS);
   }
 
@@ -686,7 +694,7 @@
       e.preventDefault();
       e.stopPropagation();
       setPinned(true);
-      openTip(hook.id, hook.slot, e.clientX, e.clientY, hook.suffixId);
+      openTip(hook.id, hook.slot, e.clientX, e.clientY, hook.suffixId, hook.farmId);
       return;
     }
     if (pinned) hideNow();
@@ -728,10 +736,10 @@
 
   window.ItemTooltip = {
     version: VERSION,
-    show: function (id, x, y, slot, suffixId) { openTip(id, slot, x || lastPointer.x, y || lastPointer.y, suffixId); },
-    pin: function (id, x, y, slot, suffixId) {
+    show: function (id, x, y, slot, suffixId, farmId) { openTip(id, slot, x || lastPointer.x, y || lastPointer.y, suffixId, farmId); },
+    pin: function (id, x, y, slot, suffixId, farmId) {
       setPinned(true);
-      openTip(id, slot, x || lastPointer.x, y || lastPointer.y, suffixId);
+      openTip(id, slot, x || lastPointer.x, y || lastPointer.y, suffixId, farmId);
     },
     hide: hideNow,
     isPinned: function () { return !!pinned; },
