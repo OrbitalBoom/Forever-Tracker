@@ -281,6 +281,104 @@ async function overflow(page, label) {
   if (!supSort.orderOk || !supSort.n) fail("Support sort failed", supSort);
   else ok("Support tab sorted by support score (" + supSort.n + ")");
 
+  // Why #N explanations must match the actual sort for the top 10 in each role at 29
+  const whyCheck = await page.evaluate(() => {
+    const roles = ["dps", "tank", "support"];
+    const out = { leads: {}, issues: [], rows: {} };
+    roles.forEach((role) => {
+      PetRank.ui.role = role;
+      PetRank.ui.sort = "auto";
+      const list = PetRank.filtered() || [];
+      const sort = role;
+      const lead = PetRank.leadSummary(list, sort, 29, role);
+      out.leads[role] = lead;
+      const top = list.slice(0, 10);
+      out.rows[role] = top.map((r, i) => {
+        const w = PetRank.whyBreakdown(r, i, list, sort, 29);
+        if (w.rank !== i + 1) out.issues.push(role + " rank " + w.rank + " != " + (i + 1));
+        if (i < list.length - 1) {
+          const cmp = PetRank.compareRows(r, list[i + 1], sort, 29);
+          if (!(cmp < 0)) out.issues.push(role + " #" + (i + 1) + " not before " + list[i + 1].beast.name + " (cmp=" + cmp + ")");
+          const diff = PetRank.firstDifference(r, list[i + 1], sort, 29);
+          if (!diff || w.vsBelow.key !== diff.key) {
+            out.issues.push(role + " #" + (i + 1) + " vsBelow key " + (w.vsBelow && w.vsBelow.key) + " != " + (diff && diff.key));
+          }
+        }
+        if (i > 0) {
+          const diff = PetRank.firstDifference(list[i - 1], r, sort, 29);
+          if (!w.vsAbove || w.vsAbove.key !== (diff && diff.key)) {
+            out.issues.push(role + " #" + (i + 1) + " vsAbove key mismatch");
+          }
+        }
+        return { name: r.beast.name, chip: w.chip, vsBelow: w.vsBelow, vsAbove: w.vsAbove, score: w.score, tied: w.tied };
+      });
+    });
+    return out;
+  });
+  ["dps", "tank", "support"].forEach((role) => {
+    const lead = whyCheck.leads[role] || "";
+    const first = (whyCheck.rows[role] || [])[0];
+    const roleName = role === "dps" ? "DPS" : role === "tank" ? "Tank" : "Support";
+    if (!first) fail("no top row for " + role);
+    else if (lead.indexOf("#1 " + first.name + ": " + roleName + " ") !== 0) {
+      fail("#1 summary missing expected prefix for " + role, lead);
+    } else if (/sits above|just below|because:/.test(lead)) {
+      fail("#1 summary still includes the detailed comparison", lead);
+    } else if (lead.split(/[.!]/).filter((s) => s.trim()).length > 2) {
+      fail("#1 summary is longer than 1–2 sentences for " + role, lead);
+    } else ok("#1 summary " + role + ": " + lead);
+  });
+  if (whyCheck.issues.length) fail("why explanation does not match sort order", whyCheck.issues);
+  else ok("Why #N matches actual sort order for top 10 in DPS, Tank, and Support at 29");
+
+  // Render DPS at 29 and check compact chips + closed expanders (no always-visible paragraph)
+  await page.evaluate(() => {
+    PetRank.ui.role = "dps";
+    PetRank.ui.sort = "auto";
+    if (window.ForeverPets) ForeverPets.render();
+  });
+  await sleep(300);
+  const whyDom = await page.evaluate(() => {
+    const lead = (document.getElementById("petRankLead") || {}).textContent || "";
+    const details = Array.from(document.querySelectorAll("#petRankTable details.pet-why"));
+    const open = details.filter((d) => d.open).length;
+    const chips = Array.from(document.querySelectorAll("#petRankTable .pet-why-chip")).map((el) => el.textContent.trim());
+    const summaries = details.slice(0, 5).map((d) => (d.querySelector("summary") || {}).textContent);
+    const firstBody = details[0] && details[0].querySelector(".pet-why-body");
+    const firstHasParts = !!(firstBody && /Tamed Pet Passive/.test(firstBody.textContent) && /Prowl/.test(firstBody.textContent));
+    const visibleOutside = Array.from(document.querySelectorAll("#petRankTable tbody tr")).slice(0, 8).map((tr) => {
+      const cell = tr.querySelector(".pet-rank-why-cell");
+      if (!cell) return "";
+      const chip = (cell.querySelector(".pet-why-chip") || {}).textContent || "";
+      const sum = (cell.querySelector("summary") || {}).textContent || "";
+      return (chip + " " + sum).trim();
+    });
+    const leak = visibleOutside.some((s) => /Tied at|Compared with|Forever tooltip|Tamed Pet Passive/.test(s));
+    const longChip = chips.some((c) => c.length > 60 || /Forever tooltip/.test(c));
+    return {
+      lead: lead.trim(),
+      nDetails: details.length,
+      open,
+      nChips: chips.length,
+      firstChip: chips[0] || "",
+      summaries,
+      firstHasParts,
+      leak,
+      longChip,
+      visibleOutside: visibleOutside.slice(0, 3),
+    };
+  });
+  if (!whyDom.nDetails || whyDom.nDetails !== whyDom.nChips) fail("each row should have a Why expander and a chip", whyDom);
+  else ok("every ranking row has a chip and a Why #N expander (" + whyDom.nDetails + ")");
+  if (whyDom.open !== 0) fail("Why expanders should be closed by default", whyDom.open);
+  else ok("Why expanders are closed by default");
+  if (!whyDom.firstHasParts) fail("opened why body should list family + ability parts", whyDom);
+  else ok("Why body lists family modifier and ability points");
+  if (whyDom.leak || whyDom.longChip) fail("always-visible why text is too long or leaked the full explanation", whyDom);
+  else ok("visible row why is a compact chip only (e.g. " + whyDom.firstChip + ")");
+  if (!/^\+10% dmg · Prowl · 1\.2s$/.test(whyDom.firstChip)) fail("expected compact #1 chip '+10% dmg · Prowl · 1.2s'", whyDom.firstChip);
+  else ok("#1 chip is " + whyDom.firstChip);
+
   // Top 5 per role at 29 for the report
   await page.click('[data-rank-role="all"]');
   await sleep(200);
@@ -318,12 +416,14 @@ async function overflow(page, label) {
     });
   });
 
-  await page.evaluate(() => { PetRank.ui.role = "all"; PetRank.ui.sort = "auto"; });
+  await page.evaluate(() => { PetRank.ui.role = "dps"; PetRank.ui.sort = "auto"; });
   await page.evaluate(() => { if (window.ForeverPets) ForeverPets.render(); });
   await sleep(300);
   await page.evaluate(() => {
     const el = document.getElementById("petRank");
     if (el) el.scrollIntoView({ block: "start" });
+    const first = document.querySelector("#petRankTable details.pet-why");
+    if (first) first.open = true;
   });
   await sleep(200);
   await page.screenshot({ path: path.join(OUT, "desktop-ranking.png") });
@@ -347,9 +447,54 @@ async function overflow(page, label) {
   });
   if (!mob.hasRank || mob.rows < 10) fail("390 ranking missing", mob);
   else ok("390 ranking populated (" + mob.rows + " rows, tr display=" + mob.display + ")");
+  const mobWhy = await mobile.evaluate(() => {
+    const chips = document.querySelectorAll("#petRankTable .pet-why-chip");
+    const open = document.querySelectorAll("#petRankTable details.pet-why[open]").length;
+    const first = document.querySelector("#petRankTable .pet-why-chip");
+    const lead = (document.getElementById("petRankLead") || {}).textContent || "";
+    return { chips: chips.length, open, chip: first && first.textContent, lead: lead.trim().slice(0, 240) };
+  });
+  if (!mobWhy.chips || mobWhy.open !== 0) fail("390 why rows should show closed expanders and chips", mobWhy);
+  else ok("390 rows show compact chips with Why closed (" + mobWhy.chip + ")");
+  const compact = await mobile.evaluate(() => {
+    const lead = document.getElementById("petRankLead");
+    const tr = document.querySelector("#petRankTable tbody tr");
+    const tds = tr ? Array.from(tr.querySelectorAll("td")) : [];
+    function top(el) { return el ? Math.round(el.getBoundingClientRect().top) : null; }
+    function gridRow(el) { return el ? String(getComputedStyle(el).gridRowStart || getComputedStyle(el).gridRow) : ""; }
+    const p = lead && lead.querySelector("p");
+    const leadH = p ? p.getBoundingClientRect().height : 0;
+    const leadLines = p ? leadH / (parseFloat(getComputedStyle(p).lineHeight) || 16) : 0;
+    return {
+      leadH,
+      leadLines: Math.round(leadLines * 10) / 10,
+      leadText: (lead && lead.textContent || "").trim(),
+      display: tr ? getComputedStyle(tr).display : "",
+      rankName: tds.length > 1 && gridRow(tds[0]) === "1" && gridRow(tds[1]) === "1",
+      famLvlSwing: tds.length > 5 && gridRow(tds[2]) === "2" && gridRow(tds[3]) === "2" && gridRow(tds[5]) === "2",
+      zoneRow: tds.length > 4 && gridRow(tds[4]) === "3",
+      whyRow: tds.length > 8 && gridRow(tds[8]) === "5",
+      fieldLabels: tds.some((td, i) => i < 8 && getComputedStyle(td, "::before").content && getComputedStyle(td, "::before").content !== "none"),
+    };
+  });
+  if (compact.leadLines > 2.4) fail("390 #1 summary should be about 1–2 lines, was " + compact.leadLines, compact);
+  else ok("390 #1 summary is " + compact.leadLines + " lines");
+  if (compact.display.indexOf("grid") === -1) fail("390 ranking cards should use a compact grid", compact);
+  if (!compact.rankName) fail("390 rank and name should share a line", compact);
+  else ok("390 rank and name share a line");
+  if (!compact.famLvlSwing) fail("390 family, level, and swing should share a line", compact);
+  else ok("390 family, level, and swing share a line");
+  if (compact.fieldLabels) fail("390 ranking cards still show one label per field", compact);
+  else ok("390 ranking cards are packed (no one-field-per-row labels)");
   await overflow(mobile, "390 pets ranking");
   await mobile.screenshot({ path: path.join(OUT, "mobile-390-ranking.png") });
   ok("screenshot mobile-390-ranking.png");
+  await mobile.evaluate(() => {
+    const first = document.querySelector("#petRankTable details.pet-why");
+    if (first) first.open = true;
+  });
+  await sleep(200);
+  await overflow(mobile, "390 pets ranking with Why #1 open");
   await mobile.close();
 
   await browser.close();

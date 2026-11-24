@@ -3865,7 +3865,7 @@
     var tag = document.querySelector('script[src*="js/app.js"]');
     var src = tag && (tag.getAttribute("src") || "");
     var m = src.match(/[?&]v=([^&]+)/);
-    return m ? m[1] : "20261125e";
+    return m ? m[1] : "20261125g";
   }
 
   function ensureTalentTooltipsLoaded(cb) {

@@ -2260,6 +2260,41 @@ table.data tfoot th { text-align: left; }
 .pet-role-dps { color: #ffb08a; border-color: #6a3a2a; }
 .pet-role-support { color: #8ee0a8; border-color: #2a5a3a; }
 .pet-rank-why { font-size: 13px; }
+.pet-rank-lead {
+  margin: 8px 0 12px;
+  border: 1px solid #3a2c18;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #1a1610;
+}
+.pet-rank-lead p { margin: 0; font-size: 14px; line-height: 1.4; }
+.pet-rank-why-cell { min-width: 14em; max-width: 28em; }
+.pet-why-chip {
+  font-size: 12px;
+  color: #c8b896;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  min-width: 0;
+}
+.pet-why { margin-top: 2px; }
+.pet-why > summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--gold, #d4b44c);
+  font-size: 13px;
+  list-style: none;
+}
+.pet-why > summary::-webkit-details-marker { display: none; }
+.pet-why > summary::marker { content: ""; }
+.pet-why > summary::before { content: "▸ "; }
+.pet-why[open] > summary::before { content: "▾ "; }
+.pet-why-body { text-align: left; font-size: 13px; padding: 6px 0 2px; overflow-wrap: anywhere; }
+.pet-why-body p { margin: 0 0 8px; }
+.pet-why-body ul { margin: 0 0 8px; padding-left: 1.2em; }
 .pet-rank-table { width: 100%; border-collapse: collapse; }
 .pet-rank-table th, .pet-rank-table td {
   text-align: left;
@@ -2271,12 +2306,21 @@ table.data tfoot th { text-align: left; }
 
 @media (max-width: 900px) {
   .pet-rank-tab { min-height: 44px; }
+  .pet-rank-lead { padding: 8px 10px; }
+  .pet-rank-lead p { font-size: 12px; line-height: 1.35; }
   .pet-rank-table thead { position: absolute; left: -9999px; }
-  .pet-rank-table, .pet-rank-table tbody, .pet-rank-table tr, .pet-rank-table td {
+  .pet-rank-table, .pet-rank-table tbody {
     display: block;
     width: 100%;
   }
   .pet-rank-table tr {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    column-gap: 8px;
+    row-gap: 4px;
+    align-items: center;
+    width: 100%;
+    box-sizing: border-box;
     border: 1px solid #3a2c18;
     border-radius: 8px;
     margin: 0 0 10px;
@@ -2284,26 +2328,62 @@ table.data tfoot th { text-align: left; }
   }
   .pet-rank-table td {
     display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    border-bottom: 1px solid #3a2c18;
-    text-align: right;
-    padding: 8px 0;
-    width: auto;
-  }
-  .pet-rank-table td:last-child { border-bottom: 0; }
-  .pet-rank-table td:nth-child(2) { text-align: left; font-weight: 700; }
-  .pet-rank-table td::before {
-    content: attr(data-label);
-    color: var(--gold, #d4b44c);
-    font-size: 11px;
-    letter-spacing: .06em;
-    text-transform: uppercase;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    border-bottom: 0;
     text-align: left;
-    flex: 0 0 42%;
+    padding: 0;
+    width: auto;
+    min-width: 0;
   }
-  .pet-rank-table td:nth-child(2)::before { content: none; }
-  .pet-rank-why { text-align: left; }
+  .pet-rank-table td::before { content: none; }
+  /* Rank + name */
+  .pet-rank-table td:nth-child(1) {
+    grid-column: 1;
+    grid-row: 1;
+    font-weight: 700;
+    color: var(--gold, #d4b44c);
+  }
+  .pet-rank-table td:nth-child(2) {
+    grid-column: 2 / -1;
+    grid-row: 1;
+    text-align: left;
+    font-weight: 700;
+  }
+  /* Family, level, swing */
+  .pet-rank-table td:nth-child(3) { grid-column: 1; grid-row: 2; }
+  .pet-rank-table td:nth-child(4) { grid-column: 2; grid-row: 2; color: #c8b896; }
+  .pet-rank-table td:nth-child(6) { grid-column: 3; grid-row: 2; justify-content: flex-end; }
+  .pet-rank-table td:nth-child(6) .muted { display: none; }
+  /* Zone + spawn map (map button already lives in this cell) */
+  .pet-rank-table td:nth-child(5) {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  /* Taught + role */
+  .pet-rank-table td:nth-child(7) { grid-column: 1 / 3; grid-row: 4; }
+  .pet-rank-table td:nth-child(8) { grid-column: 3; grid-row: 4; justify-content: flex-end; }
+  /* Chip + Why */
+  .pet-rank-table td.pet-rank-why-cell,
+  .pet-rank-table td[data-label=""] {
+    grid-column: 1 / -1;
+    grid-row: 5;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    text-align: left;
+    gap: 8px;
+    max-width: none;
+  }
+  .pet-why { margin-top: 0; }
+  .pet-why-chip { white-space: nowrap; flex: 1 1 auto; }
+  .pet-why > summary { min-height: 44px; width: auto; }
+  .pet-why[open] { flex: 1 1 100%; }
+  .pet-why-body { width: 100%; }
 }
 
 
