@@ -2118,3 +2118,113 @@ table.data tfoot th { text-align: left; }
   .talent-toolbar .btn { flex: 1 1 auto; }
 }
 
+
+/* ——— Pets + Dashboard (WW-15 / WW-16) ——— */
+#tab-dashboard .card, #tab-pets .card { margin-bottom: 16px; padding: 14px 16px; }
+#tab-dashboard h3, #tab-pets h3 { margin: 0 0 8px; font-size: 18px; }
+#tab-dashboard h4, #tab-pets h4 { margin: 12px 0 8px; font-size: 15px; }
+.pet-family { border: 1px solid #3a2c18; border-radius: 8px; margin: 8px 0; padding: 0; background: #16110c; }
+.pet-family > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 14px;
+  cursor: pointer;
+  list-style: none;
+  padding: 10px 12px;
+  min-height: 44px;
+}
+.pet-family > summary::-webkit-details-marker { display: none; }
+.pet-family[open] > summary { border-bottom: 1px solid #3a2c18; }
+.pet-family-name { font-weight: 700; color: var(--gold, #d4b44c); min-width: 7em; }
+.pet-family-diet { color: #c8c0b0; }
+.pet-family-special { color: #1eff00; margin-left: auto; }
+.pet-family > *:not(summary) { padding: 0 12px 12px; }
+.pet-ab {
+  display: inline-block;
+  background: transparent;
+  border: 0;
+  color: #ffd100;
+  cursor: pointer;
+  padding: 4px 2px;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.pet-ab:hover, .pet-ab:focus-visible { color: #fff; }
+.pet-ab-table, .pet-loyalty-table, .pet-tame-table, .dash-xp-log { width: 100%; border-collapse: collapse; }
+.pet-ab-table th, .pet-loyalty-table th, .pet-tame-table th, .dash-xp-log th,
+.pet-ab-table td, .pet-loyalty-table td, .pet-tame-table td, .dash-xp-log td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid #2a2116;
+  vertical-align: top;
+}
+.pet-filter { max-width: 20em; margin: 8px 0 12px; }
+.pet-tame-filters { align-items: end; }
+.pet-talents-note p { margin: 0 0 8px; }
+.source-note, .pet-sources { font-size: 13px; }
+#petAbilityTip { position: fixed; z-index: 80; width: 280px; min-width: 220px; max-width: min(360px, calc(100vw - 16px)); }
+.dash-who { margin: 0 0 10px; }
+.dash-session-actions { margin-bottom: 10px; }
+.dash-steps { list-style: decimal; margin: 0; padding: 0 0 0 1.2em; }
+.dash-step {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px 12px;
+  margin: 0 0 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #2a2116;
+}
+.dash-step-main { flex: 1 1 200px; min-width: 0; }
+.dash-step-detail { margin-top: 4px; font-size: 13px; }
+.dash-step-done { flex: 0 0 auto; }
+.dash-link-list { list-style: none; margin: 0; padding: 0; }
+.dash-link-list > li { margin: 0 0 12px; }
+.dash-upgrades { margin: 6px 0 0 1.1em; }
+.stat-value { display: block; font-size: 18px; font-weight: 700; color: #f2e6c9; }
+.stat-label { display: block; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--gold, #d4b44c); }
+.stat { min-width: 8em; }
+
+@media (max-width: 900px) {
+  .pet-ab, .dash-step-done, [data-pet-map], #dashStartSession, #dashStopSession,
+  #dashAddXpForm .btn, [data-dash-tab], #dashOpenFarm {
+    min-height: 44px;
+  }
+  .pet-family-special { margin-left: 0; }
+  .dash-step { align-items: stretch; }
+  .dash-step-done { width: 100%; }
+  .pet-tame-table thead { position: absolute; left: -9999px; }
+  .pet-tame-table, .pet-tame-table tbody, .pet-tame-table tr, .pet-tame-table td {
+    display: block;
+    width: 100%;
+  }
+  .pet-tame-table tr {
+    border: 1px solid #3a2c18;
+    border-radius: 8px;
+    margin: 0 0 10px;
+    padding: 8px 10px;
+  }
+  .pet-tame-table td {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    border-bottom: 1px solid #3a2c18;
+    text-align: right;
+    padding: 8px 0;
+  }
+  .pet-tame-table td:last-child { border-bottom: 0; }
+  .pet-tame-table td:first-child { text-align: left; font-weight: 700; }
+  .pet-tame-table td::before {
+    content: attr(data-label);
+    color: var(--gold, #d4b44c);
+    font-size: 11px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    text-align: left;
+    flex: 1 1 auto;
+  }
+  .pet-tame-table td:first-child::before,
+  .pet-tame-table td[colspan]::before { content: none; }
+}

@@ -1502,8 +1502,8 @@
     return html;
   }
 
-  function bindFarmMap(farmId) {
-    var rec = spawnRecord(farmId);
+  function bindFarmMap(farmIdOrRec) {
+    var rec = (farmIdOrRec && typeof farmIdOrRec === "object") ? farmIdOrRec : spawnRecord(farmIdOrRec);
     var canvas = document.getElementById("gfFarmMapCanvas");
     var stage = document.getElementById("gfFarmMapStage");
     var tip = document.getElementById("gfFarmMapTip");
@@ -1697,7 +1697,7 @@
         });
       }
       lastMapDraw = {
-        farmId: farmId,
+        farmId: (typeof farmIdOrRec === "object" ? (farmIdOrRec.id || farmIdOrRec.title || "custom") : farmIdOrRec),
         total: totalDrawn,
         mobs: drawnMobs,
         art: useArt,
@@ -1793,6 +1793,89 @@
     });
   }
 
+  function mapModalHtmlFromRec(rec, title, meta) {
+    meta = meta || spawnMeta();
+    title = title || (rec && (rec.title || rec.name)) || "Spawn map";
+    var zone = (rec && rec.zone) || "";
+    var html = '<div id="gfFarmMap">';
+    html += '<div class="gf-map-head">';
+    html += "<h3 id=\"gfFarmMapTitle\">" + escapeHtml(title) + "</h3>";
+    html += '<button type="button" class="btn gf-map-close" data-close aria-label="Close spawn map">Close</button>';
+    html += "</div>";
+    var art = zoneMapEntry(rec);
+    if (zone) html += '<p class="gf-map-zone">' + escapeHtml(zone) + "</p>";
+    html += '<p class="muted gf-map-note">' + escapeHtml(meta.disclaimer || "Spawn locations from Classic data, may differ in Forever.") + " ";
+    html += escapeHtml(meta.mapNote || "Zone maps are Forever client art (© Blizzard Entertainment). If a map image cannot be loaded, a schematic grid is shown instead. Coordinates are used as published by NorgannonDB; none are invented.") + "</p>";
+    var mobs = (rec && rec.mobs) || [];
+    var any = mobs.some(function (m) { return m.points && m.points.length; });
+    if (!rec) {
+      html += '<p class="gf-map-empty">No spawn data</p>';
+    } else if (!mobs.length || !any) {
+      html += '<ul class="gf-map-legend" id="gfFarmMapLegend">';
+      mobs.forEach(function (m) {
+        html += '<li class="is-missing"><span class="gf-map-swatch" style="background:#555"></span>' +
+          escapeHtml(m.name) + " — No spawn data</li>";
+      });
+      html += "</ul>";
+      html += '<p class="gf-map-empty">No spawn data</p>';
+    } else {
+      var ratio = 1.5;
+      if (rec.mapSize && rec.mapSize[0] && rec.mapSize[1]) ratio = rec.mapSize[0] / rec.mapSize[1];
+      html += '<div class="gf-map-stage" id="gfFarmMapStage" style="aspect-ratio:' + ratio + '">';
+      if (art && art.file) {
+        html += '<img class="gf-map-art" id="gfFarmMapArt" alt="" src="' + escapeHtml(art.file) + "?v=" + encodeURIComponent(cacheVer()) + '" hidden>';
+      }
+      html += '<canvas id="gfFarmMapCanvas" aria-label="Spawn map of ' + escapeHtml(zone || title) + '"></canvas>';
+      html += '<svg class="gf-map-markers" id="gfFarmMapMarkers" aria-hidden="true"></svg>';
+      html += '<div class="gf-map-tip" id="gfFarmMapTip" hidden></div>';
+      html += '<div class="gf-map-compass" aria-hidden="true"><span>N</span></div>';
+      html += '<span class="gf-map-axis gf-map-axis-x" aria-hidden="true">West — East</span>';
+      html += '<span class="gf-map-axis gf-map-axis-y" aria-hidden="true">N — S</span>';
+      html += "</div>";
+      html += '<ul class="gf-map-legend" id="gfFarmMapLegend">';
+      mobs.forEach(function (m, i) {
+        var color = MOB_COLORS[i % MOB_COLORS.length];
+        var count = (m.points && m.points.length) || 0;
+        var miss = !count;
+        html += '<li><button type="button" class="gf-map-leg-btn' + (miss ? " is-missing" : "") +
+          '" data-mob-index="' + i + '" aria-pressed="true">';
+        html += '<span class="gf-map-swatch" style="background:' + (miss ? "#555" : color) + '"></span>';
+        html += '<span class="gf-map-leg-name">' + escapeHtml(m.name) + "</span>";
+        html += miss
+          ? '<span class="gf-map-leg-count">No spawn data</span>'
+          : '<span class="gf-map-leg-count">' + count + " spawn" + (count === 1 ? "" : "s") + "</span>";
+        html += "</button></li>";
+      });
+      html += "</ul>";
+      html += '<label class="gf-map-grid-toggle"><input type="checkbox" id="gfFarmMapGrid"> Show grid</label>';
+    }
+    var src = meta.norgannon || { url: "https://github.com/zmarotrix/NorgannonDB", version: "1.9", license: "GPL-3.0" };
+    html += '<p class="muted gf-map-credit">';
+    if (art) html += "Zone map art © Blizzard Entertainment (Forever client). ";
+    if (src) {
+      html += 'Spawn data: <a href="' + escapeHtml(src.url || "https://github.com/zmarotrix/NorgannonDB") +
+        '" target="_blank" rel="noopener noreferrer">NorgannonDB ' + escapeHtml(src.version || "") +
+        "</a> (" + escapeHtml(src.license || "GPL-3.0") + "), QuestieDB and CMaNGOS classic-db.";
+    }
+    html += "</p>";
+    html += "</div>";
+    return html;
+  }
+
+  function openCustomMap(rec) {
+    if (!rec) return;
+    Promise.all([ensureZoneMaps()]).then(function () {
+      if (!window.ForeverApp || !ForeverApp.openModal) return;
+      var meta = {
+        disclaimer: "Spawn locations from Classic data, may differ in Forever.",
+        mapNote: "Zone maps are Forever client art (© Blizzard Entertainment). If a map image cannot be loaded, a schematic grid is shown instead. Coordinates are used as published by NorgannonDB; none are invented.",
+        norgannon: { url: "https://github.com/zmarotrix/NorgannonDB", version: "1.9", license: "GPL-3.0" }
+      };
+      ForeverApp.openModal(mapModalHtmlFromRec(rec, rec.title || rec.name, meta));
+      bindFarmMap(rec);
+    });
+  }
+
 
   window.GoldFarms = {
     render: render,
@@ -1807,6 +1890,7 @@
     hasProfsFilled: hasProfsFilled,
     skillOf: skillOf,
     openMap: openFarmMap,
+    openCustomMap: openCustomMap,
     lastMapDraw: function () { return lastMapDraw; },
     dropTipHtml: dropTipHtml,
     findFarm: findFarm

@@ -165,7 +165,9 @@
       profGuide: {},
       goldFarmFavs: [],
       goldFarmPrefs: {},
-      itemFilters: { class: null, slots: {}, hidePvp: false }
+      itemFilters: { class: null, slots: {}, hidePvp: false },
+      hunterPet: { name: "", familyId: null, level: null },
+      dashboard: { xpCurrent: null, sessions: [], activeSessionId: null }
     };
   }
 
@@ -410,9 +412,9 @@
     if (!name) return null;
     name = String(name).replace(/^#/, "");
     if (resolveGoldSub(name)) return "gold";
-    var aliases = { profession: "professions", prof: "professions", profs: "professions", farming: "gold", "gold-farms": "gold" };
+    var aliases = { profession: "professions", prof: "professions", profs: "professions", farming: "gold", "gold-farms": "gold", dash: "dashboard", pet: "pets", hunter: "pets" };
     if (aliases[name]) name = aliases[name];
-    var valid = ["character","goals","gold","professions","notes","items","talents","leveling"];
+    var valid = ["dashboard","character","goals","gold","professions","notes","items","talents","leveling","pets"];
     return valid.indexOf(name) !== -1 ? name : null;
   }
 
@@ -454,6 +456,8 @@
     else if (name === "items") { if (window.ItemDB) window.ItemDB.onTab(); else renderItems(); }
     else if (name === "talents") { ensureTalentTooltipsLoaded(); renderTalents(); }
     else if (name === "leveling") renderLeveling();
+    else if (name === "pets") { if (window.ForeverPets) ForeverPets.render(); }
+    else if (name === "dashboard") { if (window.ForeverDash) ForeverDash.render(); }
   }
 
   function renderChrome() {
@@ -3692,7 +3696,7 @@
     try { q = new URLSearchParams(location.search).get("tab") || ""; } catch (e) {}
     var start = resolveTab(q) || resolveTab(hash);
     if (/^item-\d+/.test(hash)) start = "items";
-    showTab(start || "character");
+    showTab(start || "dashboard");
     if (/^item-\d+/.test(hash) && window.ItemDB) window.ItemDB.open(hash.replace("item-",""));
     try {
       if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
@@ -3749,6 +3753,36 @@
     itemFitsSlot: itemFitsSlot,
     itemScore: itemScore
   };
+
+  function nextOpenLevelingSteps(n) {
+    normalizeLeveling();
+    var L = state.leveling;
+    if (L.follow) L.race = ch().race || L.race || "Undead";
+    var prog = levelingProgress();
+    var cls = ch().class;
+    var steps = expandLevelingSteps();
+    var out = [];
+    var limit = n || 5;
+    for (var i = 0; i < steps.length; i++) {
+      var s = steps[i];
+      if (!stepVisible(s, cls, prog, L)) continue;
+      if (prog.done[s.sid] || prog.skipped[s.sid]) continue;
+      out.push(s);
+      if (out.length >= limit) break;
+    }
+    return out;
+  }
+
+  function markLevelingStep(sid, done) {
+    if (!sid) return;
+    var prog = levelingProgress();
+    if (done) prog.done[sid] = true;
+    else delete prog.done[sid];
+    save();
+    if (activeTab === "leveling") renderLeveling();
+    if (activeTab === "dashboard" && window.ForeverDash) ForeverDash.render();
+  }
+
   window.ForeverApp = {
     STORAGE_KEY: STORAGE_KEY,
     getState: function () { return state; },
@@ -3791,6 +3825,8 @@
     levelingCharKey: levelingCharKey,
     includeAddonChapters: includeAddonChapters,
     overlapChapterKeys: overlapChapterKeys,
+    nextOpenLevelingSteps: nextOpenLevelingSteps,
+    markLevelingStep: markLevelingStep,
     getState: function () { return state; },
     save: save
   };
@@ -3829,7 +3865,7 @@
     var tag = document.querySelector('script[src*="js/app.js"]');
     var src = tag && (tag.getAttribute("src") || "");
     var m = src.match(/[?&]v=([^&]+)/);
-    return m ? m[1] : "20261124g";
+    return m ? m[1] : "20261125a";
   }
 
   function ensureTalentTooltipsLoaded(cb) {

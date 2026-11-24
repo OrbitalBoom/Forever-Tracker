@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Forever Tracker — Classic Era companion</title>
-  <link rel="stylesheet" href="css/style.css?v=20261124g">
+  <link rel="stylesheet" href="css/style.css?v=20261125a">
 </head>
 <body>
   <div class="app">
@@ -22,7 +22,8 @@
     </header>
 
     <nav class="tabs" role="tablist">
-      <button type="button" role="tab" aria-selected="true" data-tab="character">Character</button>
+      <button type="button" role="tab" aria-selected="true" data-tab="dashboard">Dashboard</button>
+      <button type="button" role="tab" aria-selected="false" data-tab="character">Character</button>
       <button type="button" role="tab" aria-selected="false" data-tab="goals">Goals</button>
       <button type="button" role="tab" aria-selected="false" data-tab="gold">Gold</button>
       <button type="button" role="tab" aria-selected="false" data-tab="professions">Professions</button>
@@ -30,11 +31,19 @@
       <button type="button" role="tab" aria-selected="false" data-tab="items">Items &amp; Upgrades</button>
       <button type="button" role="tab" aria-selected="false" data-tab="leveling">Leveling Route</button>
       <button type="button" role="tab" aria-selected="false" data-tab="talents">Talents</button>
+      <button type="button" role="tab" aria-selected="false" data-tab="pets">Pets</button>
     </nav>
 
     <main class="stage">
+      <!-- Dashboard -->
+      <section class="panel active" id="tab-dashboard" role="tabpanel">
+        <h2>Dashboard</h2>
+        <p class="lede">Level, experience, and the next steps on your route. XP/hour and time estimates stay as — until you enter XP and start a session. Nothing here is invented.</p>
+        <div id="dashboardRoot"></div>
+      </section>
+
       <!-- Character -->
-      <section class="panel active" id="tab-character" role="tabpanel">
+      <section class="panel" id="tab-character" role="tabpanel">
         <h2>Character</h2>
         <p class="lede">Your name, class, and level drive the upgrade finder, talent points, leveling route, and goal suggestions. Changes are saved automatically. You can change any of this later.</p>
         <form id="characterForm" class="form-grid">
@@ -296,6 +305,13 @@
           <div id="consensusBuildList" class="builds"></div>
         </div>
       </section>
+
+      <!-- Pets -->
+      <section class="panel" id="tab-pets" role="tabpanel">
+        <h2>Hunter pets</h2>
+        <p class="lede">Pet families, diet, trainable abilities (rank, level, and training-point cost), loyalty, and notable beasts to tame. Forever has no pet talent trees in this client build. Tame locations are Classic data and may differ in Forever.</p>
+        <div id="petsRoot"></div>
+      </section>
     </main>
 
     <footer class="site-footer">
@@ -310,24 +326,27 @@
   </div>
   <div class="toast" id="toast" hidden></div>
 
-  <script src="js/data.js?v=20261124g"></script>
-  <script src="js/stat-weights-data.js?v=20261124g"></script>
-  <script src="js/item-weights.js?v=20261124g"></script>
-  <script src="js/items.js?v=20261124g"></script>
-  <script src="js/talents.js?v=20261124g"></script>
-  <script src="js/community-builds.js?v=20261124g"></script>
-  <script src="js/leveling-data.js?v=20261124g"></script>
-  <script src="js/app.js?v=20261124g"></script>
-  <script src="js/cloud-save.js?v=20261124g"></script>
-  <script src="js/professions-data.js?v=20261124g"></script>
-  <script src="data/prices.js?v=20261124g"></script>
-  <script src="js/professions.js?v=20261124g"></script>
-  <script src="js/ah-flips.js?v=20261124g"></script>
-  <script src="js/gold-farms-data.js?v=20261124g"></script>
-  <script src="data/zone-maps/index.js?v=20261124g"></script>
-  <script src="js/gold-farms.js?v=20261124g"></script>
-  <script src="js/item-suffixes.js?v=20261124g"></script>
-  <script src="js/item-db.js?v=20261124g"></script>
-  <script src="js/item-tooltip.js?v=20261124g"></script>
+  <script src="js/data.js?v=20261125a"></script>
+  <script src="js/stat-weights-data.js?v=20261125a"></script>
+  <script src="js/item-weights.js?v=20261125a"></script>
+  <script src="js/items.js?v=20261125a"></script>
+  <script src="js/talents.js?v=20261125a"></script>
+  <script src="js/community-builds.js?v=20261125a"></script>
+  <script src="js/leveling-data.js?v=20261125a"></script>
+  <script src="js/app.js?v=20261125a"></script>
+  <script src="js/cloud-save.js?v=20261125a"></script>
+  <script src="js/professions-data.js?v=20261125a"></script>
+  <script src="data/prices.js?v=20261125a"></script>
+  <script src="js/professions.js?v=20261125a"></script>
+  <script src="js/ah-flips.js?v=20261125a"></script>
+  <script src="js/gold-farms-data.js?v=20261125a"></script>
+  <script src="data/zone-maps/index.js?v=20261125a"></script>
+  <script src="js/gold-farms.js?v=20261125a"></script>
+  <script src="js/item-suffixes.js?v=20261125a"></script>
+  <script src="js/item-db.js?v=20261125a"></script>
+  <script src="js/item-tooltip.js?v=20261125a"></script>
+  <script src="js/pets-data.js?v=20261125a"></script>
+  <script src="js/pets.js?v=20261125a"></script>
+  <script src="js/dashboard.js?v=20261125a"></script>
 </body>
 </html>

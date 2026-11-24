@@ -2,8 +2,8 @@ const fs = require("fs");
 const http = require("http");
 const path = require("path");
 
-const ROOT = "/workspace/wow-forever-mobile";
-const PORT = 8795;
+const ROOT = process.env.FOREVER_ROOT || "/workspace/wow-forever-pets-dash";
+const PORT = Number(process.env.FOREVER_PORT) || 8799;
 const PHASE = process.env.MOBILE_PHASE || "after";
 const OUT = path.join(ROOT, "screenshots", "mobile", PHASE === "desktop" ? "desktop" : PHASE);
 const puppeteer = require("/tmp/pptr/node_modules/puppeteer-core");
@@ -66,6 +66,7 @@ const VIEWS = [
 ];
 
 const TABS = [
+  { id: "dashboard", label: "dashboard" },
   { id: "character", label: "character" },
   { id: "goals", label: "goals" },
   { id: "gold", label: "gold-log", gold: "log" },
@@ -77,6 +78,7 @@ const TABS = [
   { id: "items", label: "items", itemsDb: true },
   { id: "leveling", label: "leveling" },
   { id: "talents", label: "talents" },
+  { id: "pets", label: "pets" },
 ];
 
 async function overflowInfo(page) {
