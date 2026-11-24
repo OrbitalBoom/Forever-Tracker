@@ -1112,6 +1112,17 @@ table.data tfoot th { text-align: left; }
   gap: 6px;
 }
 .gf-row-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+.gf-item-link {
+  cursor: help;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 55%, transparent);
+  text-underline-offset: 2px;
+}
+.gf-item-link:hover, .gf-item-link:focus-visible {
+  text-decoration-color: currentColor;
+}
+
 .gf-row-gold {
   text-align: right;
   white-space: nowrap;
@@ -1298,7 +1309,7 @@ table.data tfoot th { text-align: left; }
   left: 0;
   top: 0;
   z-index: 80;
-  max-width: 340px;
+  max-width: 360px;
   min-width: 220px;
   padding: 7px 9px 8px 7px;
   background: rgba(8, 16, 42, 0.94);
@@ -1312,6 +1323,38 @@ table.data tfoot th { text-align: left; }
   pointer-events: none;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.7);
 }
+.item-tt.is-pinned {
+  pointer-events: auto;
+  z-index: 90;
+}
+.item-tt-close {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #e8e0c8;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+.item-tt-close:hover, .item-tt-close:focus-visible {
+  color: #fff;
+  background: rgba(255,255,255,.12);
+}
+.item-tt-db-wrap { margin-top: 6px; }
+.item-tt-db {
+  font-family: "Segoe UI", Candara, Calibri, "Trebuchet MS", sans-serif;
+  font-size: 12px;
+  color: #ffd100;
+  text-shadow: none;
+}
+.item-tt-trend.is-up { color: #8ee0a8; }
+.item-tt-trend.is-down { color: #ffb08a; }
 .item-tt-compare { z-index: 79; }
 .item-tt-inner { display: grid; grid-template-columns: 36px 1fr; gap: 8px; align-items: start; }
 .item-tt-body { min-width: 0; }

@@ -31,6 +31,61 @@
     return String(s == null ? "" : s)
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
+
+  /* Match a farm drop name to an item ID. Exact after light normalization only —
+     never a typo-guess. Ambiguous names stay unmatched. */
+  var _itemById = null;
+  var _itemByName = null;
+  function normItemName(s) {
+    return String(s || "").toLowerCase().replace(/[’‘`]/g, "'").replace(/\s+/g, " ").trim();
+  }
+  function rebuildItemMaps() {
+    _itemById = {};
+    _itemByName = {};
+    (window.ITEM_INDEX || []).forEach(function (it) {
+      _itemById[String(it.id)] = it;
+      var k = normItemName(it.n);
+      if (!k) return;
+      (_itemByName[k] = _itemByName[k] || []).push(it);
+    });
+  }
+  function matchItemName(name) {
+    if (!name) return null;
+    if (!_itemByName) rebuildItemMaps();
+    var hits = _itemByName[normItemName(name)] || [];
+    if (hits.length === 1) return hits[0];
+    if (hits.length > 1) {
+      var conf = hits.filter(function (it) { return it.f === 1; });
+      if (conf.length === 1) return conf[0];
+    }
+    return null;
+  }
+  function resolveLoot(l) {
+    if (!l) return null;
+    if (!_itemById) rebuildItemMaps();
+    if (l.id != null && l.id !== "") {
+      var rec = _itemById[String(l.id)];
+      /* Only hook a tooltip when the id is in the item DB. A farm id that is
+         missing from the index is left as plain text — never a guessed item. */
+      if (rec) return { id: l.id, quality: rec.q, index: rec, how: "id" };
+      return null;
+    }
+    var m = matchItemName(l.name);
+    return m ? { id: m.id, quality: m.q, index: m, how: "name" } : null;
+  }
+  function itemLinkHtml(name, resolved) {
+    if (!resolved || resolved.id == null) return escapeHtml(name);
+    var q = resolved.quality ? " q-" + resolved.quality : "";
+    return '<a class="gf-item-link' + q + '" href="#item-' + resolved.id +
+      '" data-item-id="' + resolved.id + '" data-item-pin="1">' + escapeHtml(name) + "</a>";
+  }
+  function lootLineHtml(spot) {
+    var loot = spot.loot || [];
+    if (!loot.length) return "See details for loot";
+    var parts = loot.slice(0, 3).map(function (l) { return itemLinkHtml(l.name, resolveLoot(l)); });
+    return parts.join(", ") + (loot.length > 3 ? "…" : "");
+  }
+
   function goldText(copper, opts) {
     opts = opts || {};
     var n = Math.round(Number(copper) || 0);
@@ -759,6 +814,7 @@
         renderResults();
         return;
       }
+      if (t.closest && t.closest("a[data-item-id], [data-item-pin]")) return;
       var mapBtn = t.closest && t.closest("[data-gf-map]");
       if (mapBtn) {
         e.preventDefault();
@@ -797,6 +853,7 @@
       }
     });
     root.addEventListener("keydown", function (e) {
+      if (e.target && e.target.closest && e.target.closest("a[data-item-id], [data-item-pin]")) return;
       var main = e.target && e.target.closest && e.target.closest("[data-gf-toggle]");
       if (!main) return;
       if (e.key === "Enter" || e.key === " ") {
@@ -839,7 +896,8 @@
       var priceLabel = r.priceKind === "coin"
         ? goldText(r.price, { compact: true })
         : ((r.priceKind === "AH" ? "AH " : "vendor ") + goldText(r.price, { compact: true }));
-      var name = escapeHtml(r.name);
+      var resolved = r.id ? resolveLoot({ id: r.id, name: r.name }) : resolveLoot({ name: r.name });
+      var name = itemLinkHtml(r.name, resolved);
       if (r.becauseProf && hasProfsFilled()) {
         name += ' <span class="gf-because">your ' + escapeHtml(r.becauseProf) + "</span>";
       }
@@ -882,9 +940,9 @@
       if (p) bits.push("AH " + goldText(p.marketValue, { compact: true }));
       else if (l.vendor != null) bits.push("vendor " + goldText(l.vendor, { compact: true }));
       else if (l.id) bits.push("no AH price in this snapshot");
-      var label = l.id
-        ? '<a href="#item-' + l.id + '" data-item-id="' + l.id + '">' + escapeHtml(l.name) + "</a>"
-        : "<span>" + escapeHtml(l.name) + "</span>";
+      var resolved = resolveLoot(l);
+      var label = itemLinkHtml(l.name, resolved);
+      if (!resolved) label = "<span>" + escapeHtml(l.name) + "</span>";
       return "<li>" + label +
         (bits.length ? ' <span class="muted">(' + escapeHtml(bits.join(" · ")) + ")</span>" : "") + "</li>";
     });
@@ -999,8 +1057,7 @@
     var h = headline(spot);
     var fav = isFav(spot.id);
     var open = expandedId === spot.id;
-    var names = lootNames(spot);
-    var lootLine = names.length ? names.slice(0, 3).join(", ") + (names.length > 3 ? "…" : "") : "See details for loot";
+    var lootLine = lootLineHtml(spot);
     var goldInner;
     if (h.copper != null) {
       var approx = h.kind === "estimated" ? '<span class="gf-approx">~</span>' : "";
@@ -1026,7 +1083,7 @@
           '<div class="gf-row-title">' + escapeHtml(spot.name) + warn + needTag(spot) + dungeonTag(spot) +
             (spot.eliteOpenWorld ? '<span class="kind-tag gf-elite-tag">Elite</span>' : "") + "</div>" +
           '<div class="gf-row-sub">' + escapeHtml(spot.zone) + " · Lv " + spot.levelMin + "–" + spot.levelMax +
-            " · " + escapeHtml(lootLine) + mapBtnHtml(spot) + "</div>" +
+            " · " + lootLine + mapBtnHtml(spot) + "</div>" +
           extra +
         "</div>" +
         '<div class="gf-row-gold">' + goldInner + "</div>" +
@@ -1123,11 +1180,29 @@
     return '<details class="gf-locked" id="gfLockedProfs"><summary>' + escapeHtml(title) + "</summary>" + inner + "</details>";
   }
 
+  var itemIndexReady = false;
+  var itemIndexTried = false;
+  function ensureItemIndex() {
+    if (itemIndexReady || itemIndexTried) return;
+    if (window.ItemDB && ItemDB.ensure) {
+      itemIndexTried = true;
+      ItemDB.ensure().then(function () {
+        itemIndexReady = true;
+        _itemById = null;
+        _itemByName = null;
+        renderResults();
+      }).catch(function () { /* drop names stay plain if the index cannot load */ });
+      return;
+    }
+    /* item-db.js loads after this file; retry until it appears. */
+    setTimeout(ensureItemIndex, 50);
+  }
   function refresh() {
     renderToolbar();
     renderContext();
     renderResults();
     renderAbout();
+    ensureItemIndex();
   }
 
   function render(st, opts) {
@@ -1154,7 +1229,7 @@
     var tag = document.querySelector('script[src*="js/gold-farms.js"], script[src*="js/app.js"]');
     var src = tag && (tag.getAttribute("src") || "");
     var m = src && src.match(/[?&]v=([^&]+)/);
-    return m ? m[1] : "20261124c";
+    return m ? m[1] : "20261124d";
   }
   function ensureSpawns() {
     if (window.GOLD_FARM_SPAWNS) return Promise.resolve(window.GOLD_FARM_SPAWNS);

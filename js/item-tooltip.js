@@ -1,6 +1,6 @@
 /* Self-hosted Classic-style item tooltip. Does not load Wowhead power.js. */
 (function () {
-  var VERSION = "20261124c";
+  var VERSION = "20261124d";
   var ICON = "https://render.worldofwarcraft.com/forever-us/icons/56/{icon}.jpg";
   var HOVER_DELAY = 80;
   var HOLD_MS = 420;
@@ -16,6 +16,8 @@
   var cache = {};
   var shiftHeld = false;
   var suppressClick = false;
+  var pinned = false;
+  var extrasLoading = null;
   var lastPointer = { x: 0, y: 0, type: "mouse" };
 
   var STAT_WHITE = {
@@ -136,6 +138,106 @@
     var p = items && (items[id] || items[String(id)]);
     if (p && Array.isArray(p)) p = { minBuyout: p[0], marketValue: p[1], quantity: p[2], soldPerDay: p.length > 3 ? p[3] : null };
     return p && (p.marketValue || p.minBuyout) ? p : null;
+  }
+
+  function loadScript(src) {
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement("script");
+      s.src = src;
+      s.async = true;
+      s.onload = resolve;
+      s.onerror = function () { reject(new Error("Failed to load " + src)); };
+      document.head.appendChild(s);
+    });
+  }
+  function ensureExtras() {
+    var jobs = [];
+    if (!window.PRICE_HISTORY) {
+      jobs.push(loadScript("data/price-history.js?v=" + encodeURIComponent(VERSION)).catch(function () { return null; }));
+    }
+    if (!window.ITEM_STACKS) {
+      jobs.push(loadScript("data/item-stacks.js?v=" + encodeURIComponent(VERSION)).catch(function () { return null; }));
+    }
+    if (!jobs.length) return Promise.resolve();
+    if (extrasLoading) return extrasLoading;
+    extrasLoading = Promise.all(jobs).then(function () { extrasLoading = null; });
+    return extrasLoading;
+  }
+  function stackOf(id) {
+    var s = window.ITEM_STACKS;
+    var n = s && (s[id] || s[String(id)]);
+    return (n && n > 1) ? n : 0;
+  }
+  function formatTs(iso) {
+    if (!iso) return "";
+    try {
+      var d = new Date(iso);
+      if (isNaN(d.getTime())) return iso;
+      return d.toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" }) + " ET";
+    } catch (e) { return iso; }
+  }
+  function priceUpdated() {
+    var d = window.PRICE_DATA;
+    return (d && (d.updated || d.fetched)) || "";
+  }
+  function historySeries(id) {
+    var h = window.PRICE_HISTORY;
+    if (!h || !h.items) return null;
+    var arr = h.items[id] || h.items[String(id)];
+    if (!arr || !arr.length) return null;
+    var pts = [];
+    for (var i = 0; i < arr.length; i++) {
+      if (arr[i] != null && arr[i] > 0) pts.push(arr[i]);
+    }
+    if (!pts.length) return null;
+    var vals = pts.slice().sort(function (a, b) { return a - b; });
+    var mid = vals.length % 2 ? vals[(vals.length - 1) / 2] : (vals[vals.length / 2 - 1] + vals[vals.length / 2]) / 2;
+    return { first: pts[0], last: pts[pts.length - 1], median: mid, n: pts.length, days: h.windowDays || 7 };
+  }
+  function ahLines(item) {
+    if (!item || item.id == null) return [];
+    var lines = [];
+    var p = priceOf(item.id);
+    if (p && (p.minBuyout || p.marketValue)) {
+      if (p.minBuyout) lines.push("AH min buyout: " + coins(p.minBuyout));
+      if (p.marketValue) lines.push("AH usual (market): " + coins(p.marketValue));
+      var vol = [];
+      if (p.quantity != null) vol.push(Number(p.quantity).toLocaleString() + " listed");
+      if (p.soldPerDay != null && p.soldPerDay !== "") {
+        var spd = Number(p.soldPerDay);
+        vol.push((Number.isInteger(spd) ? String(spd) : spd.toLocaleString(undefined, { maximumFractionDigits: 1 })) + " sold/day");
+      }
+      if (vol.length) lines.push(vol.join(" · "));
+      var upd = formatTs(priceUpdated());
+      if (upd) lines.push("Updated " + esc(upd));
+      var stack = stackOf(item.id);
+      if (stack) {
+        var minS = p.minBuyout ? p.minBuyout * stack : null;
+        var mktS = p.marketValue ? p.marketValue * stack : null;
+        if (minS && mktS && minS !== mktS) {
+          lines.push("Per stack of " + stack + " (min): " + coins(minS));
+          lines.push("Per stack of " + stack + " (usual): " + coins(mktS));
+        } else if (minS || mktS) {
+          lines.push("Per stack of " + stack + ": " + coins(minS || mktS));
+        }
+      }
+    } else {
+      lines.push("No current AH listings");
+    }
+    var hist = historySeries(item.id);
+    if (hist) {
+      lines.push(hist.days + "-day usual (median of " + hist.n + "): " + coins(hist.median));
+      if (hist.n >= 2 && hist.first) {
+        var dlt = hist.last - hist.first;
+        var pct = (dlt / hist.first) * 100;
+        var dir = dlt > 0 ? "up" : dlt < 0 ? "down" : "unchanged";
+        var cls = dlt > 0 ? " is-up" : dlt < 0 ? " is-down" : "";
+        var pctTxt = Math.abs(pct) >= 0.5 ? (" " + dir + " " + Math.abs(pct).toFixed(0) + "%") : " unchanged";
+        lines.push('<span class="item-tt-trend' + cls + '">' + hist.days + "-day trend: " +
+          coins(hist.first) + " → " + coins(hist.last) + pctTxt + "</span>");
+      }
+    }
+    return lines;
   }
 
   function itemScore(item) {
@@ -294,12 +396,7 @@
       lines.push('<div class="item-tt-sell">Sell Price: ' + coins(item.sell) + "</div>");
     }
 
-    var extras = [];
-    var p = priceOf(item.id);
-    if (p) {
-      extras.push("AH " + coins(p.marketValue || p.minBuyout) +
-        (p.quantity != null ? " · " + Number(p.quantity).toLocaleString() + " listed" : ""));
-    }
+    var extras = ahLines(item);
     if (!opts.asEquipped) {
       var slot = findCompareSlot(item, opts.slot);
       var cmp = compareLine(item, slot);
@@ -328,7 +425,13 @@
     var icon = item && item.icon
       ? '<img class="item-tt-icon ' + qClass(item.quality) + '" src="' + ICON.replace("{icon}", String(item.icon)) + '" alt="" width="36" height="36" data-icon-img>'
       : '<span class="item-tt-icon item-tt-icon-empty"></span>';
-    el.innerHTML = '<div class="item-tt-inner">' + icon + '<div class="item-tt-body">' + renderBody(item, opts) + "</div></div>";
+    var close = '<button type="button" class="item-tt-close" aria-label="Close tooltip"' +
+      (pinned ? "" : " hidden") + ">&times;</button>";
+    var db = (item && item.id != null && !opts.asEquipped)
+      ? '<div class="item-tt-db-wrap"><a class="item-tt-db" href="#item-' + esc(String(item.id)) +
+        '" data-item-db="' + esc(String(item.id)) + '">View in Items DB</a></div>'
+      : "";
+    el.innerHTML = close + '<div class="item-tt-inner">' + icon + '<div class="item-tt-body">' + renderBody(item, opts) + db + "</div></div>";
   }
 
   function ensureEls() {
@@ -400,15 +503,29 @@
   function hideNow() {
     reqGen++;
     current = null;
+    pinned = false;
     if (showTimer) { clearTimeout(showTimer); showTimer = null; }
     if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
-    if (tip) tip.hidden = true;
+    if (tip) {
+      tip.hidden = true;
+      tip.classList.remove("is-pinned");
+    }
     hideCompare();
   }
 
   function scheduleHide() {
+    if (pinned) return;
     if (hideTimer) clearTimeout(hideTimer);
     hideTimer = setTimeout(hideNow, HIDE_DELAY);
+  }
+
+  function setPinned(on) {
+    pinned = !!on;
+    if (tip) {
+      tip.classList.toggle("is-pinned", pinned);
+      var btn = tip.querySelector(".item-tt-close");
+      if (btn) btn.hidden = !pinned;
+    }
   }
 
   function openTip(id, slot, x, y, suffixId) {
@@ -420,8 +537,17 @@
     cache[String(id)] = cache[String(id)] || seed;
     renderTooltip(tip, seed, { slot: slot, suffixId: suffixId });
     tip.hidden = false;
+    if (tip) tip.classList.toggle("is-pinned", pinned);
     place(x, y);
     showCompareIfNeeded(seed, slot, x, y);
+    ensureExtras().then(function () {
+      if (gen !== reqGen) return;
+      var item = cache[String(id)] || seed;
+      if (item && !item._partial) {
+        renderTooltip(tip, item, { slot: slot, suffixId: suffixId });
+        place(current ? current.x : x, current ? current.y : y);
+      }
+    });
     detailOf(id).then(function (d) {
       if (gen !== reqGen) return;
       var item = d || seed;
@@ -484,6 +610,7 @@
   }
 
   function onPointerOut(e) {
+    if (pinned) return;
     if (e.pointerType === "touch") return;
     var hook = hookFromEvent(e);
     if (!hook) {
@@ -499,6 +626,7 @@
   function onPointerMove(e) {
     lastPointer = { x: e.clientX, y: e.clientY, type: e.pointerType || lastPointer.type };
     if (!current || !tip || tip.hidden) return;
+    if (pinned) return;
     if (e.pointerType === "touch") return;
     current.x = e.clientX;
     current.y = e.clientY;
@@ -510,10 +638,16 @@
     if (e.pointerType !== "touch") return;
     var hook = hookFromEvent(e);
     if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
-    if (!hook) { hideNow(); return; }
+    if (!hook) {
+      if (pinned && tip && !tip.contains(e.target)) hideNow();
+      return;
+    }
+    /* Pin-on-tap targets skip the long-press timer; click handler pins immediately. */
+    if (hook.el && hook.el.closest && hook.el.closest("[data-item-pin]")) return;
     holdTimer = setTimeout(function () {
       holdTimer = null;
       suppressClick = true;
+      setPinned(true);
       openTip(hook.id, hook.slot, e.clientX, e.clientY, hook.suffixId);
     }, HOLD_MS);
   }
@@ -523,10 +657,39 @@
   }
 
   function onClickCapture(e) {
-    if (!suppressClick) return;
-    e.preventDefault();
-    e.stopPropagation();
-    suppressClick = false;
+    if (suppressClick) {
+      e.preventDefault();
+      e.stopPropagation();
+      suppressClick = false;
+      return;
+    }
+    var inTip = tip && tip.contains(e.target);
+    if (inTip) {
+      var closeBtn = e.target.closest && e.target.closest(".item-tt-close");
+      if (closeBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        hideNow();
+        return;
+      }
+      var db = e.target.closest && e.target.closest("a[data-item-db]");
+      if (db) {
+        /* Let the Items DB link navigate; close the pinned tip. */
+        hideNow();
+        return;
+      }
+      return;
+    }
+    var pinEl = e.target.closest && e.target.closest("[data-item-pin]");
+    var hook = hookFromEvent(e);
+    if (pinEl && hook) {
+      e.preventDefault();
+      e.stopPropagation();
+      setPinned(true);
+      openTip(hook.id, hook.slot, e.clientX, e.clientY, hook.suffixId);
+      return;
+    }
+    if (pinned) hideNow();
   }
 
   function onKey(e) {
@@ -542,7 +705,7 @@
     }
   }
   function onBlur() { shiftHeld = false; hideCompare(); }
-  function onScroll() { if (current) hideNow(); }
+  function onScroll() { if (current && !pinned) hideNow(); }
 
   function bind() {
     if (bind._done) return;
@@ -566,7 +729,12 @@
   window.ItemTooltip = {
     version: VERSION,
     show: function (id, x, y, slot, suffixId) { openTip(id, slot, x || lastPointer.x, y || lastPointer.y, suffixId); },
+    pin: function (id, x, y, slot, suffixId) {
+      setPinned(true);
+      openTip(id, slot, x || lastPointer.x, y || lastPointer.y, suffixId);
+    },
     hide: hideNow,
+    isPinned: function () { return !!pinned; },
     detailOf: detailOf
   };
 })();

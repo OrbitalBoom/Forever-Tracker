@@ -1,6 +1,6 @@
 /* Item search, detail cards, and lazy loading for data/items/*.js */
 (function () {
-  var VERSION = "20261124c";
+  var VERSION = "20261124d";
   var ICON = "https://render.worldofwarcraft.com/forever-us/icons/56/{icon}.jpg";
   var loaded = false;
   var loading = null;
@@ -480,6 +480,7 @@
       /* Only item name links — not paper-doll slots, Equip buttons, or search rows. */
       var a = e.target.closest && e.target.closest("a[data-item-id]");
       if (!a) return;
+      if (a.hasAttribute("data-item-pin") || a.closest("[data-item-pin]")) return;
       if (e.target.closest && e.target.closest("[data-equip-id], [data-equip-slot]")) return;
       var id = a.getAttribute("data-item-id");
       if (!id) return;
