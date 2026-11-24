@@ -1,6 +1,6 @@
 /* Self-hosted Classic-style item tooltip. Does not load Wowhead power.js. */
 (function () {
-  var VERSION = "20261124f";
+  var VERSION = "20261124g";
   var ICON = "https://render.worldofwarcraft.com/forever-us/icons/56/{icon}.jpg";
   var HOVER_DELAY = 80;
   var HOLD_MS = 420;
@@ -559,8 +559,27 @@
     }
   }
 
+  function isTouchPointer() {
+    if (lockMode === "dwell") return false;
+    if (lastPointer && lastPointer.type === "touch") return true;
+    var narrow = window.matchMedia && window.matchMedia("(max-width: 900px)").matches;
+    var coarse = window.matchMedia && window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+    return !!(narrow && coarse);
+  }
+
+  function applyTouchSheet() {
+    if (!tip) return;
+    tip.classList.add("is-touch-sheet");
+    tip.style.left = "";
+    tip.style.top = "";
+    tip.style.right = "";
+    tip.style.bottom = "";
+    hideCompare();
+  }
+
   function place(x, y) {
     if (!tip || tip.hidden) return;
+    if (tip.classList.contains("is-touch-sheet")) return;
     var pad = 16;
     var vw = window.innerWidth, vh = window.innerHeight;
     var w = tip.offsetWidth, h = tip.offsetHeight;
@@ -618,7 +637,11 @@
     if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
     if (tip) {
       tip.hidden = true;
-      tip.classList.remove("is-pinned", "is-locked", "is-dwelling");
+      tip.classList.remove("is-pinned", "is-locked", "is-dwelling", "is-touch-sheet");
+      tip.style.left = "";
+      tip.style.top = "";
+      tip.style.right = "";
+      tip.style.bottom = "";
       tip.setAttribute("data-tt-state", "hidden");
     }
     hideCompare();
@@ -651,6 +674,9 @@
     if (pinned) {
       cancelDwell();
       dwellStartedAt = 0;
+      if (isTouchPointer()) applyTouchSheet();
+    } else if (tip) {
+      tip.classList.remove("is-touch-sheet");
     }
     syncLockChrome();
   }
@@ -677,8 +703,9 @@
     cache[String(id)] = cache[String(id)] || seed;
     renderTooltip(tip, seed, tipOpts(slot, suffixId, farmId));
     tip.hidden = false;
-    if (!freezePlace) place(x, y);
-    showCompareIfNeeded(seed, slot, x, y);
+    if (pinned && isTouchPointer()) applyTouchSheet();
+    else if (!freezePlace) place(x, y);
+    if (!(pinned && isTouchPointer())) showCompareIfNeeded(seed, slot, x, y);
     if (!wasPinned) startDwell();
     else syncLockChrome();
     function refreshPlace() {

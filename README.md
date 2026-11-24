@@ -11,6 +11,8 @@ No server, no install, no internet required:
 
 Your character is saved automatically in this browser as you type — there is no Save button for that.
 
+The layout is built for a desktop browser and also works on phones: tabs scroll sideways in one compact bar, forms and buttons are sized for touch, wide tables stack into cards, and a tap on an item pins its tooltip as a bottom sheet. The desktop layout is unchanged.
+
 ## Cloud save
 
 To also keep a copy in this GitHub repository (so it comes back if the browser clears its storage, or if you open the site on another computer):

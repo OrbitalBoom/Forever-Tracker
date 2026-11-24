@@ -2,8 +2,8 @@ const fs = require("fs");
 const http = require("http");
 const path = require("path");
 
-const ROOT = "/workspace/wow-forever-tiplock";
-const PORT = 8792;
+const ROOT = "/workspace/wow-forever-mobile";
+const PORT = 8796;
 const OUT = path.join(ROOT, "screenshots", "tip-lock");
 const puppeteer = require("/tmp/pptr/node_modules/puppeteer-core");
 
@@ -147,7 +147,7 @@ async function hoverAir(page) {
   await openFarms(page, base);
   const ver = await page.evaluate(() => window.ItemTooltip && ItemTooltip.version);
   console.log("ItemTooltip.version", ver);
-  if (ver !== "20261124f") fail("expected version 20261124f", ver);
+  if (ver !== "20261124g") fail("expected version 20261124g", ver);
   else ok("version " + ver);
 
   // --- 1. Hover shows tooltip ---

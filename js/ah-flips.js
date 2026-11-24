@@ -39,7 +39,7 @@
     var tag = document.querySelector('script[src*="js/ah-flips.js"], script[src*="js/app.js"]');
     var src = tag && (tag.getAttribute("src") || "");
     var m = src && src.match(/[?&]v=([^&]+)/);
-    return m ? m[1] : "20261124f";
+    return m ? m[1] : "20261124g";
   }
   function loadScript(src) {
     return new Promise(function (resolve, reject) {
@@ -448,14 +448,14 @@
           ? "Vendor sell minus cheapest buyout (no auction cut)"
           : "Usual × 95% − buyout" + (r.deposit ? " − 12-hour deposit " + (r.deposit / 10000).toFixed(2) + "g" : "");
         html += '<tr data-item-id="' + r.id + '">';
-        html += "<td>" + itemLink(r) + (notes.length ? '<div class="ahf-notes">' + notes.join(" ") + "</div>" : "") + "</td>";
-        html += "<td>" + money(r.minBuyout) + "</td>";
-        html += '<td title="' + esc(usualTip) + '">' + money(r.usual) + "</td>";
-        html += "<td>" + (r.discount * 100).toFixed(1) + "%</td>";
-        html += '<td title="' + esc(profitTip) + '">' + money(r.profit) + "</td>";
-        html += "<td>" + r.quantity.toLocaleString() + "</td>";
-        html += "<td>" + (r.soldPerDay == null ? '<span class="muted">unknown</span>' : String(r.soldPerDay)) + "</td>";
-        html += '<td><span class="ahf-conf ahf-conf-' + r.confidence + '">' + r.confidence + "</span></td>";
+        html += '<td data-label="Item">' + itemLink(r) + (notes.length ? '<div class="ahf-notes">' + notes.join(" ") + "</div>" : "") + "</td>";
+        html += '<td data-label="Cheapest buyout">' + money(r.minBuyout) + "</td>";
+        html += '<td data-label="Usual price" title="' + esc(usualTip) + '">' + money(r.usual) + "</td>";
+        html += '<td data-label="Discount">' + (r.discount * 100).toFixed(1) + "%</td>";
+        html += '<td data-label="Est. profit" title="' + esc(profitTip) + '">' + money(r.profit) + "</td>";
+        html += '<td data-label="Listed">' + r.quantity.toLocaleString() + "</td>";
+        html += '<td data-label="Sold/day">' + (r.soldPerDay == null ? '<span class="muted">unknown</span>' : String(r.soldPerDay)) + "</td>";
+        html += '<td data-label="Confidence"><span class="ahf-conf ahf-conf-' + r.confidence + '">' + r.confidence + "</span></td>";
         html += "</tr>";
       });
     }

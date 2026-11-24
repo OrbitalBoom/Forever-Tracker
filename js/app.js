@@ -422,6 +422,9 @@
     activeTab = name;
     $all(".tabs [data-tab]").forEach(function (b) {
       b.setAttribute("aria-selected", b.getAttribute("data-tab") === name ? "true" : "false");
+      if (b.getAttribute("data-tab") === name && b.scrollIntoView) {
+        try { b.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" }); } catch (e) {}
+      }
     });
     $all(".panel").forEach(function (p) {
       p.classList.toggle("active", p.id === "tab-" + name);
@@ -662,8 +665,8 @@
     var html = "<thead><tr><th>Date</th><th>Amount</th><th>Source</th><th></th></tr></thead><tbody>";
     if (!rows.length) html += "<tr><td colspan=\"4\" class=\"muted\">No entries yet.</td></tr>";
     rows.forEach(function (e) {
-      html += "<tr><td>" + escapeHtml(e.date) + "</td><td>" + formatGold(e.copper) + "</td><td>" +
-        escapeHtml(e.note || "") + "</td><td><button type=\"button\" class=\"btn btn-sm btn-danger\" data-del-gold=\"" +
+      html += "<tr><td data-label=\"Date\">" + escapeHtml(e.date) + "</td><td data-label=\"Amount\">" + formatGold(e.copper) + "</td><td data-label=\"Source\">" +
+        escapeHtml(e.note || "") + "</td><td data-label=\"\"><button type=\"button\" class=\"btn btn-sm btn-danger\" data-del-gold=\"" +
         escapeHtml(e.id) + "\">Remove</button></td></tr>";
     });
     html += "</tbody>";
@@ -3826,7 +3829,7 @@
     var tag = document.querySelector('script[src*="js/app.js"]');
     var src = tag && (tag.getAttribute("src") || "");
     var m = src.match(/[?&]v=([^&]+)/);
-    return m ? m[1] : "20261124f";
+    return m ? m[1] : "20261124g";
   }
 
   function ensureTalentTooltipsLoaded(cb) {
