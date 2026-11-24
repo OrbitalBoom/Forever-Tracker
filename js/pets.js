@@ -413,6 +413,7 @@
     var html = "";
     html += renderCurrentPet(d);
     if (window.PetRank) html += PetRank.renderHtml();
+    if (window.PetGuide) html += PetGuide.renderHtml();
     html += renderTalentsNotice(d);
     html += renderLoyalty(d);
     html += renderFamilies(d, ui.familyFilter, ui.openFamily);
@@ -421,6 +422,7 @@
     root.innerHTML = html;
     bind(root);
     if (window.PetRank) PetRank.bind(root);
+    if (window.PetGuide) PetGuide.bind(root);
   }
 
   function bind(root) {

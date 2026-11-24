@@ -2305,3 +2305,62 @@ table.data tfoot th { text-align: left; }
   .pet-rank-table td:nth-child(2)::before { content: none; }
   .pet-rank-why { text-align: left; }
 }
+
+
+/* ——— Pet damage reference (20261125d) ——— */
+.pet-guide { margin: 16px 0 24px; }
+.pet-guide h3 { margin: 0 0 8px; }
+.pg-block { margin: 8px 0; border: 1px solid #3a2c18; border-radius: 8px; padding: 8px 12px; background: #16130e; }
+.pg-block > summary { cursor: pointer; min-height: 44px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--gold, #d4b44c); }
+.pg-block > summary + * { margin-top: 8px; }
+.pg-badge { display: inline-block; font-size: 10px; letter-spacing: .04em; text-transform: uppercase; padding: 1px 6px; border-radius: 4px; border: 1px solid #3a2c18; vertical-align: middle; }
+.pg-badge-confirmed { color: #8ee0a8; border-color: #2a5a3a; }
+.pg-badge-community { color: #d4b44c; border-color: #6a5420; }
+.pg-badge-theoretical { color: #8ec8ff; border-color: #2a4a6a; }
+.pg-badge-unverified { color: #c8b8a0; border-color: #4a4030; }
+.pg-happ-row, .pg-bar-row { display: grid; grid-template-columns: 7.5em 1fr 4em; gap: 8px; align-items: center; margin: 6px 0; }
+.pg-happ-track, .pg-bar-track { display: block; height: 14px; background: #2a2116; border-radius: 7px; overflow: hidden; }
+.pg-happ-track > span, .pg-bar-fill { display: block; height: 100%; border-radius: 7px; }
+.pg-happ-happy { background: #3d8f5a; }
+.pg-happ-content { background: #c4a035; }
+.pg-happ-unhappy { background: #a04840; }
+.pg-bar-fill { background: #8a5a28; }
+.pg-happ-pct, .pg-bar-val { text-align: right; font-variant-numeric: tabular-nums; }
+.pg-table { width: 100%; border-collapse: collapse; }
+.pg-table th, .pg-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #2a2116; vertical-align: top; }
+.pg-form { display: flex; flex-wrap: wrap; gap: 10px 16px; margin: 8px 0; align-items: end; }
+.pg-form .field { min-width: 140px; }
+.pg-form input, .pg-form select { min-height: 44px; }
+.pg-checks { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.pg-checks label { display: flex; align-items: center; gap: 6px; min-height: 44px; }
+.pg-out { margin-top: 8px; }
+.pg-out p { margin: 0 0 8px; }
+@media (max-width: 899px) {
+  .pg-happ-row, .pg-bar-row { grid-template-columns: 6.5em 1fr 3.4em; }
+  .pg-table { font-size: 14px; }
+}
+
+.pg-timeline { margin: 10px 0; }
+.pg-tl-row { display: grid; grid-template-columns: 9.5em 1fr 7em; gap: 8px; align-items: center; margin: 8px 0; }
+.pg-tl-track { position: relative; height: 18px; background: #2a2116; border-radius: 9px; }
+.pg-tl-hit { position: absolute; top: 2px; width: 10px; height: 14px; margin-left: -5px; background: #d4b44c; border-radius: 2px; }
+.pg-tl-sum { font-variant-numeric: tabular-nums; font-size: 13px; text-align: right; }
+.pg-chart { display: flex; align-items: flex-end; gap: 8px; height: 120px; margin: 12px 0 4px; padding: 0 4px; border-bottom: 1px solid #3a2c18; }
+.pg-col { flex: 1; display: flex; align-items: flex-end; justify-content: center; gap: 2px; height: 100%; position: relative; padding-bottom: 18px; }
+.pg-col-bite, .pg-col-claw { display: block; width: 40%; min-height: 2px; border-radius: 2px 2px 0 0; }
+.pg-col-bite { background: #c45c38; }
+.pg-col-claw { background: #8a5a28; }
+.pg-col-lbl { position: absolute; bottom: 0; left: 0; right: 0; text-align: center; font-size: 11px; }
+.pg-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: middle; }
+.pg-swatch-bite { background: #c45c38; }
+.pg-swatch-claw { background: #8a5a28; }
+.pg-panels { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0; }
+.pg-panel { flex: 1 1 240px; border: 1px solid #3a2c18; border-radius: 8px; padding: 8px 12px; background: #1a1610; }
+.pg-panel h4 { margin: 0 0 6px; font-size: 14px; color: var(--gold, #d4b44c); }
+.pg-panel p { margin: 0; }
+.pg-macro { margin: 6px 0; padding: 8px 10px; background: #1a1610; border: 1px solid #3a2c18; border-radius: 6px; overflow-x: auto; white-space: pre-wrap; font-size: 13px; }
+.pg-dps-bars, .pg-prob { margin: 8px 0; }
+@media (max-width: 899px) {
+  .pg-tl-row { grid-template-columns: 1fr; }
+  .pg-tl-sum { text-align: left; }
+}
