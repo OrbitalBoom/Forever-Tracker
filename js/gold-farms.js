@@ -759,6 +759,13 @@
         renderResults();
         return;
       }
+      var mapBtn = t.closest && t.closest("[data-gf-map]");
+      if (mapBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        openFarmMap(mapBtn.getAttribute("data-gf-map"));
+        return;
+      }
       var star = t.closest && t.closest("[data-gf-fav]");
       if (star) {
         e.preventDefault();
@@ -954,6 +961,7 @@
     }).join("");
     return '<div class="gf-detail">' +
       '<div class="gf-tags">' + tag + type + "</div>" +
+      mapBtnHtml(spot, { prominent: true }) +
       (spot.loc ? '<p>' + escapeHtml(spot.loc) + "</p>" : "") +
       '<p class="gf-meta">' + escapeHtml(facLabel) + " · " + escapeHtml(classes) +
         " · " + escapeHtml(profLine) +
@@ -1018,7 +1026,7 @@
           '<div class="gf-row-title">' + escapeHtml(spot.name) + warn + needTag(spot) + dungeonTag(spot) +
             (spot.eliteOpenWorld ? '<span class="kind-tag gf-elite-tag">Elite</span>' : "") + "</div>" +
           '<div class="gf-row-sub">' + escapeHtml(spot.zone) + " · Lv " + spot.levelMin + "–" + spot.levelMax +
-            " · " + escapeHtml(lootLine) + "</div>" +
+            " · " + escapeHtml(lootLine) + mapBtnHtml(spot) + "</div>" +
           extra +
         "</div>" +
         '<div class="gf-row-gold">' + goldInner + "</div>" +
@@ -1131,7 +1139,321 @@
     prefs();
     ensureShell(root);
     refresh();
+    ensureSpawns();
   }
+
+
+  /* ---------- Mob-grind spawn map ---------- */
+  var MOB_COLORS = ["#e8c547", "#5eb8ff", "#ff8a5b", "#7ee0a0", "#d7a0ff", "#ff6b8a", "#f0d48a", "#8ad4d4"];
+  var spawnsLoading = null;
+  var mapKeyHandler = null;
+
+  function cacheVer() {
+    var tag = document.querySelector('script[src*="js/gold-farms.js"], script[src*="js/app.js"]');
+    var src = tag && (tag.getAttribute("src") || "");
+    var m = src && src.match(/[?&]v=([^&]+)/);
+    return m ? m[1] : "20261124a";
+  }
+  function ensureSpawns() {
+    if (window.GOLD_FARM_SPAWNS) return Promise.resolve(window.GOLD_FARM_SPAWNS);
+    if (spawnsLoading) return spawnsLoading;
+    spawnsLoading = new Promise(function (resolve) {
+      var s = document.createElement("script");
+      s.src = "data/gold-farm-spawns.js?v=" + encodeURIComponent(cacheVer());
+      s.onload = function () { resolve(window.GOLD_FARM_SPAWNS || { farms: {}, meta: {} }); };
+      s.onerror = function () { spawnsLoading = null; resolve({ farms: {}, meta: {}, loadError: true }); };
+      document.head.appendChild(s);
+    });
+    return spawnsLoading;
+  }
+  function mapBtnHtml(spot, opts) {
+    if (!spot || spot.type !== "mob") return "";
+    opts = opts || {};
+    var label = opts.prominent ? "Show spawn map" : "Spawn map";
+    var cls = "gf-map-btn" + (opts.prominent ? " gf-map-btn-wide" : "");
+    return ' <button type="button" class="' + cls + '" data-gf-map="' + escapeHtml(spot.id) +
+      '" aria-label="Show spawn map for ' + escapeHtml(spot.name) + '">' + label + "</button>";
+  }
+  function spawnRecord(id) {
+    var data = window.GOLD_FARM_SPAWNS || {};
+    return (data.farms && data.farms[id]) || null;
+  }
+  function spawnMeta() {
+    return (window.GOLD_FARM_SPAWNS && window.GOLD_FARM_SPAWNS.meta) || {};
+  }
+
+  function mapModalHtml(farmId) {
+    var spots = window.GOLD_FARMS || [];
+    var spot = null;
+    for (var i = 0; i < spots.length; i++) {
+      if (spots[i].id === farmId) { spot = spots[i]; break; }
+    }
+    var rec = spawnRecord(farmId);
+    var meta = spawnMeta();
+    var title = spot ? spot.name : "Spawn map";
+    var zone = (rec && rec.zone) || (spot && spot.zone) || "";
+    var html = '<div id="gfFarmMap">';
+    html += '<div class="gf-map-head">';
+    html += "<h3 id=\"gfFarmMapTitle\">" + escapeHtml(title) + "</h3>";
+    html += '<button type="button" class="btn gf-map-close" data-close aria-label="Close spawn map">Close</button>';
+    html += "</div>";
+    if (zone) html += '<p class="gf-map-zone">' + escapeHtml(zone) + "</p>";
+    html += '<p class="muted gf-map-note">' + escapeHtml(meta.disclaimer || "Spawn locations from Classic data, may differ in Forever.") + " ";
+    html += escapeHtml(meta.mapNote || "This is a schematic grid of zone-map percentages, not official zone art.") + "</p>";
+
+    var mobs = (rec && rec.mobs) || [];
+    var any = mobs.some(function (m) { return m.points && m.points.length; });
+    if (!rec || (window.GOLD_FARM_SPAWNS && window.GOLD_FARM_SPAWNS.loadError)) {
+      html += '<p class="gf-map-empty">No spawn data</p>';
+    } else if (!mobs.length) {
+      html += '<p class="gf-map-empty">No spawn data</p>';
+    } else if (!any) {
+      html += '<ul class="gf-map-legend" id="gfFarmMapLegend">';
+      mobs.forEach(function (m) {
+        html += '<li class="is-missing"><span class="gf-map-swatch" style="background:#555"></span>' +
+          escapeHtml(m.name) + " — No spawn data</li>";
+      });
+      html += "</ul>";
+      html += '<p class="gf-map-empty">No spawn data</p>';
+    } else {
+      var ratio = 1.5;
+      if (rec.mapSize && rec.mapSize[0] && rec.mapSize[1]) ratio = rec.mapSize[0] / rec.mapSize[1];
+      html += '<div class="gf-map-stage" id="gfFarmMapStage" style="aspect-ratio:' + ratio + '">';
+      html += '<canvas id="gfFarmMapCanvas" aria-label="Schematic spawn map of ' + escapeHtml(zone || title) + '"></canvas>';
+      html += '<div class="gf-map-tip" id="gfFarmMapTip" hidden></div>';
+      html += '<div class="gf-map-compass" aria-hidden="true"><span>N</span></div>';
+      html += '<span class="gf-map-axis gf-map-axis-x" aria-hidden="true">West — East</span>';
+      html += '<span class="gf-map-axis gf-map-axis-y" aria-hidden="true">N — S</span>';
+      html += "</div>";
+      html += '<ul class="gf-map-legend" id="gfFarmMapLegend">';
+      mobs.forEach(function (m, i) {
+        var color = MOB_COLORS[i % MOB_COLORS.length];
+        var count = (m.points && m.points.length) || 0;
+        var miss = !count;
+        html += '<li><button type="button" class="gf-map-leg-btn' + (miss ? " is-missing" : "") +
+          '" data-mob-index="' + i + '" aria-pressed="true">';
+        html += '<span class="gf-map-swatch" style="background:' + (miss ? "#555" : color) + '"></span>';
+        html += '<span class="gf-map-leg-name">' + escapeHtml(m.name) + "</span>";
+        html += miss
+          ? '<span class="gf-map-leg-count">No spawn data</span>'
+          : '<span class="gf-map-leg-count">' + count + " spawn" + (count === 1 ? "" : "s") + "</span>";
+        html += "</button></li>";
+      });
+      html += "</ul>";
+    }
+    var src = meta.norgannon;
+    if (src) {
+      html += '<p class="muted gf-map-credit">Spawn data: <a href="' + escapeHtml(src.url || "https://github.com/zmarotrix/NorgannonDB") +
+        '" target="_blank" rel="noopener noreferrer">NorgannonDB ' + escapeHtml(src.version || "") +
+        "</a> (" + escapeHtml(src.license || "GPL-3.0") + "), QuestieDB and CMaNGOS classic-db.</p>";
+    }
+    html += "</div>";
+    return html;
+  }
+
+  function bindFarmMap(farmId) {
+    var rec = spawnRecord(farmId);
+    var canvas = document.getElementById("gfFarmMapCanvas");
+    var stage = document.getElementById("gfFarmMapStage");
+    var tip = document.getElementById("gfFarmMapTip");
+    var legend = document.getElementById("gfFarmMapLegend");
+    if (mapKeyHandler) document.removeEventListener("keydown", mapKeyHandler);
+    mapKeyHandler = function (e) {
+      if (e.key === "Escape") {
+        if (window.ForeverApp) ForeverApp.closeModal();
+        document.removeEventListener("keydown", mapKeyHandler);
+        mapKeyHandler = null;
+      }
+    };
+    document.addEventListener("keydown", mapKeyHandler);
+    var closeBtn = document.querySelector("#gfFarmMap .gf-map-close");
+    if (closeBtn) try { closeBtn.focus(); } catch (err) {}
+    if (!canvas || !stage || !rec) return;
+
+    var mobs = rec.mobs || [];
+    var visible = mobs.map(function (m) { return !!(m.points && m.points.length); });
+    var active = null; /* hovered point */
+
+    function layout() {
+      var w = stage.clientWidth;
+      var h = stage.clientHeight;
+      if (w < 20 || h < 20) return { w: 0, h: 0, dpr: 1, pad: 0 };
+      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      canvas.style.width = w + "px";
+      canvas.style.height = h + "px";
+      return { w: w, h: h, dpr: dpr, pad: 28 };
+    }
+    function toPx(pt, L) {
+      var x = L.pad + (pt[0] / 100) * (L.w - L.pad * 2);
+      var y = L.pad + (pt[1] / 100) * (L.h - L.pad * 2);
+      return { x: x, y: y };
+    }
+    function draw() {
+      var L = layout();
+      if (!L.w) return;
+      var ctx = canvas.getContext("2d");
+      ctx.setTransform(L.dpr, 0, 0, L.dpr, 0, 0);
+      ctx.clearRect(0, 0, L.w, L.h);
+      /* schematic field */
+      ctx.fillStyle = "#16110c";
+      ctx.fillRect(0, 0, L.w, L.h);
+      var left = L.pad, top = L.pad, rw = L.w - L.pad * 2, rh = L.h - L.pad * 2;
+      ctx.fillStyle = "#1c1610";
+      ctx.fillRect(left, top, rw, rh);
+      ctx.strokeStyle = "rgba(212,180,76,0.35)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(left + 0.5, top + 0.5, rw - 1, rh - 1);
+      ctx.strokeStyle = "rgba(212,180,76,0.14)";
+      ctx.font = "10px sans-serif";
+      ctx.fillStyle = "rgba(232,197,71,0.55)";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      for (var g = 0; g <= 10; g++) {
+        var gx = left + (g / 10) * rw;
+        var gy = top + (g / 10) * rh;
+        ctx.beginPath();
+        ctx.moveTo(gx + 0.5, top);
+        ctx.lineTo(gx + 0.5, top + rh);
+        ctx.moveTo(left, gy + 0.5);
+        ctx.lineTo(left + rw, gy + 0.5);
+        ctx.stroke();
+        if (g % 2 === 0) {
+          ctx.fillText(String(g * 10), gx, top + rh + 12);
+          ctx.save();
+          ctx.textAlign = "right";
+          ctx.fillText(String(g * 10), left - 6, gy);
+          ctx.restore();
+        }
+      }
+      /* heat, then dots — only real points */
+      var heatR = Math.max(14, Math.min(rw, rh) * 0.035);
+      function hexRgb(hex) {
+        var h = hex.replace("#", "");
+        return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+      }
+      mobs.forEach(function (m, i) {
+        if (!visible[i] || !m.points) return;
+        var rgb = hexRgb(MOB_COLORS[i % MOB_COLORS.length]);
+        m.points.forEach(function (pt) {
+          var p = toPx(pt, L);
+          var grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, heatR);
+          grd.addColorStop(0, "rgba(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ",0.45)");
+          grd.addColorStop(1, "rgba(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ",0)");
+          ctx.fillStyle = grd;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, heatR, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      });
+      mobs.forEach(function (m, i) {
+        if (!visible[i] || !m.points) return;
+        var color = MOB_COLORS[i % MOB_COLORS.length];
+        m.points.forEach(function (pt) {
+          var p = toPx(pt, L);
+          ctx.beginPath();
+          ctx.fillStyle = color;
+          ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = "rgba(20,14,8,0.7)";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        });
+      });
+      if (active) {
+        var ap = toPx(active.pt, L);
+        ctx.beginPath();
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 2;
+        ctx.arc(ap.x, ap.y, 7, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+    function hit(clientX, clientY) {
+      var L = layout();
+      if (!L.w) return null;
+      var rect = canvas.getBoundingClientRect();
+      var x = clientX - rect.left;
+      var y = clientY - rect.top;
+      var best = null, bestD = 16;
+      mobs.forEach(function (m, i) {
+        if (!visible[i] || !m.points) return;
+        m.points.forEach(function (pt) {
+          var p = toPx(pt, L);
+          var d = Math.hypot(p.x - x, p.y - y);
+          if (d < bestD) { bestD = d; best = { mob: m, index: i, pt: pt, px: p }; }
+        });
+      });
+      return best;
+    }
+    function showTip(info, clientX, clientY) {
+      if (!tip) return;
+      if (!info) { tip.hidden = true; return; }
+      var x = info.pt[0], y = info.pt[1];
+      tip.innerHTML = "<strong>" + escapeHtml(info.mob.name) + "</strong> · " +
+        x.toFixed(1) + ", " + y.toFixed(1);
+      tip.hidden = false;
+      var stageRect = stage.getBoundingClientRect();
+      var tx = clientX - stageRect.left + 12;
+      var ty = clientY - stageRect.top + 12;
+      if (tx + tip.offsetWidth + 8 > stage.clientWidth) tx = clientX - stageRect.left - tip.offsetWidth - 12;
+      if (ty + tip.offsetHeight + 8 > stage.clientHeight) ty = clientY - stageRect.top - tip.offsetHeight - 12;
+      tip.style.left = Math.max(4, tx) + "px";
+      tip.style.top = Math.max(4, ty) + "px";
+    }
+    function setActive(info, ev) {
+      active = info;
+      draw();
+      if (ev) showTip(info, ev.clientX, ev.clientY);
+      else if (!info) showTip(null);
+    }
+
+    canvas.addEventListener("mousemove", function (ev) {
+      setActive(hit(ev.clientX, ev.clientY), ev);
+    });
+    canvas.addEventListener("mouseleave", function () { setActive(null); });
+    canvas.addEventListener("click", function (ev) {
+      var info = hit(ev.clientX, ev.clientY);
+      setActive(info, ev);
+    });
+    canvas.addEventListener("touchstart", function (ev) {
+      if (!ev.changedTouches || !ev.changedTouches[0]) return;
+      var tch = ev.changedTouches[0];
+      ev.preventDefault();
+      setActive(hit(tch.clientX, tch.clientY), tch);
+    }, { passive: false });
+
+    if (legend) {
+      legend.addEventListener("click", function (ev) {
+        var btn = ev.target.closest && ev.target.closest("[data-mob-index]");
+        if (!btn) return;
+        var i = Number(btn.getAttribute("data-mob-index"));
+        if (mobs[i] && (!mobs[i].points || !mobs[i].points.length)) return;
+        visible[i] = !visible[i];
+        btn.setAttribute("aria-pressed", visible[i] ? "true" : "false");
+        btn.classList.toggle("is-off", !visible[i]);
+        setActive(null);
+        draw();
+      });
+    }
+    var ro = null;
+    if (typeof ResizeObserver === "function") {
+      ro = new ResizeObserver(function () { draw(); });
+      ro.observe(stage);
+    }
+    draw();
+  }
+
+  function openFarmMap(id) {
+    if (!id) return;
+    ensureSpawns().then(function () {
+      if (!window.ForeverApp || !ForeverApp.openModal) return;
+      ForeverApp.openModal(mapModalHtml(id));
+      bindFarmMap(id);
+    });
+  }
+
 
   window.GoldFarms = {
     render: render,
@@ -1144,6 +1466,7 @@
     DEFAULT_KPM: DEFAULT_KPM,
     profStatus: profStatus,
     hasProfsFilled: hasProfsFilled,
-    skillOf: skillOf
+    skillOf: skillOf,
+    openMap: openFarmMap
   };
 })();

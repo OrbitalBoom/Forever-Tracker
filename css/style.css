@@ -1599,3 +1599,140 @@ table.data tfoot th { text-align: left; }
   .gold-subtabs { gap: 3px; }
   .gold-subtabs button { min-width: 0; padding: 10px 8px; font-size: 13px; }
 }
+
+/* ---------- Gold farm spawn map ---------- */
+.gf-map-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 8px;
+  padding: 4px 10px;
+  min-height: 36px;
+  border: 1px solid var(--gold-dk);
+  border-radius: 4px;
+  background: #1e1610;
+  color: var(--gold-2);
+  font-family: var(--font);
+  font-size: 12px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  vertical-align: middle;
+}
+.gf-map-btn:hover, .gf-map-btn:focus-visible {
+  border-color: var(--gold);
+  color: var(--gold);
+  outline: none;
+}
+.gf-map-btn-wide { margin: 0 0 6px; min-height: 40px; padding: 8px 14px; }
+.modal:has(#gfFarmMap) {
+  width: min(920px, 100%);
+  padding: 16px 16px 14px;
+}
+.gf-map-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.gf-map-head h3 { margin: 0; flex: 1; }
+.gf-map-close { flex: 0 0 auto; min-height: 40px; min-width: 44px; }
+.gf-map-zone { margin: 4px 0 0; color: var(--gold-2); font-weight: 600; }
+.gf-map-note { margin: 8px 0 12px; font-size: 13px; }
+.gf-map-stage {
+  position: relative;
+  width: 100%;
+  background: #120e0a;
+  border: 1px solid var(--gold-dk);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.gf-map-stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: manipulation;
+}
+.gf-map-tip {
+  position: absolute;
+  z-index: 2;
+  background: #1a1410;
+  border: 1px solid var(--gold);
+  color: var(--ink);
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  pointer-events: none;
+  max-width: 70%;
+  box-shadow: var(--shadow);
+}
+.gf-map-compass {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--gold-dk);
+  border-radius: 50%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  color: var(--gold-2);
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(18,14,10,.7);
+  pointer-events: none;
+}
+.gf-map-axis {
+  position: absolute;
+  color: rgba(232,197,71,.7);
+  font-size: 10px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+.gf-map-axis-x { bottom: 2px; left: 50%; transform: translateX(-50%); }
+.gf-map-axis-y {
+  left: 2px; top: 50%;
+  transform: translateY(-50%) rotate(-90deg);
+  transform-origin: left center;
+}
+.gf-map-legend {
+  list-style: none;
+  margin: 10px 0 6px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.gf-map-leg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 4px 10px;
+  border: 1px solid #3a2c18;
+  border-radius: 4px;
+  background: #1a1410;
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 13px;
+  cursor: pointer;
+}
+.gf-map-leg-btn[aria-pressed="true"] { border-color: var(--gold-dk); }
+.gf-map-leg-btn.is-off { opacity: .45; }
+.gf-map-leg-btn.is-missing { cursor: default; opacity: .8; }
+.gf-map-swatch {
+  width: 10px; height: 10px; border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.4);
+  flex: 0 0 10px;
+}
+.gf-map-leg-count { color: var(--muted); font-size: 12px; }
+.gf-map-empty { margin: 12px 0; color: var(--muted); }
+.gf-map-credit { margin: 8px 0 0; font-size: 12px; }
+.gf-map-credit a { color: var(--gold-2); }
+@media (max-width: 560px) {
+  .gf-map-btn { margin: 6px 0 0; display: inline-flex; }
+  .modal:has(#gfFarmMap) { padding: 12px; max-height: 96vh; }
+  .gf-map-stage { max-height: 55vh; }
+}
