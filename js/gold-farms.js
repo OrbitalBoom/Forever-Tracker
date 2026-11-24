@@ -1147,6 +1147,7 @@
   var MOB_COLORS = ["#e8c547", "#5eb8ff", "#ff8a5b", "#7ee0a0", "#d7a0ff", "#ff6b8a", "#f0d48a", "#8ad4d4"];
   var spawnsLoading = null;
   var mapKeyHandler = null;
+  var lastMapDraw = null;
 
   function cacheVer() {
     var tag = document.querySelector('script[src*="js/gold-farms.js"], script[src*="js/app.js"]');
@@ -1220,6 +1221,7 @@
       if (rec.mapSize && rec.mapSize[0] && rec.mapSize[1]) ratio = rec.mapSize[0] / rec.mapSize[1];
       html += '<div class="gf-map-stage" id="gfFarmMapStage" style="aspect-ratio:' + ratio + '">';
       html += '<canvas id="gfFarmMapCanvas" aria-label="Schematic spawn map of ' + escapeHtml(zone || title) + '"></canvas>';
+      html += '<svg class="gf-map-markers" id="gfFarmMapMarkers" aria-hidden="true"></svg>';
       html += '<div class="gf-map-tip" id="gfFarmMapTip" hidden></div>';
       html += '<div class="gf-map-compass" aria-hidden="true"><span>N</span></div>';
       html += '<span class="gf-map-axis gf-map-axis-x" aria-hidden="true">West — East</span>';
@@ -1292,7 +1294,10 @@
     }
     function draw() {
       var L = layout();
-      if (!L.w) return;
+      if (!L.w) {
+        if (typeof requestAnimationFrame === "function") requestAnimationFrame(draw);
+        return;
+      }
       var ctx = canvas.getContext("2d");
       ctx.setTransform(L.dpr, 0, 0, L.dpr, 0, 0);
       ctx.clearRect(0, 0, L.w, L.h);
@@ -1347,20 +1352,7 @@
           ctx.fill();
         });
       });
-      mobs.forEach(function (m, i) {
-        if (!visible[i] || !m.points) return;
-        var color = MOB_COLORS[i % MOB_COLORS.length];
-        m.points.forEach(function (pt) {
-          var p = toPx(pt, L);
-          ctx.beginPath();
-          ctx.fillStyle = color;
-          ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.strokeStyle = "rgba(20,14,8,0.7)";
-          ctx.lineWidth = 1;
-          ctx.stroke();
-        });
-      });
+      /* Marker dots are SVG .gf-map-marker elements, counted in tests. */
       if (active) {
         var ap = toPx(active.pt, L);
         ctx.beginPath();
@@ -1369,6 +1361,52 @@
         ctx.arc(ap.x, ap.y, 7, 0, Math.PI * 2);
         ctx.stroke();
       }
+      /* Countable marker elements (one per published point actually drawn). */
+      var svg = document.getElementById("gfFarmMapMarkers");
+      var drawnMobs = [];
+      var totalDrawn = 0;
+      if (svg) {
+        svg.setAttribute("viewBox", "0 0 " + L.w + " " + L.h);
+        svg.setAttribute("width", String(L.w));
+        svg.setAttribute("height", String(L.h));
+        var ns = "http://www.w3.org/2000/svg";
+        while (svg.firstChild) svg.removeChild(svg.firstChild);
+        mobs.forEach(function (m, i) {
+          var color = MOB_COLORS[i % MOB_COLORS.length];
+          var n = 0;
+          if (visible[i] && m.points && m.points.length) {
+            m.points.forEach(function (pt) {
+              var p = toPx(pt, L);
+              var c = document.createElementNS(ns, "circle");
+              c.setAttribute("class", "gf-map-marker");
+              c.setAttribute("data-mob-index", String(i));
+              c.setAttribute("data-mob-id", String(m.id));
+              c.setAttribute("data-color", color);
+              c.setAttribute("data-x", String(pt[0]));
+              c.setAttribute("data-y", String(pt[1]));
+              c.setAttribute("cx", String(p.x));
+              c.setAttribute("cy", String(p.y));
+              c.setAttribute("r", "4");
+              c.setAttribute("fill", color);
+              c.setAttribute("stroke", "rgba(20,14,8,0.7)");
+              c.setAttribute("stroke-width", "1");
+              svg.appendChild(c);
+              n++;
+            });
+          }
+          drawnMobs.push({ id: m.id, name: m.name, color: color, expected: (m.points && m.points.length) || 0, drawn: n });
+          totalDrawn += n;
+        });
+      } else {
+        mobs.forEach(function (m, i) {
+          var n = (visible[i] && m.points) ? m.points.length : 0;
+          drawnMobs.push({ id: m.id, name: m.name, color: MOB_COLORS[i % MOB_COLORS.length], expected: (m.points && m.points.length) || 0, drawn: n });
+          totalDrawn += n;
+        });
+      }
+      lastMapDraw = { farmId: farmId, total: totalDrawn, mobs: drawnMobs };
+      canvas.setAttribute("data-gf-drawn", String(totalDrawn));
+      canvas.setAttribute("data-gf-drawn-mobs", drawnMobs.map(function (d) { return d.id + ":" + d.drawn; }).join(","));
     }
     function hit(clientX, clientY) {
       var L = layout();
@@ -1467,6 +1505,7 @@
     profStatus: profStatus,
     hasProfsFilled: hasProfsFilled,
     skillOf: skillOf,
-    openMap: openFarmMap
+    openMap: openFarmMap,
+    lastMapDraw: function () { return lastMapDraw; }
   };
 })();
