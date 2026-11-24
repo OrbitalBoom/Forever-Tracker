@@ -21,4 +21,4 @@ Do not invent ranks, levels, coordinates, or training-point pools.
 
 ## Pet ranking data
 
-Family damage/armor/health come from Forever Tamed Pet Passive SpellEffect values. Attack times come from CMaNGOS `creature_template.MeleeBaseAttackTime` (Classic; may differ in Forever). The full tameable list is `tameable` in `js/pets-data.js`.
+Family damage/armor/health come from Forever Tamed Pet Passive SpellEffect values. Attack times come from CMaNGOS `creature_template.MeleeBaseAttackTime` (Classic; may differ in Forever). Those times are shown in the ranking and, when they match a Forever Faster/Slower Attack step, the matching client passive is named — but they are not added to the DPS score, because Blizzard has not published a Forever rule that attack speed changes white DPS. The full tameable list is `tameable` in `js/pets-data.js`.

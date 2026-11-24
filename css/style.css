@@ -2234,6 +2234,15 @@ table.data tfoot th { text-align: left; }
 .pet-rank-tab.is-active { background: #3a2c18; color: var(--gold, #d4b44c); }
 .pet-rank-filters { align-items: end; }
 .pet-rank-formula { margin: 8px 0 12px; border: 1px solid #3a2c18; border-radius: 8px; padding: 8px 12px; }
+.pet-rank-callout {
+  margin: 8px 0 12px;
+  border: 1px solid #3a2c18;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #1a1610;
+}
+.pet-rank-callout p { margin: 0; }
+
 .pet-rank-formula > summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; color: var(--gold, #d4b44c); }
 .pet-rank-formula ol { margin: 8px 0 0; padding-left: 1.3em; }
 .pet-rank-formula li { margin: 0 0 8px; }

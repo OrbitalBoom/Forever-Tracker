@@ -101,12 +101,20 @@ async function overflow(page, label) {
     const level = document.getElementById("petRankLevel");
     const count = (document.getElementById("petRankCount") || {}).textContent || "";
     const formula = document.getElementById("petRankFormula");
+    const note = document.getElementById("petRankForeverNote");
+    const ft = (formula && formula.textContent) || "";
+    const nt = (note && note.textContent) || "";
     const rows = table ? table.querySelectorAll("tbody tr").length : 0;
     return {
       hasTable: !!table,
       level: level && level.value,
       count,
-      hasFormula: !!(formula && /Family body/.test(formula.textContent) && /Attack speed/.test(formula.textContent)),
+      hasFormula: !!(formula && /Family body/.test(ft) && /Attack speed/.test(ft)),
+      formulaClaimsCmangosAsForever: /Average white DPS from that formula does not change with speed/.test(ft) || /adds \(swings per minute/.test(ft),
+      formulaMentionsFasterAttack: /Faster Attack I/.test(ft),
+      formulaMentionsFrenzy: /Frenzy/.test(ft) && /Go for the Throat/.test(ft) && /not in Forever/.test(ft),
+      formulaNotOfficialDps: /has not published/.test(ft),
+      hasForeverNote: !!(note && /innate Attack Speed passives/.test(nt) && /Faster Attack I/.test(nt)),
       rows,
       tameable: (window.PETS_DATA && PETS_DATA.tameable && PETS_DATA.tameable.length) || 0,
       hasMods: !!(window.PETS_DATA && PETS_DATA.familyModifiers && PETS_DATA.familyModifiers["2"]),
@@ -120,6 +128,12 @@ async function overflow(page, label) {
   else ok("tameable list has " + boot.tameable + " sourced creatures");
   if (!boot.hasFormula) fail("scoring formula missing");
   else ok("scoring formula is on the page");
+  if (boot.formulaClaimsCmangosAsForever) fail("formula still presents the CMaNGOS white-DPS rule as the page claim", boot);
+  else ok("formula no longer claims CMaNGOS white-DPS independence as a Forever rule");
+  if (!boot.formulaMentionsFasterAttack || !boot.formulaMentionsFrenzy || !boot.formulaNotOfficialDps) fail("formula missing Forever speed / Frenzy / unofficial-DPS wording", boot);
+  else ok("formula cites Faster Attack, Frenzy, and official silence on white DPS");
+  if (!boot.hasForeverNote) fail("Forever attack-speed callout missing", boot);
+  else ok("Forever attack-speed callout is on the page");
   if (!boot.hasMods) fail("familyModifiers missing");
   else ok("family modifiers present");
 
@@ -231,6 +245,24 @@ async function overflow(page, label) {
   });
   if (!dpsSort.orderOk) fail("DPS tab not sorted by DPS score", dpsSort.first);
   else ok("DPS tab sorted by DPS score");
+
+  const sameFamilyDps = await page.evaluate(() => {
+    PetRank.ui.role = "dps";
+    PetRank.ui.sort = "dps";
+    const cats = (PetRank.filtered() || []).filter((r) => r.beast.familyId === 2);
+    const scores = Array.from(new Set(cats.map((r) => r.score.dps)));
+    const times = Array.from(new Set(cats.map((r) => r.beast.attackTimeMs))).sort((a, b) => a - b);
+    return {
+      n: cats.length,
+      scores,
+      times,
+      sample: cats.slice(0, 3).map((r) => ({ name: r.beast.name, ms: r.beast.attackTimeMs, dps: r.score.dps })),
+    };
+  });
+  if (sameFamilyDps.n < 2) fail("expected several cats at level 29", sameFamilyDps);
+  else if (sameFamilyDps.scores.length !== 1) fail("cats of the same family should share one DPS score (speed is not counted as damage)", sameFamilyDps);
+  else if (sameFamilyDps.times.length < 2) fail("expected cats with more than one Classic swing time so the equal-score check is meaningful", sameFamilyDps);
+  else ok("same-family cats share one DPS score (" + sameFamilyDps.scores[0] + ") across swing times " + sameFamilyDps.times.join(", ") + " ms");
 
   await page.click('[data-rank-role="support"]');
   await sleep(300);
