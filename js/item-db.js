@@ -1,6 +1,6 @@
 /* Item search, detail cards, and lazy loading for data/items/*.js */
 (function () {
-  var VERSION = "20261124a";
+  var VERSION = "20261124c";
   var ICON = "https://render.worldofwarcraft.com/forever-us/icons/56/{icon}.jpg";
   var loaded = false;
   var loading = null;

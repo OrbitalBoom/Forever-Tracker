@@ -1146,6 +1146,7 @@
   /* ---------- Mob-grind spawn map ---------- */
   var MOB_COLORS = ["#e8c547", "#5eb8ff", "#ff8a5b", "#7ee0a0", "#d7a0ff", "#ff6b8a", "#f0d48a", "#8ad4d4"];
   var spawnsLoading = null;
+  var zoneMapsLoading = null;
   var mapKeyHandler = null;
   var lastMapDraw = null;
 
@@ -1153,7 +1154,7 @@
     var tag = document.querySelector('script[src*="js/gold-farms.js"], script[src*="js/app.js"]');
     var src = tag && (tag.getAttribute("src") || "");
     var m = src && src.match(/[?&]v=([^&]+)/);
-    return m ? m[1] : "20261124a";
+    return m ? m[1] : "20261124c";
   }
   function ensureSpawns() {
     if (window.GOLD_FARM_SPAWNS) return Promise.resolve(window.GOLD_FARM_SPAWNS);
@@ -1166,6 +1167,24 @@
       document.head.appendChild(s);
     });
     return spawnsLoading;
+  }
+  function ensureZoneMaps() {
+    if (window.ZONE_MAPS) return Promise.resolve(window.ZONE_MAPS);
+    if (zoneMapsLoading) return zoneMapsLoading;
+    zoneMapsLoading = new Promise(function (resolve) {
+      var s = document.createElement("script");
+      s.src = "data/zone-maps/index.js?v=" + encodeURIComponent(cacheVer());
+      s.onload = function () { resolve(window.ZONE_MAPS || null); };
+      s.onerror = function () { zoneMapsLoading = null; resolve(null); };
+      document.head.appendChild(s);
+    });
+    return zoneMapsLoading;
+  }
+  function zoneMapEntry(rec) {
+    var maps = window.ZONE_MAPS;
+    if (!maps || !rec) return null;
+    if (rec.zone && maps.byName && maps.byName[rec.zone]) return maps.byName[rec.zone];
+    return null;
   }
   function mapBtnHtml(spot, opts) {
     if (!spot || spot.type !== "mob") return "";
@@ -1198,9 +1217,10 @@
     html += "<h3 id=\"gfFarmMapTitle\">" + escapeHtml(title) + "</h3>";
     html += '<button type="button" class="btn gf-map-close" data-close aria-label="Close spawn map">Close</button>';
     html += "</div>";
+    var art = zoneMapEntry(rec);
     if (zone) html += '<p class="gf-map-zone">' + escapeHtml(zone) + "</p>";
     html += '<p class="muted gf-map-note">' + escapeHtml(meta.disclaimer || "Spawn locations from Classic data, may differ in Forever.") + " ";
-    html += escapeHtml(meta.mapNote || "This is a schematic grid of zone-map percentages, not official zone art.") + "</p>";
+    html += escapeHtml(meta.mapNote || "Zone maps are Forever client art (© Blizzard Entertainment). If a map image cannot be loaded, a schematic grid is shown instead. Coordinates are used as published by NorgannonDB; none are invented.") + "</p>";
 
     var mobs = (rec && rec.mobs) || [];
     var any = mobs.some(function (m) { return m.points && m.points.length; });
@@ -1220,7 +1240,10 @@
       var ratio = 1.5;
       if (rec.mapSize && rec.mapSize[0] && rec.mapSize[1]) ratio = rec.mapSize[0] / rec.mapSize[1];
       html += '<div class="gf-map-stage" id="gfFarmMapStage" style="aspect-ratio:' + ratio + '">';
-      html += '<canvas id="gfFarmMapCanvas" aria-label="Schematic spawn map of ' + escapeHtml(zone || title) + '"></canvas>';
+      if (art && art.file) {
+        html += '<img class="gf-map-art" id="gfFarmMapArt" alt="" src="' + escapeHtml(art.file) + "?v=" + encodeURIComponent(cacheVer()) + '" hidden>';
+      }
+      html += '<canvas id="gfFarmMapCanvas" aria-label="Spawn map of ' + escapeHtml(zone || title) + '"></canvas>';
       html += '<svg class="gf-map-markers" id="gfFarmMapMarkers" aria-hidden="true"></svg>';
       html += '<div class="gf-map-tip" id="gfFarmMapTip" hidden></div>';
       html += '<div class="gf-map-compass" aria-hidden="true"><span>N</span></div>';
@@ -1242,13 +1265,17 @@
         html += "</button></li>";
       });
       html += "</ul>";
+      html += '<label class="gf-map-grid-toggle"><input type="checkbox" id="gfFarmMapGrid"> Show grid</label>';
     }
     var src = meta.norgannon;
+    html += '<p class="muted gf-map-credit">';
+    if (art) html += "Zone map art © Blizzard Entertainment (Forever client). ";
     if (src) {
-      html += '<p class="muted gf-map-credit">Spawn data: <a href="' + escapeHtml(src.url || "https://github.com/zmarotrix/NorgannonDB") +
+      html += 'Spawn data: <a href="' + escapeHtml(src.url || "https://github.com/zmarotrix/NorgannonDB") +
         '" target="_blank" rel="noopener noreferrer">NorgannonDB ' + escapeHtml(src.version || "") +
-        "</a> (" + escapeHtml(src.license || "GPL-3.0") + "), QuestieDB and CMaNGOS classic-db.</p>";
+        "</a> (" + escapeHtml(src.license || "GPL-3.0") + "), QuestieDB and CMaNGOS classic-db.";
     }
+    html += "</p>";
     html += "</div>";
     return html;
   }
@@ -1275,6 +1302,40 @@
     var mobs = rec.mobs || [];
     var visible = mobs.map(function (m) { return !!(m.points && m.points.length); });
     var active = null; /* hovered point */
+    var artImg = document.getElementById("gfFarmMapArt");
+    var gridCb = document.getElementById("gfFarmMapGrid");
+    var showGrid = false;
+    if (gridCb) {
+      gridCb.addEventListener("change", function () {
+        showGrid = !!gridCb.checked;
+        draw();
+      });
+    }
+    function artReady() {
+      return !!(artImg && artImg.getAttribute("data-failed") !== "1" && artImg.complete && artImg.naturalWidth > 0);
+    }
+    if (artImg) {
+      function onArtLoad() {
+        artImg.hidden = false;
+        artImg.removeAttribute("data-failed");
+        stage.classList.add("has-art");
+        draw();
+      }
+      artImg.addEventListener("load", onArtLoad);
+      artImg.addEventListener("error", function () {
+        artImg.hidden = true;
+        artImg.setAttribute("data-failed", "1");
+        stage.classList.remove("has-art");
+        draw();
+      });
+      if (artImg.complete) {
+        if (artImg.naturalWidth > 0) onArtLoad();
+        else {
+          artImg.hidden = true;
+          artImg.setAttribute("data-failed", "1");
+        }
+      }
+    }
 
     function layout() {
       var w = stage.clientWidth;
@@ -1285,7 +1346,9 @@
       canvas.height = Math.round(h * dpr);
       canvas.style.width = w + "px";
       canvas.style.height = h + "px";
-      return { w: w, h: h, dpr: dpr, pad: 28 };
+      /* Real zone art already includes the WorldMap 1002x668 frame, so fill the 3:2 stage with pad 0.
+         The schematic fallback keeps a 28px gutter for axis labels. */
+      return { w: w, h: h, dpr: dpr, pad: artReady() ? 0 : 28 };
     }
     function toPx(pt, L) {
       var x = L.pad + (pt[0] / 100) * (L.w - L.pad * 2);
@@ -1301,39 +1364,46 @@
       var ctx = canvas.getContext("2d");
       ctx.setTransform(L.dpr, 0, 0, L.dpr, 0, 0);
       ctx.clearRect(0, 0, L.w, L.h);
-      /* schematic field */
-      ctx.fillStyle = "#16110c";
-      ctx.fillRect(0, 0, L.w, L.h);
       var left = L.pad, top = L.pad, rw = L.w - L.pad * 2, rh = L.h - L.pad * 2;
-      ctx.fillStyle = "#1c1610";
-      ctx.fillRect(left, top, rw, rh);
-      ctx.strokeStyle = "rgba(212,180,76,0.35)";
-      ctx.lineWidth = 1;
-      ctx.strokeRect(left + 0.5, top + 0.5, rw - 1, rh - 1);
-      ctx.strokeStyle = "rgba(212,180,76,0.14)";
-      ctx.font = "10px sans-serif";
-      ctx.fillStyle = "rgba(232,197,71,0.55)";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      for (var g = 0; g <= 10; g++) {
-        var gx = left + (g / 10) * rw;
-        var gy = top + (g / 10) * rh;
-        ctx.beginPath();
-        ctx.moveTo(gx + 0.5, top);
-        ctx.lineTo(gx + 0.5, top + rh);
-        ctx.moveTo(left, gy + 0.5);
-        ctx.lineTo(left + rw, gy + 0.5);
-        ctx.stroke();
-        if (g % 2 === 0) {
-          ctx.fillText(String(g * 10), gx, top + rh + 12);
-          ctx.save();
-          ctx.textAlign = "right";
-          ctx.fillText(String(g * 10), left - 6, gy);
-          ctx.restore();
+      var useArt = artReady();
+      if (!useArt) {
+        /* schematic field (fallback if the zone image is missing or failed to load) */
+        ctx.fillStyle = "#16110c";
+        ctx.fillRect(0, 0, L.w, L.h);
+        ctx.fillStyle = "#1c1610";
+        ctx.fillRect(left, top, rw, rh);
+        ctx.strokeStyle = "rgba(212,180,76,0.35)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(left + 0.5, top + 0.5, rw - 1, rh - 1);
+      }
+      if (!useArt || showGrid) {
+        ctx.strokeStyle = useArt ? "rgba(232,197,71,0.22)" : "rgba(212,180,76,0.14)";
+        ctx.lineWidth = 1;
+        ctx.font = "10px sans-serif";
+        ctx.fillStyle = useArt ? "rgba(232,197,71,0.8)" : "rgba(232,197,71,0.55)";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        for (var g = 0; g <= 10; g++) {
+          var gx = left + (g / 10) * rw;
+          var gy = top + (g / 10) * rh;
+          ctx.beginPath();
+          ctx.moveTo(gx + 0.5, top);
+          ctx.lineTo(gx + 0.5, top + rh);
+          ctx.moveTo(left, gy + 0.5);
+          ctx.lineTo(left + rw, gy + 0.5);
+          ctx.stroke();
+          if (g % 2 === 0) {
+            ctx.fillText(String(g * 10), gx, useArt ? top + rh - 8 : top + rh + 12);
+            ctx.save();
+            ctx.textAlign = "right";
+            ctx.fillText(String(g * 10), useArt ? left + 16 : left - 6, gy);
+            ctx.restore();
+          }
         }
       }
       /* heat, then dots — only real points */
       var heatR = Math.max(14, Math.min(rw, rh) * 0.035);
+      var heatA = useArt ? 0.55 : 0.45;
       function hexRgb(hex) {
         var h = hex.replace("#", "");
         return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
@@ -1344,7 +1414,7 @@
         m.points.forEach(function (pt) {
           var p = toPx(pt, L);
           var grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, heatR);
-          grd.addColorStop(0, "rgba(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ",0.45)");
+          grd.addColorStop(0, "rgba(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + "," + heatA + ")");
           grd.addColorStop(1, "rgba(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ",0)");
           ctx.fillStyle = grd;
           ctx.beginPath();
@@ -1404,9 +1474,18 @@
           totalDrawn += n;
         });
       }
-      lastMapDraw = { farmId: farmId, total: totalDrawn, mobs: drawnMobs };
+      lastMapDraw = {
+        farmId: farmId,
+        total: totalDrawn,
+        mobs: drawnMobs,
+        art: useArt,
+        artSrc: (artImg && artImg.getAttribute("src")) || null,
+        artSize: useArt ? [artImg.naturalWidth, artImg.naturalHeight] : null,
+        pad: L.pad
+      };
       canvas.setAttribute("data-gf-drawn", String(totalDrawn));
       canvas.setAttribute("data-gf-drawn-mobs", drawnMobs.map(function (d) { return d.id + ":" + d.drawn; }).join(","));
+      canvas.setAttribute("data-gf-art", useArt ? "1" : "0");
     }
     function hit(clientX, clientY) {
       var L = layout();
@@ -1485,7 +1564,7 @@
 
   function openFarmMap(id) {
     if (!id) return;
-    ensureSpawns().then(function () {
+    Promise.all([ensureSpawns(), ensureZoneMaps()]).then(function () {
       if (!window.ForeverApp || !ForeverApp.openModal) return;
       ForeverApp.openModal(mapModalHtml(id));
       bindFarmMap(id);

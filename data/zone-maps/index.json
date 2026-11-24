@@ -1,0 +1,300 @@
+{
+  "build": "1.60.1.71091",
+  "source": "wago.tools DB2 (UiMap, UiMapArt, UiMapArtTile, UiMapXMapArt, WorldMapOverlay, WorldMapOverlayTile) and CASC BLP tiles for the live WoW: Forever client",
+  "credit": "Zone map art © Blizzard Entertainment. Decoded from the Forever client (same source this site already uses for item and talent data via wago.tools).",
+  "frame": {
+    "width": 1002,
+    "height": 668
+  },
+  "units": "NorgannonDB/Questie zone percentages (0,0 = top-left / NW) are relative to this 1002x668 WorldMap frame.",
+  "maps": {
+    "1417": {
+      "name": "Arathi Highlands",
+      "uiMapId": 1417,
+      "artId": 2147,
+      "file": "data/zone-maps/arathi-highlands.webp",
+      "width": 1002,
+      "height": 668,
+      "bytes": 177132,
+      "baseTiles": 12,
+      "overlays": 16
+    },
+    "1425": {
+      "name": "The Hinterlands",
+      "uiMapId": 1425,
+      "artId": 2162,
+      "file": "data/zone-maps/the-hinterlands.webp",
+      "width": 1002,
+      "height": 668,
+      "bytes": 178944,
+      "baseTiles": 12,
+      "overlays": 14
+    },
+    "1446": {
+      "name": "Tanaris",
+      "uiMapId": 1446,
+      "artId": 2179,
+      "file": "data/zone-maps/tanaris.webp",
+      "width": 1002,
+      "height": 668,
+      "bytes": 180522,
+      "baseTiles": 12,
+      "overlays": 20
+    },
+    "1418": {
+      "name": "Badlands",
+      "uiMapId": 1418,
+      "artId": 2159,
+      "file": "data/zone-maps/badlands.webp",
+      "width": 1002,
+      "height": 668,
+      "bytes": 150758,
+      "baseTiles": 12,
+      "overlays": 14
+    },
+    "1445": {
+      "name": "Dustwallow Marsh",
+      "uiMapId": 1445,
+      "artId": 2173,
+      "file": "data/zone-maps/dustwallow-marsh.webp",
+      "width": 1002,
+      "height": 668,
+      "bytes": 175330,
+      "baseTiles": 12,
+      "overlays": 7
+    },
+    "1444": {
+      "name": "Feralas",
+      "uiMapId": 1444,
+      "artId": 2170,
+      "file": "data/zone-maps/feralas.webp",
+      "width": 1002,
+      "height": 668,
+      "bytes": 163894,
+      "baseTiles": 12,
+      "overlays": 16
+    },
+    "1441": {
+      "name": "Thousand Needles",
+      "uiMapId": 1441,
+      "artId": 2182,
+      "file": "data/zone-maps/thousand-needles.webp",
+      "width": 1002,
+      "height": 668,
+      "bytes": 138552,
+      "baseTiles": 12,
+      "overlays": 9
+    },
+    "1422": {
+      "name": "Western Plaguelands",
+      "uiMapId": 1422,
+      "artId": 2164,
+      "file": "data/zone-maps/western-plaguelands.webp",
+      "width": 1002,
+      "height": 668,
+      "bytes": 163654,
+      "baseTiles": 12,
+      "overlays": 13
+    },
+    "1447": {
+      "name": "Azshara",
+      "uiMapId": 1447,
+      "artId": 2168,
+      "file": "data/zone-maps/azshara.webp",
+      "width": 1002,
+      "height": 668,
+      "bytes": 171744,
+      "baseTiles": 12,
+      "overlays": 19
+    },
+    "1427": {
+      "name": "Searing Gorge",
+      "uiMapId": 1427,
+      "artId": 2157,
+      "file": "data/zone-maps/searing-gorge.webp",
+      "width": 1002,
+      "height": 668,
+      "bytes": 128512,
+      "baseTiles": 12,
+      "overlays": 7
+    },
+    "1451": {
+      "name": "Silithus",
+      "uiMapId": 1451,
+      "artId": 2177,
+      "file": "data/zone-maps/silithus.webp",
+      "width": 1002,
+      "height": 668,
+      "bytes": 140188,
+      "baseTiles": 12,
+      "overlays": 7
+    },
+    "1449": {
+      "name": "Un'Goro Crater",
+      "uiMapId": 1449,
+      "artId": 2184,
+      "file": "data/zone-maps/ungoro-crater.webp",
+      "width": 1002,
+      "height": 668,
+      "bytes": 173028,
+      "baseTiles": 12,
+      "overlays": 7
+    },
+    "1423": {
+      "name": "Eastern Plaguelands",
+      "uiMapId": 1423,
+      "artId": 2134,
+      "file": "data/zone-maps/eastern-plaguelands.webp",
+      "width": 1002,
+      "height": 668,
+      "bytes": 127136,
+      "baseTiles": 12,
+      "overlays": 23
+    }
+  },
+  "byName": {
+    "Arathi Highlands": {
+      "name": "Arathi Highlands",
+      "uiMapId": 1417,
+      "artId": 2147,
+      "file": "data/zone-maps/arathi-highlands.webp",
+      "width": 1002,
+      "height": 668,
+      "bytes": 177132,
+      "baseTiles": 12,
+      "overlays": 16
+    },
+    "The Hinterlands": {
+      "name": "The Hinterlands",
+      "uiMapId": 1425,
+      "artId": 2162,
+      "file": "data/zone-maps/the-hinterlands.webp",
+      "width": 1002,
+      "height": 668,
+      "bytes": 178944,
+      "baseTiles": 12,
+      "overlays": 14
+    },
+    "Tanaris": {
+      "name": "Tanaris",
+      "uiMapId": 1446,
+      "artId": 2179,
+      "file": "data/zone-maps/tanaris.webp",
+      "width": 1002,
+      "height": 668,
+      "bytes": 180522,
+      "baseTiles": 12,
+      "overlays": 20
+    },
+    "Badlands": {
+      "name": "Badlands",
+      "uiMapId": 1418,
+      "artId": 2159,
+      "file": "data/zone-maps/badlands.webp",
+      "width": 1002,
+      "height": 668,
+      "bytes": 150758,
+      "baseTiles": 12,
+      "overlays": 14
+    },
+    "Dustwallow Marsh": {
+      "name": "Dustwallow Marsh",
+      "uiMapId": 1445,
+      "artId": 2173,
+      "file": "data/zone-maps/dustwallow-marsh.webp",
+      "width": 1002,
+      "height": 668,
+      "bytes": 175330,
+      "baseTiles": 12,
+      "overlays": 7
+    },
+    "Feralas": {
+      "name": "Feralas",
+      "uiMapId": 1444,
+      "artId": 2170,
+      "file": "data/zone-maps/feralas.webp",
+      "width": 1002,
+      "height": 668,
+      "bytes": 163894,
+      "baseTiles": 12,
+      "overlays": 16
+    },
+    "Thousand Needles": {
+      "name": "Thousand Needles",
+      "uiMapId": 1441,
+      "artId": 2182,
+      "file": "data/zone-maps/thousand-needles.webp",
+      "width": 1002,
+      "height": 668,
+      "bytes": 138552,
+      "baseTiles": 12,
+      "overlays": 9
+    },
+    "Western Plaguelands": {
+      "name": "Western Plaguelands",
+      "uiMapId": 1422,
+      "artId": 2164,
+      "file": "data/zone-maps/western-plaguelands.webp",
+      "width": 1002,
+      "height": 668,
+      "bytes": 163654,
+      "baseTiles": 12,
+      "overlays": 13
+    },
+    "Azshara": {
+      "name": "Azshara",
+      "uiMapId": 1447,
+      "artId": 2168,
+      "file": "data/zone-maps/azshara.webp",
+      "width": 1002,
+      "height": 668,
+      "bytes": 171744,
+      "baseTiles": 12,
+      "overlays": 19
+    },
+    "Searing Gorge": {
+      "name": "Searing Gorge",
+      "uiMapId": 1427,
+      "artId": 2157,
+      "file": "data/zone-maps/searing-gorge.webp",
+      "width": 1002,
+      "height": 668,
+      "bytes": 128512,
+      "baseTiles": 12,
+      "overlays": 7
+    },
+    "Silithus": {
+      "name": "Silithus",
+      "uiMapId": 1451,
+      "artId": 2177,
+      "file": "data/zone-maps/silithus.webp",
+      "width": 1002,
+      "height": 668,
+      "bytes": 140188,
+      "baseTiles": 12,
+      "overlays": 7
+    },
+    "Un'Goro Crater": {
+      "name": "Un'Goro Crater",
+      "uiMapId": 1449,
+      "artId": 2184,
+      "file": "data/zone-maps/ungoro-crater.webp",
+      "width": 1002,
+      "height": 668,
+      "bytes": 173028,
+      "baseTiles": 12,
+      "overlays": 7
+    },
+    "Eastern Plaguelands": {
+      "name": "Eastern Plaguelands",
+      "uiMapId": 1423,
+      "artId": 2134,
+      "file": "data/zone-maps/eastern-plaguelands.webp",
+      "width": 1002,
+      "height": 668,
+      "bytes": 127136,
+      "baseTiles": 12,
+      "overlays": 23
+    }
+  }
+}
