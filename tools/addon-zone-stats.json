@@ -3,18 +3,18 @@
     "Mount Hyjal": {
       "Horde": {
         "faction": "Horde",
-        "verified": 13,
-        "unverified": 120,
+        "verified": 18,
+        "unverified": 115,
         "steps": 139,
         "travel": {
           "label": "Forever Tracker add-on (auto-optimized, not RestedXP/OpenXP)",
-          "verified": 13,
-          "unverified": 120,
+          "verified": 18,
+          "unverified": 115,
           "questCount": 133,
           "steps": 139,
-          "naiveTravel": 296.4,
-          "optimizedTravel": 214.2,
-          "travelReducedPct": 27.7,
+          "naiveTravel": 325.8,
+          "optimizedTravel": 260.3,
+          "travelReducedPct": 20.1,
           "window": [
             55,
             60
@@ -25,32 +25,32 @@
                 55,
                 57
               ],
-              "verified": 6,
+              "verified": 10,
               "first": "Grain of Memory",
               "firstLevel": 57,
               "levels": [
                 57
               ],
-              "naiveTravel": 147.4,
-              "optimizedTravel": 112.3,
-              "travelReducedPct": 23.8
+              "naiveTravel": 221.4,
+              "optimizedTravel": 136.4,
+              "travelReducedPct": 38.4
             },
             {
               "band": [
                 58,
                 60
               ],
-              "verified": 7,
-              "first": "Flags of Our Forebears",
-              "firstLevel": 59,
+              "verified": 8,
+              "first": "Notarized Claim",
+              "firstLevel": 60,
               "levels": [
                 58,
                 59,
                 60
               ],
-              "naiveTravel": 104.7,
-              "optimizedTravel": 101.9,
-              "travelReducedPct": 2.8
+              "naiveTravel": 126.5,
+              "optimizedTravel": 123.9,
+              "travelReducedPct": 2.1
             }
           ],
           "maxAhead": 0,
@@ -62,32 +62,32 @@
               55,
               57
             ],
-            "verified": 6,
+            "verified": 10,
             "first": "Grain of Memory",
             "firstLevel": 57,
             "levels": [
               57
             ],
-            "naiveTravel": 147.4,
-            "optimizedTravel": 112.3,
-            "travelReducedPct": 23.8
+            "naiveTravel": 221.4,
+            "optimizedTravel": 136.4,
+            "travelReducedPct": 38.4
           },
           {
             "band": [
               58,
               60
             ],
-            "verified": 7,
-            "first": "Flags of Our Forebears",
-            "firstLevel": 59,
+            "verified": 8,
+            "first": "Notarized Claim",
+            "firstLevel": 60,
             "levels": [
               58,
               59,
               60
             ],
-            "naiveTravel": 104.7,
-            "optimizedTravel": 101.9,
-            "travelReducedPct": 2.8
+            "naiveTravel": 126.5,
+            "optimizedTravel": 123.9,
+            "travelReducedPct": 2.1
           }
         ],
         "keys": [
@@ -98,11 +98,16 @@
         "violations": [],
         "questIdsVerified": [
           97000,
+          97007,
           96830,
           94782,
           90854,
           92609,
+          95769,
           96616,
+          97119,
+          97001,
+          97006,
           91794,
           95026,
           92592,
@@ -144,21 +149,17 @@
           93615,
           91697,
           95317,
-          97119,
           92111,
           93617,
           96262,
           96979,
-          97001,
           93831,
           95318,
           95316,
           90647,
-          95769,
           96978,
           93830,
           93833,
-          97007,
           92500,
           96435,
           96322,
@@ -221,7 +222,6 @@
           97490,
           96561,
           96303,
-          97006,
           96301,
           99670,
           92016,
@@ -236,18 +236,18 @@
       },
       "Alliance": {
         "faction": "Alliance",
-        "verified": 22,
-        "unverified": 118,
+        "verified": 24,
+        "unverified": 116,
         "steps": 146,
         "travel": {
           "label": "Forever Tracker add-on (auto-optimized, not RestedXP/OpenXP)",
-          "verified": 22,
-          "unverified": 118,
+          "verified": 24,
+          "unverified": 116,
           "questCount": 140,
           "steps": 146,
-          "naiveTravel": 657.4,
+          "naiveTravel": 695.8,
           "optimizedTravel": 233.9,
-          "travelReducedPct": 64.4,
+          "travelReducedPct": 66.4,
           "window": [
             55,
             60
@@ -258,7 +258,7 @@
                 55,
                 57
               ],
-              "verified": 13,
+              "verified": 15,
               "first": "Area Denial Skunks",
               "firstLevel": 56,
               "levels": [
@@ -266,9 +266,9 @@
                 56,
                 57
               ],
-              "naiveTravel": 476.2,
+              "naiveTravel": 514.6,
               "optimizedTravel": 150.9,
-              "travelReducedPct": 68.3
+              "travelReducedPct": 70.7
             },
             {
               "band": [
@@ -296,7 +296,7 @@
               55,
               57
             ],
-            "verified": 13,
+            "verified": 15,
             "first": "Area Denial Skunks",
             "firstLevel": 56,
             "levels": [
@@ -304,9 +304,9 @@
               56,
               57
             ],
-            "naiveTravel": 476.2,
+            "naiveTravel": 514.6,
             "optimizedTravel": 150.9,
-            "travelReducedPct": 68.3
+            "travelReducedPct": 70.7
           },
           {
             "band": [
@@ -335,8 +335,10 @@
           92015,
           92014,
           96992,
+          91564,
           92433,
           95027,
+          92189,
           90750,
           95218,
           92702,
@@ -376,7 +378,6 @@
           96796,
           95320,
           95380,
-          92189,
           93952,
           93825,
           94504,
@@ -386,7 +387,6 @@
           95319,
           93826,
           93828,
-          91564,
           93615,
           91697,
           95317,

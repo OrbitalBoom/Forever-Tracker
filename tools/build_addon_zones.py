@@ -29,7 +29,7 @@ PLACEHOLDER_RE = re.compile(r"^\s*(reuse\s*me|<.*>|\[?unused\]?|nyi|placeholder)
 NORG_META = {}
 
 ZEPHRAS_BUILD = "1.60.1.70959"
-ZEPHRAS_DATE = "2026-11-18"
+ZEPHRAS_DATE = "2026-11-25"
 
 HUB_RADIUS = 6.0  # map %; pickups this close are batched
 

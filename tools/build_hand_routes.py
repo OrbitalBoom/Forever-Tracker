@@ -1290,11 +1290,13 @@ def main():
         "Zephras Isle is covered in the Skyborne 1–9 / 9–13 (Alliance) or 9–12 (Horde) RestedXP chapters.",
         "LevelForge community 1–60 chains were not imported: the addon is MIT, but individual guide authors keep their rights and there is no clear redistribution license for bundling those routes here.",
         "The user's paid RestedXP string was not used or decrypted.",
+        "OpenXP 1.x (RestedXP-based, CC BY-NC-SA 4.0) ends at tag v1.3.66, which is what is imported here. OpenXP 2.0+ replaced it with PoleStar's 1–60 route (fitzforge/polestar, GPL-3.0); that is a different route under a different license and has not been imported. It does not cover Riverglades, Shen'dralas, or Mount Hyjal either.",
+        "RestedXP added a WIP 'Skyborne V2' Zephras Isle route (1-9 / 9-13 Zephras Isle V2). Both the original and V2 are marked default for Skyborne in RestedXP's files, so the Skyborne start here stays on the original chapters.",
     ]
     stats["parsingGaps"] = gaps
 
     meta = {
-        "builtAt": "2026-11-17",
+        "builtAt": "2026-11-25",
         "levelCap": 60,
         "schema": 2,
         "defaultSource": "combined",

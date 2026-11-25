@@ -39,7 +39,7 @@
     var tag = document.querySelector('script[src*="js/ah-flips.js"], script[src*="js/app.js"]');
     var src = tag && (tag.getAttribute("src") || "");
     var m = src && src.match(/[?&]v=([^&]+)/);
-    return m ? m[1] : "20261124g";
+    return m ? m[1] : "20261125h";
   }
   function loadScript(src) {
     return new Promise(function (resolve, reject) {

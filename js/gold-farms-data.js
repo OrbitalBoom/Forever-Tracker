@@ -13,7 +13,9 @@
  * for live Forever) or "classic" (Classic Era / beta, likely still applies,
  * labeled as such in the UI).
  *
- * Principal sources (checked 20 Nov 2026):
+ * Principal sources (checked 20 Nov 2026; Blizzard Forever hotfix notes
+ * re-checked 25 Nov 2026 through the 23 Nov list — dungeon resets are now
+ * capped at 5 per hour, flagged on the two reset farms below):
  * - Conquest Capped, "Best Spots for Levels 30-45", updated 16 Nov 2026,
  *   EU AH prices of 15 Nov 2026.
  *   https://conquestcapped.com/guides/wow-forever/wow-forever-gold-farming/
@@ -53,6 +55,10 @@
  * Left out of the list:
  * - The Blackmaw Hold devotee farm, which a mid-November hotfix stripped
  *   of loot. It is not a legitimate live spot.
+ * - The Uldaman Obsidian Sentinel reset farm. Its loot was pulled and then
+ *   restored by the 23 Nov 2026 hotfix ("drops loot as intended"); Warcraft
+ *   Tavern (24 Nov 2026) reports the restored loot is worth less. No current
+ *   sourced gold/hour exists, so it is not listed.
  * - Item duplication, collision/geometry glitches, and other play that
  *   breaks Blizzard's terms of use.
  * - "Pay me gold to stop ganking" and similar ideas from forum threads.
@@ -1133,7 +1139,7 @@ window.GOLD_FARMS = [
       note: "theforeverguides (beta): Scarlet Monastery was the standout Silk farm. Scarlet Scryers dropped Silk on all 13 logged kills; Unfettered Spirits on 49% of 37. Small samples, no gold/hour.",
       date: "2026-11-04"
     },
-    risk: "Beta logs, not live Forever drop tables. Busy instance; a normal reset run, not a workaround.",
+    risk: "Beta logs, not live Forever drop tables. Busy instance; a normal reset run, not a workaround. Since the 20 Nov 2026 hotfix you can reset and enter each dungeon at most 5 times per hour (was 10), so plan longer clears.",
     tag: "classic",
     sources: [
       { title: "WoW Forever Gold Farming by Level: 1–60 Brackets", url: "https://theforeverguides.com/gold-making/gold-by-level/", date: "2026-11-04", site: "theforeverguides" }
@@ -2009,7 +2015,7 @@ window.GOLD_FARMS = [
       note: "warcraftmaps.com documents this as a Classic 1.60.1 Mage farm using published spawn data (Maraudon was closed on the Forever beta, so there is no beta gold/hour). Warcraft Tavern's Forever Mage AoE guide says AoE pulling was slowed and you should farm same-level or lower packs, not 9–12 high-level packs. Tag is Classic-era, likely applies. No gold/hour is stored because none of the Forever sources published one.",
       date: "2026-11-20"
     },
-    risk: "Classic spawn data, not a live Forever clear-time. Warcraft Tavern reports AoE was nerfed relative to some private-server / Season of Discovery habits. A normal instance reset, not a dungeon workaround.",
+    risk: "Classic spawn data, not a live Forever clear-time. Warcraft Tavern reports AoE was nerfed relative to some private-server / Season of Discovery habits. A normal instance reset, not a dungeon workaround. Blizzard's 20 Nov 2026 hotfix caps dungeon resets at 5 per hour (was 10), which halves the number of short reset loops you can run.",
     tag: "classic",
     sources: [
       { title: "Mage Gold Farm in Maraudon", url: "https://warcraftmaps.com/guides/mage-gold-farm-maraudon/", date: "2026-11-20", site: "warcraftmaps" },

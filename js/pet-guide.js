@@ -1,4 +1,4 @@
-/* Forever Tracker — Pets tab reference tools (?v=20261125g).
+/* Forever Tracker — Pets tab reference tools (?v=20261125h).
  * Confirmed numbers come from Forever client 1.60.1.71091 or official notes.
  * Community / Theoretical / Unverified items are badged and never treated as official rules.
  */

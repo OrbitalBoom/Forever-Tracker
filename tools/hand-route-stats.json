@@ -1,13 +1,13 @@
 {
   "rxp": {
-    "sha": "2d3ca13dff5d31d3be65b8ddee3d24059efad293",
-    "date": "2026-11-17T12:00:04-03:00",
-    "subject": "Added FP/zone data (forever)"
+    "sha": "78f75c73af3f9045f18a3e1d2c9378d97087865d",
+    "date": "2026-11-24T14:08:50-08:00",
+    "subject": "Rebuild Forever statWeights"
   },
   "openxp": {
-    "sha": "2aefbf4e2471ab257791cb594c11ed2dd18810eb",
-    "date": "2026-11-17T03:07:59Z",
-    "subject": "Release 1.3.65"
+    "sha": "b3f094095ceca7a5eee1d64b2851c861cf25ecf1",
+    "date": "2026-11-17T21:51:04-06:00",
+    "subject": "Release 1.3.66"
   },
   "choice": "Combined default uses current RestedXP free Forever routes through ~21 Alliance / ~22 Horde, then OpenXP 21–60. OpenXP's copies of the early RXP files lag the current RXP commit (OpenXP forked from b9f2e254, 2026-11-07). Mage AoE is the public RestedXP Mage pack, then the same OpenXP handoff.",
   "combinedSpeedrun": {
@@ -436,8 +436,8 @@
     },
     "Human": {
       "faction": "Alliance",
-      "steps": 2716,
-      "questRefs": 2692,
+      "steps": 2611,
+      "questRefs": 2630,
       "chapters": [
         "1-6 Northshire",
         "6-11 Elwynn Forest",
@@ -532,8 +532,8 @@
     },
     "Dwarf": {
       "faction": "Alliance",
-      "steps": 2685,
-      "questRefs": 2669,
+      "steps": 2580,
+      "questRefs": 2607,
       "chapters": [
         "1-5 Coldridge Valley",
         "5-11 Dun Morogh",
@@ -629,8 +629,8 @@
     },
     "Gnome": {
       "faction": "Alliance",
-      "steps": 2685,
-      "questRefs": 2669,
+      "steps": 2580,
+      "questRefs": 2607,
       "chapters": [
         "1-5 Coldridge Valley",
         "5-11 Dun Morogh",
@@ -726,12 +726,13 @@
     },
     "Night Elf": {
       "faction": "Alliance",
-      "steps": 2400,
-      "questRefs": 2529,
+      "steps": 2403,
+      "questRefs": 2532,
       "chapters": [
         "1-6 Shadowglen",
         "6-11 Teldrassil",
         "14-16 Darkshore",
+        "14-16 Loch Modan",
         "16-19 Darkshore",
         "19-20 Redridge",
         "20-21 Darkshore/Ashenvale",
@@ -813,15 +814,15 @@
         "Shen'dralas": 3,
         "Mount Hyjal": 0
       },
-      "handoffAt": 6,
+      "handoffAt": 7,
       "parseNotes": [
         "handoff after 20-21 Darkshore/Ashenvale, missing next was: RestedXP Forever Guide (A)\\21-23 Stonetalon/Ashenvale"
       ]
     },
     "High Order Skyborne": {
       "faction": "Alliance",
-      "steps": 2917,
-      "questRefs": 2945,
+      "steps": 2812,
+      "questRefs": 2883,
       "chapters": [
         "1-9 Zephras Isle",
         "9-13 Zephras Isle",
@@ -1355,7 +1356,7 @@
     },
     "Human": {
       "faction": "Alliance",
-      "steps": 2457,
+      "steps": 2458,
       "questRefs": 2492,
       "chapters": [
         "1-6 Northshire",
@@ -1452,7 +1453,7 @@
     },
     "Dwarf": {
       "faction": "Alliance",
-      "steps": 2426,
+      "steps": 2427,
       "questRefs": 2469,
       "chapters": [
         "1-5 Coldridge Valley",
@@ -1550,7 +1551,7 @@
     },
     "Gnome": {
       "faction": "Alliance",
-      "steps": 2426,
+      "steps": 2427,
       "questRefs": 2469,
       "chapters": [
         "1-5 Coldridge Valley",
@@ -1648,8 +1649,8 @@
     },
     "Night Elf": {
       "faction": "Alliance",
-      "steps": 2471,
-      "questRefs": 2536,
+      "steps": 2296,
+      "questRefs": 2413,
       "chapters": [
         "1-6 Shadowglen",
         "6-11 Teldrassil",
@@ -1743,7 +1744,7 @@
     },
     "High Order Skyborne": {
       "faction": "Alliance",
-      "steps": 2658,
+      "steps": 2659,
       "questRefs": 2745,
       "chapters": [
         "1-9 Zephras Isle",
@@ -1954,8 +1955,8 @@
     },
     "Human": {
       "faction": "Alliance",
-      "steps": 1414,
-      "questRefs": 1072,
+      "steps": 1309,
+      "questRefs": 1010,
       "chapters": [
         "1-6 Northshire",
         "6-11 Elwynn Forest",
@@ -1979,8 +1980,8 @@
     },
     "Dwarf": {
       "faction": "Alliance",
-      "steps": 1383,
-      "questRefs": 1049,
+      "steps": 1278,
+      "questRefs": 987,
       "chapters": [
         "1-5 Coldridge Valley",
         "5-11 Dun Morogh",
@@ -2005,8 +2006,8 @@
     },
     "Gnome": {
       "faction": "Alliance",
-      "steps": 1383,
-      "questRefs": 1049,
+      "steps": 1278,
+      "questRefs": 987,
       "chapters": [
         "1-5 Coldridge Valley",
         "5-11 Dun Morogh",
@@ -2031,12 +2032,13 @@
     },
     "Night Elf": {
       "faction": "Alliance",
-      "steps": 1098,
-      "questRefs": 909,
+      "steps": 1101,
+      "questRefs": 912,
       "chapters": [
         "1-6 Shadowglen",
         "6-11 Teldrassil",
         "14-16 Darkshore",
+        "14-16 Loch Modan",
         "16-19 Darkshore",
         "19-20 Redridge",
         "20-21 Darkshore/Ashenvale"
@@ -2054,8 +2056,8 @@
     },
     "High Order Skyborne": {
       "faction": "Alliance",
-      "steps": 1615,
-      "questRefs": 1325,
+      "steps": 1510,
+      "questRefs": 1263,
       "chapters": [
         "1-9 Zephras Isle",
         "9-13 Zephras Isle",
@@ -2493,8 +2495,8 @@
     },
     "Human": {
       "faction": "Alliance",
-      "steps": 2716,
-      "questRefs": 2692,
+      "steps": 2611,
+      "questRefs": 2630,
       "chapters": [
         "1-6 Northshire",
         "6-11 Elwynn Forest",
@@ -2587,8 +2589,8 @@
     },
     "Dwarf": {
       "faction": "Alliance",
-      "steps": 2685,
-      "questRefs": 2669,
+      "steps": 2580,
+      "questRefs": 2607,
       "chapters": [
         "1-5 Coldridge Valley",
         "5-11 Dun Morogh",
@@ -2682,8 +2684,8 @@
     },
     "Gnome": {
       "faction": "Alliance",
-      "steps": 2685,
-      "questRefs": 2669,
+      "steps": 2580,
+      "questRefs": 2607,
       "chapters": [
         "1-5 Coldridge Valley",
         "5-11 Dun Morogh",
@@ -2777,8 +2779,8 @@
     },
     "Night Elf": {
       "faction": "Alliance",
-      "steps": 2400,
-      "questRefs": 2529,
+      "steps": 2295,
+      "questRefs": 2467,
       "chapters": [
         "1-6 Shadowglen",
         "6-11 Teldrassil",
@@ -2869,8 +2871,8 @@
     },
     "High Order Skyborne": {
       "faction": "Alliance",
-      "steps": 2917,
-      "questRefs": 2945,
+      "steps": 2812,
+      "questRefs": 2883,
       "chapters": [
         "1-9 Zephras Isle",
         "9-13 Zephras Isle",
@@ -2961,7 +2963,7 @@
       "parseNotes": []
     }
   },
-  "chapterCount": 202,
+  "chapterCount": 203,
   "routeCount": 118,
   "newZonesOverall": {
     "Zephras Isle": {
@@ -2996,6 +2998,8 @@
     "Shen'dralas appears only on the Alliance OpenXP 40–41 chapter; it is not in the Horde OpenXP route or the RestedXP free routes.",
     "Zephras Isle is covered in the Skyborne 1–9 / 9–13 (Alliance) or 9–12 (Horde) RestedXP chapters.",
     "LevelForge community 1–60 chains were not imported: the addon is MIT, but individual guide authors keep their rights and there is no clear redistribution license for bundling those routes here.",
-    "The user's paid RestedXP string was not used or decrypted."
+    "The user's paid RestedXP string was not used or decrypted.",
+    "OpenXP 1.x (RestedXP-based, CC BY-NC-SA 4.0) ends at tag v1.3.66, which is what is imported here. OpenXP 2.0+ replaced it with PoleStar's 1–60 route (fitzforge/polestar, GPL-3.0); that is a different route under a different license and has not been imported. It does not cover Riverglades, Shen'dralas, or Mount Hyjal either.",
+    "RestedXP added a WIP 'Skyborne V2' Zephras Isle route (1-9 / 9-13 Zephras Isle V2). Both the original and V2 are marked default for Skyborne in RestedXP's files, so the Skyborne start here stays on the original chapters."
   ]
 }
