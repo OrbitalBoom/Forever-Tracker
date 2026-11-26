@@ -163,9 +163,19 @@ async function tipInfo(page) {
   console.log("hover", hoverInfo);
   if (!hoverInfo.visible) fail("tooltip not visible on hover");
   if (!/Elemental Air/i.test(hoverInfo.name)) fail("tooltip name", hoverInfo.name);
-  ["hasMin","hasUsual","hasListed","hasSold","hasUpdated","hasVendor","hasStack","hasTrend","hasDbLink"].forEach((k) => {
+  const hasSoldInFeed = await page.evaluate(() => {
+    const items = (window.PRICE_DATA && window.PRICE_DATA.items) || {};
+    return Object.keys(items).some((k) => {
+      const raw = items[k];
+      return raw && raw.length > 3 && raw[3] != null && raw[3] !== "";
+    });
+  });
+  const hoverKeys = ["hasMin","hasUsual","hasListed","hasUpdated","hasVendor","hasStack","hasTrend","hasDbLink"];
+  if (hasSoldInFeed) hoverKeys.push("hasSold");
+  hoverKeys.forEach((k) => {
     if (!hoverInfo[k]) fail("hover tooltip missing " + k, hoverInfo);
   });
+  if (!hasSoldInFeed) console.log("OK: sold/day not required; official feed has no sale rates");
   if (!hoverInfo.hasFarm) fail("farm section missing on farm-context hover", hoverInfo);
   const farm = hoverInfo.farmText;
   if (!/Thundering Exiles/i.test(farm)) fail("farm title missing", farm);

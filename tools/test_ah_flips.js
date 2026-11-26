@@ -131,6 +131,82 @@ async function overflow(page, label) {
   if (!/hiding \d+ with no sourced name/.test(boot.meta)) fail("meta should mention hidden unnamed items", boot.meta);
   else ok("meta notes hidden unnamed items: " + boot.meta.trim());
 
+  const intro = await page.evaluate(() => {
+    const gold = document.getElementById("gold-sub-flips") || document.body;
+    const text = gold.innerText || "";
+    const how = document.getElementById("ahFlipsHowTo");
+    const status = document.getElementById("ahFlipsStatus");
+    const det = document.getElementById("ahfHowPrices");
+    const sort = document.getElementById("ahfSort");
+    const opts = sort ? Array.from(sort.options).map((o) => o.textContent.trim()) : [];
+    const hideLabel = (document.querySelector("label[for='ahfHideThin'], #ahfHideThin") &&
+      (document.getElementById("ahfHideThin").closest("label") || {}).textContent) || "";
+    const soldTh = Array.from(document.querySelectorAll("#ahFlipsTable thead th")).map((th) => th.textContent.trim());
+    return {
+      text,
+      howText: (how && how.innerText) || "",
+      howClosedDetails: !!(det && !det.open),
+      detailsText: (det && det.innerText) || "",
+      status: (status && status.textContent) || "",
+      hasOldLede: /Items listed under their usual price/.test(text),
+      hasGoblin: /Forever Goblin/.test(text),
+      hasMinSold: !!document.getElementById("ahfMinSold"),
+      soldColumn: soldTh.some((h) => /sold\/day/i.test(h)),
+      soldCells: !!document.querySelector('#ahFlipsTable td[data-label="Sold/day"]'),
+      hideLabel: hideLabel.replace(/\s+/g, " ").trim(),
+      sortOpts: opts,
+    };
+  });
+  if (intro.hasOldLede || intro.hasGoblin) fail("old always-visible intro or Goblin sale-rate copy is still showing", intro);
+  else if (!/Set a minimum profit/.test(intro.howText) || !/Click a row/.test(intro.howText) ||
+           !/cheapest buyout/.test(intro.howText) || !/confidence badge/.test(intro.howText)) {
+    fail("How to use should be a short 4-step list of what the page actually does", intro.howText);
+  } else ok("How to use list is visible and accurate");
+  if (!/official Blizzard API/.test(intro.status) || !/Prices updated/.test(intro.status)) {
+    fail("status line should cite the official Blizzard API and an update time", intro.status);
+  } else ok("status line: " + intro.status.trim());
+  if (!intro.howClosedDetails) fail("How prices work should start closed", intro.detailsText);
+  else ok("How prices work expander is closed by default");
+
+  await page.evaluate(() => {
+    const el = document.getElementById("gold-sub-flips") || document.getElementById("ahFlipsHowTo");
+    if (el) el.scrollIntoView({ block: "start" });
+  });
+  await sleep(150);
+  await page.screenshot({ path: path.join(OUT, "desktop-ah-intro-closed.png") });
+  ok("screenshot desktop-ah-intro-closed.png");
+
+  await page.click("#ahfHowPrices > summary");
+  await sleep(200);
+  const opened = await page.evaluate(() => {
+    const det = document.getElementById("ahfHowPrices");
+    const body = (det && det.innerText) || "";
+    return { open: !!(det && det.open), body };
+  });
+  if (!opened.open) fail("clicking How prices work should open the expander", opened);
+  else if (!/official Blizzard/.test(opened.body) || !/no sale rates/.test(opened.body) ||
+           !/5% auction house cut/.test(opened.body) || !/never invented/.test(opened.body)) {
+    fail("How prices work should describe the official feed, missing sale rates, the 5% cut, and never-invented values", opened.body);
+  } else ok("How prices work expander has accurate methodology");
+  await page.screenshot({ path: path.join(OUT, "desktop-ah-intro-open.png") });
+  ok("screenshot desktop-ah-intro-open.png");
+  await page.click("#ahfHowPrices > summary");
+  await sleep(150);
+
+  const hasSold = await page.evaluate(() => !!(window.AhFlips && AhFlips.feedHasSoldRates && AhFlips.feedHasSoldRates()));
+  if (hasSold) {
+    if (!intro.hasMinSold || !intro.soldColumn) fail("sale rates are in the feed, so Min sold/day and the Sold/day column should show", intro);
+    else ok("sale-rate filter and column are visible because the feed has sold/day");
+  } else {
+    if (intro.hasMinSold || intro.soldColumn || intro.soldCells) fail("no sale rates in the feed, so Min sold/day and Sold/day should be hidden", intro);
+    else ok("Min sold/day and Sold/day column hidden (feed has no sale rates)");
+    if (/sold\/day/i.test(intro.hideLabel) || !/fewer than 3 listed/.test(intro.hideLabel)) {
+      fail("thin-listings label should only mention fewer than 3 listed", intro.hideLabel);
+    } else ok("thin-listings label is “" + intro.hideLabel + "”");
+    if (intro.sortOpts.some((o) => /sold\/day/i.test(o))) fail("Profit × sold/day sort should be hidden when the feed has no sale rates", intro.sortOpts);
+    else ok("sort options without sale rates: " + intro.sortOpts.join(", "));
+  }
+
   // Toggle shows unnamed IDs
   await page.click("#ahfShowUnnamed");
   await sleep(300);
@@ -307,6 +383,46 @@ async function overflow(page, label) {
   await overflow(mobile, "390 ah flips closed");
   await mobile.screenshot({ path: path.join(OUT, "mobile-390-ah-list.png") });
   ok("screenshot mobile-390-ah-list.png");
+
+  await mobile.evaluate(() => {
+    const el = document.getElementById("gold-sub-flips") || document.getElementById("ahFlipsHowTo");
+    if (el) el.scrollIntoView({ block: "start" });
+  });
+  await sleep(150);
+  const mobIntro = await mobile.evaluate(() => {
+    const how = document.getElementById("ahFlipsHowTo");
+    const det = document.getElementById("ahfHowPrices");
+    const sw = Math.max(document.documentElement.scrollWidth, document.body.scrollWidth);
+    return {
+      how: (how && how.innerText) || "",
+      closed: !!(det && !det.open),
+      hasMinSold: !!document.getElementById("ahfMinSold"),
+      soldCol: !!document.querySelector('#ahFlipsTable td[data-label="Sold/day"], #ahFlipsTable th'),
+      soldHeader: Array.from(document.querySelectorAll("#ahFlipsTable thead th")).some((th) => /sold\/day/i.test(th.textContent)),
+      sw,
+      cw: document.documentElement.clientWidth,
+    };
+  });
+  if (!/Set a minimum profit/.test(mobIntro.how) || !mobIntro.closed) fail("390 should show How to use with How prices work closed", mobIntro);
+  else ok("390 How to use is visible, expander closed");
+  await mobile.screenshot({ path: path.join(OUT, "mobile-390-ah-intro-closed.png") });
+  ok("screenshot mobile-390-ah-intro-closed.png");
+  await mobile.click("#ahfHowPrices > summary");
+  await sleep(200);
+  const mobOpen = await mobile.evaluate(() => {
+    const det = document.getElementById("ahfHowPrices");
+    const sw = Math.max(document.documentElement.scrollWidth, document.body.scrollWidth);
+    return { open: !!(det && det.open), body: (det && det.innerText) || "", sw, cw: document.documentElement.clientWidth };
+  });
+  if (!mobOpen.open || !/official Blizzard/.test(mobOpen.body) || !/no sale rates/.test(mobOpen.body)) {
+    fail("390 How prices work should open with accurate methodology", mobOpen);
+  } else ok("390 How prices work expander opens");
+  if (mobOpen.sw > mobOpen.cw + 1) fail("horizontal overflow 390 ah flips expander open", mobOpen);
+  else ok("no overflow 390 ah flips expander open (" + mobOpen.sw + " / " + mobOpen.cw + ")");
+  await mobile.screenshot({ path: path.join(OUT, "mobile-390-ah-intro-open.png") });
+  ok("screenshot mobile-390-ah-intro-open.png");
+  await mobile.click("#ahfHowPrices > summary");
+  await sleep(150);
 
   await mobile.click("#ahFlipsTable tbody tr[data-item-id]");
   await sleep(400);

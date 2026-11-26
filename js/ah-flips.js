@@ -40,7 +40,7 @@
     var tag = document.querySelector('script[src*="js/ah-flips.js"], script[src*="js/app.js"]');
     var src = tag && (tag.getAttribute("src") || "");
     var m = src && src.match(/[?&]v=([^&]+)/);
-    return m ? m[1] : "20261126b";
+    return m ? m[1] : "20261126c";
   }
   function loadScript(src) {
     return new Promise(function (resolve, reject) {
@@ -102,6 +102,38 @@
       timeZoneName: "short"
     });
     return fmt.format(d);
+  }
+
+  function formatStampCompactNY(iso) {
+    if (!iso) return "unknown time";
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    var fmt = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit"
+    });
+    return fmt.format(d) + " ET";
+  }
+
+  function feedHasSoldRates() {
+    var items = window.PRICE_DATA && window.PRICE_DATA.items;
+    if (!items) return false;
+    var keys = Object.keys(items);
+    for (var i = 0; i < keys.length; i++) {
+      var raw = items[keys[i]];
+      if (raw && raw.length > 3 && raw[3] != null && raw[3] !== "") return true;
+    }
+    return false;
+  }
+
+  function effectiveSort(p, hasSold) {
+    var sort = (p && p.sort) || (hasSold ? "score" : "profit");
+    if (!hasSold && sort === "score") return "profit";
+    return sort;
   }
 
   function prefs(state) {
@@ -301,9 +333,9 @@
 
   /* Plain-language labels for the confidence() checks above. Do not drift from that logic. */
   var CONFIDENCE_TIPS = {
-    low: "Low if fewer than 3 are listed, the current market is more than 20% below usual, or usual is a median of fewer than 3 history snapshots — a thinner or less settled flip. Sold/day under 1 would also count, but the official Blizzard feed no longer includes sale rates, so that check is unused right now.",
-    medium: "Medium if it is not Low, but fewer than 5 are listed (or sold/day is present and under 5). The official Blizzard feed has no sold/day, so today this is a 3–4 listing that is not Low.",
-    high: "High if at least 5 are listed, the market is not more than 20% below usual, and usual is not a median of fewer than 3 snapshots. Sold/day would also need to be at least 5 when a sale rate is present; the official Blizzard feed does not include it, so that check is skipped."
+    low: "Low if fewer than 3 are listed, the current market is more than 20% below usual, or usual is a median of fewer than 3 history snapshots — a thinner or less settled flip. Sold/day under 1 would also count, but the official Blizzard feed has no sale rates.",
+    medium: "Medium if it is not Low, but fewer than 5 are listed (or sold/day is present and under 5). With no sold/day in the official Blizzard feed, this is a 3–4 listing that is not Low.",
+    high: "High if at least 5 are listed, the market is not more than 20% below usual, and usual is not a median of fewer than 3 snapshots. Sold/day would also need to be at least 5 when present; the official Blizzard feed does not include it."
   };
 
   function confidenceTip(level) {
@@ -647,7 +679,9 @@
     html += "<div><dt>Usual / median</dt><dd>" + money(row.usual) + ' <span class="muted">(' + esc(usualTip) + ")</span></dd></div>";
     html += "<div><dt>Est. profit</dt><dd>" + money(row.profit) + (row.vendorFlip ? ' <span class="ahf-flag ahf-vendor">vendor flip</span>' : "") + "</dd></div>";
     html += "<div><dt>Listed</dt><dd>" + row.quantity.toLocaleString() + "</dd></div>";
-    html += "<div><dt>Sold/day</dt><dd>" + (row.soldPerDay == null ? '<span class="muted">unknown</span>' : String(row.soldPerDay)) + "</dd></div>";
+    if (feedHasSoldRates() || row.soldPerDay != null) {
+      html += "<div><dt>Sold/day</dt><dd>" + (row.soldPerDay == null ? '<span class="muted">unknown</span>' : String(row.soldPerDay)) + "</dd></div>";
+    }
     html += "<div><dt>Confidence</dt><dd>" + confidenceBadge(row.confidence) + "</dd></div>";
     html += "</dl>";
     var farms = farmsForItem(row.id);
@@ -686,26 +720,33 @@
     if (dialog && dialog.focus) dialog.focus();
   }
 
-  function usualBlurb() {
-    var range = historyRange();
+  function priceStatusLine() {
     var asOf = (window.PRICE_DATA && (window.PRICE_DATA.updated || window.PRICE_DATA.fetched)) || null;
-    var bits = [];
-    bits.push("Prices as of " + formatStampNY(asOf) + " (America/New_York), US Normal Horde auction house.");
+    if (!asOf) return "Prices are from the official Blizzard API (update time unknown).";
+    return "Prices updated " + formatStampCompactNY(asOf) + " from the official Blizzard API.";
+  }
+
+  function howPricesBody() {
+    var range = historyRange();
+    var paras = [];
+    paras.push("Prices come from the official Blizzard Battle.net Game Data API for the US Normal Horde auction house. " +
+      "This feed has no sale rates (sold/day); those figures are left blank and never invented.");
+    if (feedHasSoldRates()) {
+      paras[0] = "Prices come from the official Blizzard Battle.net Game Data API for the US Normal Horde auction house. " +
+        "Sale rates (sold/day) are shown only when the feed includes them; unknown values are left blank and never invented.";
+    }
     if (range && range.count >= 2) {
-      bits.push("“Usual” is the median market value across " + range.count +
-        " snapshots from " + formatStampNY(range.first) + " to " + formatStampNY(range.last) +
+      paras.push("“Usual” is the median market value across " + range.count +
+        " snapshots from " + formatStampCompactNY(range.first) + " to " + formatStampCompactNY(range.last) +
         " (a rolling " + range.windowDays + "-day window; older samples are dropped). " +
-        "Market value is the average of the cheapest 15% of units listed.");
+        "Market value is the average of the cheapest 15% of units listed. If an item has no history, usual is the current market value.");
     } else {
-      bits.push("No rolling history is available yet, so “usual” is the current market value " +
+      paras.push("No rolling history is available yet, so “usual” is the current market value " +
         "(the average of the cheapest 15% of units listed) — a snapshot spread, not a multi-day baseline.");
     }
-    bits.push("Estimated AH flip profit is after the 5% auction house cut" +
-      " and, when vendor sell is known, a Classic 12-hour deposit (5% of vendor sell). " +
-      "Vendor flips use the vendor sell price and no auction cut. " +
-      "Items a vendor sells for at or below the auction buyout are hidden. " +
-      "Sale rates come from the Forever Goblin feed and are left blank when unknown — they are never invented.");
-    return bits.join(" ");
+    paras.push("Estimated flip profit is after the 5% auction house cut and, when vendor sell is known, a Classic 12-hour deposit (5% of vendor sell). " +
+      "Vendor flips use the vendor sell price and no auction cut. Items a vendor sells for at or below the auction buyout are hidden.");
+    return paras.map(function (p) { return "<p>" + esc(p) + "</p>"; }).join("");
   }
 
   function renderTable(state, hooks) {
@@ -721,13 +762,32 @@
     var range = historyRange();
     var asOf = window.PRICE_DATA && (window.PRICE_DATA.updated || window.PRICE_DATA.fetched);
 
+    var hasSold = feedHasSoldRates();
+    var sort = effectiveSort(p, hasSold);
+    rows = sortRows(applyFilters(all, p), sort);
+    lastRows = rows;
+    var howOpen = !!(document.getElementById("ahfHowPrices") && document.getElementById("ahfHowPrices").open);
+
     var html = "";
-    html += '<p class="muted ahf-lede" id="ahFlipsBlurb">' + esc(usualBlurb()) + "</p>";
+    html += '<div class="ahf-howto" id="ahFlipsHowTo">';
+    html += '<p class="ahf-howto-title">How to use</p>';
+    html += "<ol>";
+    html += "<li>Set a minimum profit and, if you want, a max buy price, then sort the list.</li>";
+    html += "<li>Click a row to see details, usual price, and listed quantity on this page.</li>";
+    html += "<li>Buy at the cheapest buyout and relist near the usual price.</li>";
+    html += "<li>Hover or tap a confidence badge to see why that flip is Low, Medium, or High.</li>";
+    html += "</ol></div>";
+    html += '<p class="muted ahf-status" id="ahFlipsStatus">' + esc(priceStatusLine()) + "</p>";
+    html += '<details class="ahf-howprices" id="ahfHowPrices">';
+    html += "<summary>How prices work</summary>";
+    html += '<div class="ahf-howprices-body">' + howPricesBody() + "</div></details>";
     html += '<div class="filter-bar ahf-filters">';
     html += '<label class="field">Min profit (g)<input type="number" id="ahfMinProfit" min="0" step="0.01" value="' +
       esc(goldInputValue(p.minProfit)) + '"></label>';
-    html += '<label class="field">Min sold/day<input type="number" id="ahfMinSold" min="0" step="0.1" value="' +
-      esc(p.minSold || "") + '"></label>';
+    if (hasSold) {
+      html += '<label class="field" id="ahfMinSoldWrap">Min sold/day<input type="number" id="ahfMinSold" min="0" step="0.1" value="' +
+        esc(p.minSold || "") + '"></label>';
+    }
     html += '<label class="field">Max buy (g)<input type="number" id="ahfMaxBuy" min="0" step="0.01" placeholder="no cap" value="' +
       esc(goldInputValue(p.maxBuy)) + '"></label>';
     html += '<label class="field">Category<select id="ahfCat">';
@@ -737,13 +797,16 @@
     });
     html += "</select></label>";
     html += '<label class="field">Sort<select id="ahfSort">';
-    [["score", "Profit × sold/day"], ["profit", "Profit per item"], ["discount", "Discount %"]].forEach(function (opt) {
-      html += '<option value="' + opt[0] + '"' + (p.sort === opt[0] ? " selected" : "") + ">" + opt[1] + "</option>";
+    var sortOpts = hasSold
+      ? [["score", "Profit × sold/day"], ["profit", "Profit per item"], ["discount", "Discount %"]]
+      : [["profit", "Profit per item"], ["discount", "Discount %"]];
+    sortOpts.forEach(function (opt) {
+      html += '<option value="' + opt[0] + '"' + (sort === opt[0] ? " selected" : "") + ">" + opt[1] + "</option>";
     });
     html += "</select></label>";
     html += '<label class="muted ahf-check"><input type="checkbox" id="ahfHideThin"' +
       (p.hideThin ? " checked" : "") + "> Hide thin listings (fewer than " + THIN_QTY +
-      " listed, or under 1 sold/day)</label>";
+      " listed)</label>";
     var unnamedN = all.filter(isUnnamed).length;
     html += '<label class="muted ahf-check"><input type="checkbox" id="ahfShowUnnamed"' +
       (p.showUnnamed ? " checked" : "") + '> Show unnamed item IDs' +
@@ -752,17 +815,20 @@
     html += '<p class="muted ahf-meta" id="ahFlipsMeta"' +
       (range ? ' data-history-count="' + range.count + '"' : "") +
       ' data-history-status="' + esc(historyStatus) + '">Showing ' + rows.length + " of " + all.length +
-      " flips" + (asOf ? " · as of " + esc(formatStampNY(asOf)) : "") +
+      " flips" +
       (range ? " · " + range.count + " history snapshots" : " · current snapshot only") +
       (unnamedN && !p.showUnnamed ? " · hiding " + unnamedN + " with no sourced name" : "") + ".</p>";
 
+    var colCount = hasSold ? 8 : 7;
     html += '<div class="table-wrap"><table class="data" id="ahFlipsTable">';
     html += "<thead><tr>" +
       "<th>Item</th><th>Cheapest buyout</th><th>Usual price</th><th>Discount</th>" +
-      "<th>Est. profit</th><th>Listed</th><th>Sold/day</th><th>Confidence</th>" +
+      "<th>Est. profit</th><th>Listed</th>" +
+      (hasSold ? "<th>Sold/day</th>" : "") +
+      "<th>Confidence</th>" +
       "</tr></thead><tbody>";
     if (!rows.length) {
-      html += '<tr><td colspan="8" class="muted">No flips match these filters. Lower the minimum profit or turn off the thin-listing hide if you want to see more — thin markets are easy to get stuck with.</td></tr>';
+      html += '<tr><td colspan="' + colCount + '" class="muted">No flips match these filters. Lower the minimum profit or turn off the thin-listing hide if you want to see more — thin markets are easy to get stuck with.</td></tr>';
     } else {
       rows.forEach(function (r) {
         var notes = [];
@@ -783,13 +849,17 @@
         html += '<td data-label="Discount">' + (r.discount * 100).toFixed(1) + "%</td>";
         html += '<td data-label="Est. profit" title="' + esc(profitTip) + '">' + money(r.profit) + "</td>";
         html += '<td data-label="Listed">' + r.quantity.toLocaleString() + "</td>";
-        html += '<td data-label="Sold/day">' + (r.soldPerDay == null ? '<span class="muted">unknown</span>' : String(r.soldPerDay)) + "</td>";
+        if (hasSold) {
+          html += '<td data-label="Sold/day">' + (r.soldPerDay == null ? '<span class="muted">unknown</span>' : String(r.soldPerDay)) + "</td>";
+        }
         html += '<td data-label="Confidence">' + confidenceBadge(r.confidence) + "</td>";
         html += "</tr>";
       });
     }
     html += "</tbody></table></div>";
     root.innerHTML = html;
+    var det = document.getElementById("ahfHowPrices");
+    if (det && howOpen) det.open = true;
     bindFilters(state, hooks);
   }
 
@@ -805,7 +875,7 @@
     if (minS) p.minSold = minS.value === "" ? 0 : Number(minS.value) || 0;
     if (maxB) p.maxBuy = copperFromGoldInput(maxB.value);
     if (cat) p.category = cat.value || "all";
-    if (sort) p.sort = sort.value || "score";
+    if (sort) p.sort = sort.value || effectiveSort(p, feedHasSoldRates());
     if (hide) p.hideThin = !!hide.checked;
     if (showU) p.showUnnamed = !!showU.checked;
   }
@@ -933,6 +1003,7 @@
     isUnnamed: isUnnamed,
     itemMeta: itemMeta,
     confidenceTip: confidenceTip,
-    hideConfTip: hideConfTip
+    hideConfTip: hideConfTip,
+    feedHasSoldRates: feedHasSoldRates
   };
 })();

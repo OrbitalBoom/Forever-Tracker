@@ -1631,6 +1631,44 @@ table.data tfoot th { text-align: left; }
 }
 
 /* ---------- AH flip finder (Gold tab) ---------- */
+.ahf-howto { margin: 0 0 8px; max-width: 72ch; }
+.ahf-howto-title {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--gold-2, #d4b44c);
+}
+.ahf-howto ol { margin: 0; padding-left: 1.3em; }
+.ahf-howto li { margin: 0 0 3px; line-height: 1.4; font-size: 14px; }
+.ahf-status { margin: 0 0 4px; font-size: 13px; }
+.ahf-howprices {
+  margin: 0 0 12px;
+  max-width: 72ch;
+  font-size: 13px;
+  color: var(--muted, #b8b0a0);
+}
+.ahf-howprices > summary {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--ink-dim, #c8c0b0);
+  font-size: 13px;
+  list-style: none;
+}
+.ahf-howprices > summary::-webkit-details-marker { display: none; }
+.ahf-howprices > summary::before {
+  content: "▸ ";
+  color: var(--gold, #d4b44c);
+  margin-right: 2px;
+}
+.ahf-howprices[open] > summary::before { content: "▾ "; }
+.ahf-howprices > summary:hover { color: var(--gold-2, #d4b44c); }
+.ahf-howprices-body { margin: 0 0 4px; }
+.ahf-howprices-body p { margin: 0 0 8px; }
+.ahf-howprices-body p:last-child { margin-bottom: 0; }
 .ahf-lede { max-width: 90ch; margin: 0 0 12px; }
 .ahf-filters { margin: 0 0 8px; align-items: flex-end; }
 .ahf-filters .field { min-width: 140px; }
@@ -1689,6 +1727,9 @@ table.data tfoot th { text-align: left; }
     align-items: center;
     padding: 0 10px;
   }
+  .ahf-howto { max-width: none; }
+  .ahf-howto li { font-size: 14px; }
+  .ahf-howprices, .ahf-status { max-width: none; }
 }
 #ahFlipsTable tbody tr { cursor: pointer; }
 #ahFlipsTable tbody tr:hover { background: rgba(212, 180, 76, 0.06); }
