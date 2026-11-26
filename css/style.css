@@ -1718,16 +1718,51 @@ table.data tfoot th { text-align: left; }
   align-items: flex-start;
   gap: 4px;
 }
-.ahf-spark { display: block; overflow: visible; flex: 0 0 auto; }
-.ahf-spark-line { stroke: #d4b44c; stroke-width: 1.2; vector-effect: non-scaling-stroke; }
+.ahf-spark { display: block; overflow: visible; flex: 0 0 auto; cursor: crosshair; }
+.ahf-spark-hitbox { fill: transparent; stroke: none; }
+.ahf-spark-line {
+  fill: none;
+  stroke: #d4b44c;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.ahf-spark.is-up .ahf-spark-line { stroke: #8fd18f; fill: none; }
+.ahf-spark.is-down .ahf-spark-line { stroke: #d4a07a; fill: none; }
 .ahf-spark-line-dot { fill: #d4b44c; }
-.ahf-spark-usual { stroke: #8fd18f; stroke-width: 1; stroke-dasharray: 3 2; vector-effect: non-scaling-stroke; }
-.ahf-spark-now { fill: #f3efe2; stroke: #1a1610; stroke-width: 0.7; }
-.ahf-spark-pt { fill: #c8c0b0; pointer-events: none; }
-.ahf-spark-hit { fill: transparent; stroke: none; cursor: help; }
+.ahf-spark.is-up .ahf-spark-line-dot { fill: #8fd18f; stroke: #8fd18f; }
+.ahf-spark.is-down .ahf-spark-line-dot { fill: #d4a07a; stroke: #d4a07a; }
+.ahf-spark-usual {
+  stroke: #b6e0b8;
+  stroke-width: 1.5;
+  stroke-dasharray: 5 3;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.95;
+}
+.ahf-spark-now { fill: #f3efe2; stroke: #1a1610; stroke-width: 0.8; pointer-events: none; }
+.ahf-spark-guide {
+  stroke: rgba(243, 239, 226, 0.45);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+.ahf-spark-hover {
+  fill: #f3efe2;
+  stroke: #1a1610;
+  stroke-width: 1.1;
+  pointer-events: none;
+}
+.ahf-spark.is-up .ahf-spark-hover { stroke: #6bb86e; }
+.ahf-spark.is-down .ahf-spark-hover { stroke: #c9895c; }
 .ahf-spark-empty { font-size: 11px; white-space: nowrap; }
 .ahf-spark-cap { fill: #8fd18f; font-size: 9px; }
-.ahf-spark-cell .ahf-spark { pointer-events: none; }
+.ahf-spark-axis-y, .ahf-spark-axis-x {
+  fill: #b8b0a0;
+  font-size: 9px;
+  font-family: "Segoe UI", Candara, Calibri, "Trebuchet MS", sans-serif;
+}
+.ahf-spark-cell { cursor: crosshair; }
 .ahf-trend-panel { margin: 12px 0 8px; max-width: 100%; }
 .ahf-trend-panel .ahf-spark { width: 100%; height: auto; max-width: 100%; }
 .ahf-trend-caption {
@@ -1737,12 +1772,28 @@ table.data tfoot th { text-align: left; }
   text-transform: uppercase;
   color: var(--gold, #d4b44c);
 }
-.ahf-trend-hover {
-  margin-top: 6px;
-  min-height: 1.3em;
+.ahf-spark-tip {
+  position: fixed;
+  z-index: 240;
+  pointer-events: none;
+  max-width: 18em;
+  padding: 6px 8px;
+  background: rgba(8, 16, 42, 0.94);
+  border: 1px solid rgba(214, 214, 232, 0.72);
+  border-radius: 6px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+  color: #fff;
   font-size: 12px;
-  color: var(--ink-dim, #c8c0b0);
+  line-height: 1.35;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.7);
+  white-space: nowrap;
 }
+.ahf-spark-tip[hidden] { display: none; }
+.ahf-spark-tip-date { color: #c8c0b0; font-size: 11px; }
+.ahf-spark-tip-price { color: #f3efe2; font-weight: 600; }
+.ahf-spark-tip-delta { margin-top: 1px; }
+.ahf-spark-tip-delta.is-up { color: #8fd18f; }
+.ahf-spark-tip-delta.is-down { color: #e0b08a; }
 .ahf-steady {
   display: inline-block;
   font-size: 11px;
@@ -1807,11 +1858,16 @@ table.data tfoot th { text-align: left; }
   .ahf-howto { max-width: none; }
   .ahf-howto li { font-size: 14px; }
   .ahf-howprices, .ahf-status { max-width: none; }
+  #ahFlipsTable td[data-label="7-day"],
+  #ahFlipsTable td.ahf-spark-cell {
+    min-height: 44px;
+    align-items: center;
+  }
   #ahFlipsTable td[data-label="7-day"] .ahf-spark,
   #ahFlipsTable td.ahf-spark-cell .ahf-spark {
     width: 100%;
-    max-width: 240px;
-    height: 36px;
+    max-width: 260px;
+    height: 40px;
   }
   .ahf-sort-field { width: 100%; }
 }

@@ -134,8 +134,8 @@ async function overflow(page, label) {
 
   if (!boot.hasGuide) fail("pet guide section missing", boot);
   else ok("pet guide section is on the Pets tab");
-  if (!/pet-guide\.js\?v=20261126d/.test(boot.version)) fail("expected ?v=20261126d", boot.version);
-  else ok("cache bust is 20261126d");
+  if (!/pet-guide\.js\?v=20261126e/.test(boot.version)) fail("expected ?v=20261126e", boot.version);
+  else ok("cache bust is 20261126e");
   if (boot.familyCount !== 19) fail("expected 19 families", boot.familyCount);
   else ok("19 families in the comparison table");
 

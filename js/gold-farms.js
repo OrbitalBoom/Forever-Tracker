@@ -1376,7 +1376,7 @@
     var tag = document.querySelector('script[src*="js/gold-farms.js"], script[src*="js/app.js"]');
     var src = tag && (tag.getAttribute("src") || "");
     var m = src && src.match(/[?&]v=([^&]+)/);
-    return m ? m[1] : "20261126d";
+    return m ? m[1] : "20261126e";
   }
   function ensureSpawns() {
     if (window.GOLD_FARM_SPAWNS) return Promise.resolve(window.GOLD_FARM_SPAWNS);

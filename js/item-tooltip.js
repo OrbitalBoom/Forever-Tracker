@@ -1,6 +1,6 @@
 /* Self-hosted Classic-style item tooltip. Does not load Wowhead power.js. */
 (function () {
-  var VERSION = "20261126d";
+  var VERSION = "20261126e";
   var ICON = "https://render.worldofwarcraft.com/forever-us/icons/56/{icon}.jpg";
   var HOVER_DELAY = 80;
   var HOLD_MS = 420;
@@ -744,6 +744,7 @@
     var el = e.target && e.target.closest && e.target.closest("[data-item-id], [data-open-item], [data-equip-slot]");
     if (!el || !document.body.contains(el)) return null;
     if (el.closest && el.closest(".item-tt")) return null;
+    if (e.target && e.target.closest && e.target.closest("svg.ahf-spark, .ahf-spark-cell, #ahfDetailTrend, #ahfSparkTip")) return null;
     var id = el.getAttribute("data-item-id") || el.getAttribute("data-open-item");
     var slot = el.getAttribute("data-compare-slot") || el.getAttribute("data-equip-slot") || null;
     if (!id && el.hasAttribute("data-equip-slot")) {
@@ -783,7 +784,14 @@
       return;
     }
     var hook = hookFromEvent(e);
-    if (!hook) return;
+    if (!hook) {
+      if (e.target && e.target.closest && e.target.closest("svg.ahf-spark, .ahf-spark-cell, #ahfDetailTrend, #ahfSparkTip")) {
+        if (showTimer) { clearTimeout(showTimer); showTimer = null; }
+        overAnchor = false;
+        if (!pinned && current) scheduleHide();
+      }
+      return;
+    }
     overAnchor = sameHook(hook) || !current;
     if (sameHook(hook)) {
       overAnchor = true;

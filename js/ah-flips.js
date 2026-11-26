@@ -42,7 +42,7 @@
     var tag = document.querySelector('script[src*="js/ah-flips.js"], script[src*="js/app.js"]');
     var src = tag && (tag.getAttribute("src") || "");
     var m = src && src.match(/[?&]v=([^&]+)/);
-    return m ? m[1] : "20261126d";
+    return m ? m[1] : "20261126e";
   }
   function loadScript(src) {
     return new Promise(function (resolve, reject) {
@@ -463,6 +463,38 @@
     return { stamps: stamps, values: values, current: current, usual: row && row.usual };
   }
 
+  function moneyAxis(c) {
+    if (c == null || isNaN(c)) return "";
+    c = Math.round(Math.abs(c));
+    var g = Math.floor(c / 10000), s = Math.floor((c % 10000) / 100), cc = c % 100;
+    if (g >= 10) return g.toLocaleString() + "g";
+    if (g) return g + "g " + s + "s";
+    if (s) return s + "s" + (cc ? " " + cc + "c" : "");
+    return cc + "c";
+  }
+
+  function weekdayET(iso) {
+    if (!iso) return "";
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    return new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short" }).format(d);
+  }
+
+  function dayKeyET(iso) {
+    if (!iso) return "";
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    return new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+  }
+
+  function usualDelta(v, usual) {
+    if (v == null || usual == null || !(Number(usual) > 0)) return "";
+    var pct = ((Number(v) - Number(usual)) / Number(usual)) * 100;
+    if (Math.abs(pct) < 0.5) return "about usual";
+    var n = Math.abs(pct) >= 9.95 ? Math.round(Math.abs(pct)) : Math.round(Math.abs(pct) * 10) / 10;
+    return n + "% " + (pct < 0 ? "below" : "above") + " usual";
+  }
+
   function sparkSvg(id, row, opts) {
     opts = opts || {};
     var wide = !!opts.wide;
@@ -475,16 +507,19 @@
     if (priced < SPARK_MIN_SAMPLES) {
       return '<span class="ahf-spark-empty muted" title="Not enough history snapshots to draw a price line.">not enough history</span>';
     }
-    var w = wide ? 400 : 84;
-    var h = wide ? 132 : 24;
-    var padL = wide ? 10 : 3, padR = wide ? 10 : 4, padT = wide ? 16 : 3, padB = wide ? 20 : 3;
+    var w = wide ? 420 : 100;
+    var h = wide ? 160 : 28;
+    var padL = wide ? 46 : 4, padR = wide ? 38 : 5, padT = wide ? 14 : 4, padB = wide ? 26 : 4;
     var times = [];
     var vmin = Infinity, vmax = -Infinity;
+    var dataMin = Infinity, dataMax = -Infinity;
     function consider(v) {
       if (v != null && !isNaN(Number(v))) {
         v = Number(v);
         if (v < vmin) vmin = v;
         if (v > vmax) vmax = v;
+        if (v < dataMin) dataMin = v;
+        if (v > dataMax) dataMax = v;
       }
     }
     for (i = 0; i < series.stamps.length; i++) {
@@ -541,76 +576,251 @@
     if (cur.length) segs.push(cur);
     var usualY = series.usual != null ? Math.round(yAt(series.usual) * 10) / 10 : null;
     var currDot = dots.length ? dots[dots.length - 1] : null;
-    var title = "7-day market value. Dashed line is usual (median). Dot is the current market.";
-    var svg = '<svg class="ahf-spark' + (wide ? " is-wide" : "") + '" viewBox="0 0 ' + w + " " + h +
-      '" width="' + w + '" height="' + h + '" role="img" aria-label="' + esc(title) + '">';
-    svg += "<title>" + esc(title) + "</title>";
+    var goingUp = series.current != null && series.usual != null && Number(series.current) >= Number(series.usual);
+    var dirClass = (series.current != null && series.usual != null) ? (goingUp ? " is-up" : " is-down") : "";
+    var title = "7-day market value. Dashed line is usual (median). Hover for the price at each snapshot.";
+    var ptsAttr = dots.map(function (d) {
+      return d.x + "," + d.y + "," + d.v + "," + String(d.stamp || "").replace(/[;,]/g, " ");
+    }).join(";");
+    var svg = '<svg class="ahf-spark' + (wide ? " is-wide" : "") + dirClass +
+      '" viewBox="0 0 ' + w + " " + h + '" width="' + w + '" height="' + h +
+      '" role="img" aria-label="' + esc(title) + '"' +
+      ' data-ahf-pts="' + esc(ptsAttr) + '"' +
+      (series.usual != null ? ' data-ahf-usual="' + esc(String(series.usual)) + '"' : "") +
+      '>';
+    svg += '<rect class="ahf-spark-hitbox" x="0" y="0" width="' + w + '" height="' + h + '" />';
+    if (wide && isFinite(dataMax) && isFinite(dataMin)) {
+      var yMax = Math.round(yAt(dataMax) * 10) / 10;
+      var yMin = Math.round(yAt(dataMin) * 10) / 10;
+      svg += '<text class="ahf-spark-axis-y" x="' + (padL - 4) + '" y="' + (yMax + 3) + '" text-anchor="end">' +
+        esc(moneyAxis(dataMax)) + "</text>";
+      if (Math.abs(yMin - yMax) > 14) {
+        svg += '<text class="ahf-spark-axis-y" x="' + (padL - 4) + '" y="' + (yMin + 3) + '" text-anchor="end">' +
+          esc(moneyAxis(dataMin)) + "</text>";
+      }
+    }
+    if (wide) {
+      var lastLx = -999;
+      var seenDay = {};
+      for (i = 0; i < dots.length; i++) {
+        var day = dayKeyET(dots[i].stamp);
+        if (!day || seenDay[day]) continue;
+        seenDay[day] = true;
+        if (dots[i].x - lastLx < 36) continue;
+        lastLx = dots[i].x;
+        var wd = weekdayET(dots[i].stamp);
+        if (wd) {
+          svg += '<text class="ahf-spark-axis-x" x="' + dots[i].x + '" y="' + (h - 6) + '" text-anchor="middle">' +
+            esc(wd) + "</text>";
+        }
+      }
+    }
     if (usualY != null) {
       svg += '<line class="ahf-spark-usual" x1="' + padL + '" y1="' + usualY + '" x2="' + (w - padR) +
         '" y2="' + usualY + '" />';
+      if (wide) {
+        svg += '<text class="ahf-spark-cap" x="' + (w - padR + 2) + '" y="' + (usualY + 3) + '">usual</text>';
+      }
     }
     segs.forEach(function (seg) {
       if (seg.length === 1) {
         var p = seg[0].split(",");
-        svg += '<circle class="ahf-spark-line-dot" cx="' + p[0] + '" cy="' + p[1] + '" r="1.5" />';
+        svg += '<circle class="ahf-spark-line-dot" cx="' + p[0] + '" cy="' + p[1] + '" r="2" />';
       } else {
         svg += '<polyline class="ahf-spark-line" fill="none" points="' + seg.join(" ") + '" />';
       }
     });
-    if (wide) {
-      dots.forEach(function (d) {
-        var label = formatStampCompactNY(d.stamp) + " · " + moneyPlain(d.v);
-        if (series.usual != null) label += " · usual " + moneyPlain(series.usual);
-        svg += '<circle class="ahf-spark-hit" cx="' + d.x + '" cy="' + d.y + '" r="8" data-ahf-pt="' +
-          esc(label) + '" tabindex="0"><title>' + esc(label) + "</title></circle>";
-        svg += '<circle class="ahf-spark-pt" cx="' + d.x + '" cy="' + d.y + '" r="2.5" />';
-      });
-    }
     if (currDot) {
       svg += '<circle class="ahf-spark-now" cx="' + currDot.x + '" cy="' + currDot.y + '" r="' +
-        (wide ? 3.5 : 2.2) + '" />';
+        (wide ? 3.2 : 2.4) + '" />';
     }
-    if (wide && usualY != null) {
-      svg += '<text class="ahf-spark-cap" x="' + (w - padR) + '" y="' + Math.max(10, usualY - 4) +
-        '" text-anchor="end">usual</text>';
-    }
+    svg += '<line class="ahf-spark-guide" x1="' + padL + '" y1="' + padT + '" x2="' + padL + '" y2="' +
+      (h - padB) + '" visibility="hidden" />';
+    svg += '<circle class="ahf-spark-hover" cx="0" cy="0" r="' + (wide ? 5 : 3.6) + '" visibility="hidden" />';
     svg += "</svg>";
     return svg;
   }
 
-  function bindTrendHover(root) {
-    if (!root || root.getAttribute("data-bound") === "1") return;
-    root.setAttribute("data-bound", "1");
-    var box = root.querySelector(".ahf-trend-hover");
-    if (!box) {
-      box = document.createElement("div");
-      box.className = "ahf-trend-hover";
-      box.hidden = true;
-      root.appendChild(box);
+  function sparkTipEl() {
+    var el = document.getElementById("ahfSparkTip");
+    if (el) return el;
+    el = document.createElement("div");
+    el.id = "ahfSparkTip";
+    el.className = "ahf-spark-tip";
+    el.setAttribute("role", "tooltip");
+    el.hidden = true;
+    document.body.appendChild(el);
+    return el;
+  }
+
+  function parseSparkDots(svg) {
+    var raw = svg.getAttribute("data-ahf-pts") || "";
+    if (!raw) return [];
+    return raw.split(";").map(function (part) {
+      var bits = part.split(",");
+      if (bits.length < 4) return null;
+      return {
+        x: Number(bits[0]),
+        y: Number(bits[1]),
+        v: Number(bits[2]),
+        stamp: bits.slice(3).join(",")
+      };
+    }).filter(function (d) { return d && isFinite(d.x) && isFinite(d.y) && isFinite(d.v); });
+  }
+
+  function clientToSvg(svg, clientX, clientY) {
+    var pt, ctm;
+    if (svg.createSVGPoint) {
+      pt = svg.createSVGPoint();
+      pt.x = clientX;
+      pt.y = clientY;
+      ctm = svg.getScreenCTM();
+      if (ctm && ctm.inverse) {
+        pt = pt.matrixTransform(ctm.inverse());
+        return { x: pt.x, y: pt.y };
+      }
     }
-    function show(pt) {
-      var text = pt.getAttribute("data-ahf-pt") || "";
-      if (!text) return;
-      box.hidden = false;
-      box.textContent = text;
+    var r = svg.getBoundingClientRect();
+    var vb = (svg.viewBox && svg.viewBox.baseVal) || { width: svg.clientWidth, height: svg.clientHeight };
+    var vw = vb.width || 100, vh = vb.height || 28;
+    return {
+      x: r.width ? (clientX - r.left) / r.width * vw : 0,
+      y: r.height ? (clientY - r.top) / r.height * vh : 0
+    };
+  }
+
+  function nearestSparkDot(dots, svgX) {
+    var best = null, bestD = Infinity, i;
+    for (i = 0; i < dots.length; i++) {
+      var d = Math.abs(dots[i].x - svgX);
+      if (d < bestD) { bestD = d; best = dots[i]; }
     }
-    function hide() { box.hidden = true; box.textContent = ""; }
-    root.addEventListener("pointerover", function (ev) {
-      var pt = ev.target.closest && ev.target.closest("[data-ahf-pt]");
-      if (pt) show(pt);
+    return best;
+  }
+
+  function placeSparkTip(clientX, clientY) {
+    var el = sparkTipEl();
+    var pad = 8, ox = 12, oy = 12;
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var w = el.offsetWidth, h = el.offsetHeight;
+    var left = clientX + ox;
+    var top = clientY + oy;
+    if (left + w > vw - pad) left = clientX - w - ox;
+    if (top + h > vh - pad) top = clientY - h - oy;
+    if (left < pad) left = pad;
+    if (top < pad) top = pad;
+    if (left + w > vw - pad) left = Math.max(pad, vw - w - pad);
+    if (top + h > vh - pad) top = Math.max(pad, vh - h - pad);
+    el.style.left = Math.round(left) + "px";
+    el.style.top = Math.round(top) + "px";
+  }
+
+  var sparkHoverSvg = null;
+
+  function clearSparkHighlight(svg) {
+    if (!svg) return;
+    var guide = svg.querySelector(".ahf-spark-guide");
+    var hover = svg.querySelector(".ahf-spark-hover");
+    if (guide) guide.setAttribute("visibility", "hidden");
+    if (hover) hover.setAttribute("visibility", "hidden");
+  }
+
+  function hideSparkTip() {
+    var el = document.getElementById("ahfSparkTip");
+    if (el) {
+      el.hidden = true;
+      el.textContent = "";
+      el.style.left = "";
+      el.style.top = "";
+    }
+    if (sparkHoverSvg) {
+      clearSparkHighlight(sparkHoverSvg);
+      sparkHoverSvg = null;
+    }
+  }
+
+  function showSparkTipAt(svg, clientX, clientY) {
+    var dots = parseSparkDots(svg);
+    if (!dots.length) return;
+    var loc = clientToSvg(svg, clientX, clientY);
+    var dot = nearestSparkDot(dots, loc.x);
+    if (!dot) return;
+    var usualRaw = svg.getAttribute("data-ahf-usual");
+    var usual = usualRaw === "" || usualRaw == null ? null : Number(usualRaw);
+    var delta = usualDelta(dot.v, usual);
+    var el = sparkTipEl();
+    var html = '<div class="ahf-spark-tip-date">' + esc(formatStampCompactNY(dot.stamp)) + "</div>";
+    html += '<div class="ahf-spark-tip-price">' + esc(moneyPlain(dot.v)) + "</div>";
+    if (delta) {
+      var down = /below/.test(delta);
+      var mid = /about/.test(delta);
+      html += '<div class="ahf-spark-tip-delta' + (mid ? "" : (down ? " is-down" : " is-up")) + '">' +
+        esc(delta) + "</div>";
+    }
+    el.innerHTML = html;
+    el.hidden = false;
+    if (window.ItemTooltip && ItemTooltip.hide) ItemTooltip.hide();
+    if (sparkHoverSvg && sparkHoverSvg !== svg) clearSparkHighlight(sparkHoverSvg);
+    sparkHoverSvg = svg;
+    var guide = svg.querySelector(".ahf-spark-guide");
+    var mark = svg.querySelector(".ahf-spark-hover");
+    if (guide) {
+      guide.setAttribute("x1", String(dot.x));
+      guide.setAttribute("x2", String(dot.x));
+      guide.setAttribute("visibility", "visible");
+    }
+    if (mark) {
+      mark.setAttribute("cx", String(dot.x));
+      mark.setAttribute("cy", String(dot.y));
+      mark.setAttribute("visibility", "visible");
+    }
+    placeSparkTip(clientX, clientY);
+  }
+
+  function sparkFromEvent(ev) {
+    var t = ev.target;
+    if (!t || !t.closest) return null;
+    if (t.closest("#ahfSparkTip")) return sparkHoverSvg;
+    var svg = t.closest("svg.ahf-spark");
+    if (svg) return svg;
+    var cell = t.closest(".ahf-spark-cell, #ahfDetailTrend");
+    return cell ? cell.querySelector("svg.ahf-spark") : null;
+  }
+
+  function onSparkPointer(ev) {
+    var svg = sparkFromEvent(ev);
+    if (!svg && sparkHoverSvg && ev.type === "pointermove") {
+      var r = sparkHoverSvg.getBoundingClientRect();
+      var pad = 8;
+      if (ev.clientX >= r.left - pad && ev.clientX <= r.right + pad &&
+          ev.clientY >= r.top - pad && ev.clientY <= r.bottom + pad) {
+        svg = sparkHoverSvg;
+      }
+    }
+    if (!svg) {
+      if (ev.type === "pointerdown" || (ev.type === "pointermove" && ev.pointerType === "mouse")) hideSparkTip();
+      return;
+    }
+    if (ev.type === "pointermove" || ev.type === "pointerdown") {
+      showSparkTipAt(svg, ev.clientX, ev.clientY);
+    }
+  }
+
+  function bindSparkTips() {
+    if (bindSparkTips._done) return;
+    bindSparkTips._done = true;
+    document.addEventListener("pointermove", onSparkPointer, { passive: true });
+    document.addEventListener("pointerdown", onSparkPointer, { passive: true });
+    document.addEventListener("pointerleave", function () { hideSparkTip(); });
+    document.addEventListener("pointerup", function (ev) {
+      if (ev.pointerType === "mouse") return;
+      /* Leave a tap tip up until the next tap outside the chart. */
+      if (!sparkFromEvent(ev)) hideSparkTip();
     });
-    root.addEventListener("pointerout", function (ev) {
-      var pt = ev.target.closest && ev.target.closest("[data-ahf-pt]");
-      if (!pt) return;
-      var next = ev.relatedTarget;
-      if (next && root.contains(next) && next.closest && next.closest("[data-ahf-pt]")) return;
-      hide();
+    window.addEventListener("scroll", hideSparkTip, true);
+    document.addEventListener("keydown", function (ev) {
+      if (ev.key === "Escape") hideSparkTip();
     });
-    root.addEventListener("focusin", function (ev) {
-      var pt = ev.target.closest && ev.target.closest("[data-ahf-pt]");
-      if (pt) show(pt);
-    });
-    root.addEventListener("focusout", hide);
   }
 
   function defaultSortDir(key) {
@@ -1031,7 +1241,7 @@
     html += '<div class="ahf-trend-panel" id="ahfDetailTrend">';
     html += '<p class="ahf-trend-caption">7-day market value</p>';
     html += sparkSvg(row.id, row, { wide: true });
-    html += '<div class="ahf-trend-hover" hidden></div></div>';
+    html += "</div>";
     var farms = farmsForItem(row.id);
     html += '<div class="ahf-detail-farms">';
     if (farms.length) {
@@ -1064,7 +1274,7 @@
     } else {
       fill(null);
     }
-    bindTrendHover(document.getElementById("ahfDetailTrend"));
+    bindSparkTips();
     var dialog = document.getElementById("ahfDetail");
     if (dialog && dialog.focus) dialog.focus();
   }
@@ -1270,6 +1480,7 @@
 
   function bindFilters(state, hooks) {
     bindConfidenceTips();
+    bindSparkTips();
     var p = prefs(state);
     var timer = null;
     function apply() {
@@ -1328,7 +1539,7 @@
           renderTable(state, hooks);
           return;
         }
-        if (ev.target.closest("[data-ahf-open-items], [data-ahf-conf], [data-ahf-steady]")) return;
+        if (ev.target.closest("[data-ahf-open-items], [data-ahf-conf], [data-ahf-steady], .ahf-spark, .ahf-spark-cell")) return;
         var hit = ev.target.closest("[data-ahf-item], tr[data-item-id]");
         if (!hit) return;
         var id = hit.getAttribute("data-ahf-item") || hit.getAttribute("data-item-id");

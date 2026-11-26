@@ -38,6 +38,48 @@ function fail(msg, extra) { failed++; console.error("FAIL:", msg, extra || ""); 
 function ok(msg) { console.log("OK:", msg); }
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
+async function hoverSpark(page, selector, fracX) {
+  const handle = await page.$(selector);
+  if (!handle) return { missing: true };
+  const box = await handle.boundingBox();
+  if (!box || box.width < 2) return { missing: true };
+  const x = box.x + box.width * (fracX == null ? 0.62 : fracX);
+  const y = box.y + box.height * 0.5;
+  await handle.scrollIntoViewIfNeeded();
+  await sleep(80);
+  const box2 = await handle.boundingBox();
+  const mx = (box2 || box).x + (box2 || box).width * (fracX == null ? 0.62 : fracX);
+  const my = (box2 || box).y + (box2 || box).height * 0.5;
+  await page.mouse.move(mx, my);
+  await sleep(250);
+  const info = await page.evaluate((cx, cy) => {
+    const tip = document.getElementById("ahfSparkTip");
+    if (!tip || tip.hidden) return { open: false };
+    const r = tip.getBoundingClientRect();
+    const text = (tip.innerText || tip.textContent || "").replace(/\s+/g, " ").trim();
+    const dx = Math.max(0, r.left - cx, cx - r.right);
+    const dy = Math.max(0, r.top - cy, cy - r.bottom);
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const atCorner = (r.left <= 8 && r.top <= 8) || (r.right >= vw - 8 && r.top <= 8) ||
+      (r.left <= 8 && r.bottom >= vh - 8) || (r.right >= vw - 8 && r.bottom >= vh - 8);
+    return {
+      open: true,
+      text,
+      left: r.left,
+      top: r.top,
+      dist: Math.hypot(dx, dy),
+      hasDate: /\bET\b/.test(text) && /[A-Z][a-z]{2}/.test(text),
+      hasPrice: /\d+\s*g/.test(text),
+      hasUsual: /usual/i.test(text),
+      atCorner,
+      guide: !!document.querySelector("svg.ahf-spark .ahf-spark-guide[visibility='visible'], svg.ahf-spark .ahf-spark-guide:not([visibility='hidden'])"),
+    };
+  }, mx, my);
+  info.mx = mx;
+  info.my = my;
+  return info;
+}
+
 const STATE = {
   character: { name: "Tracker", race: "Orc", class: "Hunter", spec: "Beast Mastery", level: 29 },
   goals: {}, customGoals: [], goldLog: [], professions: [], crafting: [], journal: [], notes: [],
@@ -245,6 +287,24 @@ async function overflow(page, label) {
   if (!trend.sparkN || !trend.hasLine || !trend.hasUsual || !trend.hasNow) {
     fail("rows should render a 7-day sparkline with usual and current marks when history exists", trend);
   } else ok("sparklines drawn in " + trend.sparkN + " rows (usual + current marked; " + trend.emptyN + " not enough history)");
+
+  const rowHover = await hoverSpark(page, "#ahFlipsTable tbody tr[data-item-id] svg.ahf-spark");
+  if (rowHover.missing) fail("no row sparkline to hover");
+  else if (!rowHover.open || !rowHover.hasDate || !rowHover.hasPrice) {
+    fail("hovering a row sparkline should show a cursor tip with date and price", rowHover);
+  } else if (rowHover.atCorner || rowHover.dist > 28) {
+    fail("row sparkline tip should sit next to the cursor, not in a corner", rowHover);
+  } else ok("row sparkline hover tip is next to the cursor with date + price");
+  const panelDuringHover = await page.evaluate(() => {
+    const back = document.getElementById("ahfDetailBack");
+    return !!(back && !back.hidden);
+  });
+  if (panelDuringHover) fail("hovering a row sparkline should not open the item panel");
+  else ok("row sparkline hover does not open the panel");
+  await page.screenshot({ path: path.join(OUT, "desktop-spark-row-hover.png") });
+  ok("screenshot desktop-spark-row-hover.png");
+  await page.mouse.move(0, 0);
+  await sleep(200);
   if (!trend.badgeN || !(trend.visLevels.steady + trend.visLevels.jumpy + trend.visLevels.new)) {
     fail("steadiness badges should be present", trend);
   } else {
@@ -461,6 +521,16 @@ async function overflow(page, label) {
   } else ok("panel shows tooltip, prices, listed quantity, and Open in Items");
   if (!panel.hasTrend || !panel.hasSteady) fail("detail panel should include a 7-day sparkline and a steadiness estimate", panel);
   else ok("detail panel shows a larger 7-day sparkline and steadiness" + (panel.hasTrendLine ? " (with a price line)" : " (not enough history)"));
+
+  const panelHover = await hoverSpark(page, "#ahfDetailTrend svg.ahf-spark");
+  if (panelHover.missing) fail("no panel sparkline to hover");
+  else if (!panelHover.open || !panelHover.hasDate || !panelHover.hasPrice) {
+    fail("hovering a panel point should show a cursor tip with date and price", panelHover);
+  } else if (panelHover.atCorner || panelHover.dist > 28) {
+    fail("panel sparkline tip should sit next to the cursor, not in a corner", panelHover);
+  } else ok("panel sparkline hover tip is next to the cursor with date + price");
+  await page.screenshot({ path: path.join(OUT, "desktop-spark-panel-hover.png") });
+  ok("screenshot desktop-spark-panel-hover.png");
   const panelConf = await page.evaluate(() => {
     const badge = document.querySelector("#ahfDetail .ahf-conf, #ahfDetailBody .ahf-conf");
     const tips = window.AhFlips && {
