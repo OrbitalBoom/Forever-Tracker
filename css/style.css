@@ -1677,7 +1677,84 @@ table.data tfoot th { text-align: left; }
 .ahf-check { display: flex; align-items: center; gap: 6px; margin: 0 0 4px; }
 .ahf-meta { margin: 4px 0 8px; }
 #ahFlipsTable td, #ahFlipsTable th { white-space: nowrap; }
-#ahFlipsTable td:first-child { white-space: normal; min-width: 160px; }
+#ahFlipsTable td:first-child { white-space: normal; min-width: 140px; }
+#ahFlipsTable td.ahf-spark-cell,
+#ahFlipsTable td[data-label="Steadiness"],
+#ahFlipsTable td[data-label="7-day"] { white-space: normal; }
+.ahf-th-sort {
+  appearance: none;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+  padding: 4px 0;
+  margin: 0;
+  text-align: inherit;
+}
+.ahf-th-sort:hover, .ahf-th-sort:focus-visible { color: var(--gold-2, #d4b44c); }
+.ahf-sort-arrow { font-size: 10px; margin-left: 1px; }
+.ahf-sort-field {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  min-width: 0;
+}
+.ahf-sort-field .field { margin: 0; flex: 1 1 auto; }
+.ahf-sort-dir {
+  flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+}
+.ahf-est-note { color: var(--muted, #b8b0a0); font-size: 12px; }
+.ahf-trend {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.ahf-spark { display: block; overflow: visible; flex: 0 0 auto; }
+.ahf-spark-line { stroke: #d4b44c; stroke-width: 1.2; vector-effect: non-scaling-stroke; }
+.ahf-spark-line-dot { fill: #d4b44c; }
+.ahf-spark-usual { stroke: #8fd18f; stroke-width: 1; stroke-dasharray: 3 2; vector-effect: non-scaling-stroke; }
+.ahf-spark-now { fill: #f3efe2; stroke: #1a1610; stroke-width: 0.7; }
+.ahf-spark-pt { fill: #c8c0b0; pointer-events: none; }
+.ahf-spark-hit { fill: transparent; stroke: none; cursor: help; }
+.ahf-spark-empty { font-size: 11px; white-space: nowrap; }
+.ahf-spark-cap { fill: #8fd18f; font-size: 9px; }
+.ahf-spark-cell .ahf-spark { pointer-events: none; }
+.ahf-trend-panel { margin: 12px 0 8px; max-width: 100%; }
+.ahf-trend-panel .ahf-spark { width: 100%; height: auto; max-width: 100%; }
+.ahf-trend-caption {
+  margin: 0 0 4px;
+  font-size: 11px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--gold, #d4b44c);
+}
+.ahf-trend-hover {
+  margin-top: 6px;
+  min-height: 1.3em;
+  font-size: 12px;
+  color: var(--ink-dim, #c8c0b0);
+}
+.ahf-steady {
+  display: inline-block;
+  font-size: 11px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  border-radius: 3px;
+  padding: 1px 6px;
+  cursor: help;
+}
+.ahf-steady-steady { color: #8fd18f; background: rgba(80,160,80,.12); }
+.ahf-steady-jumpy { color: #c9a27a; background: rgba(160,100,60,.12); }
+.ahf-steady-new { color: var(--ink-dim, #c8c0b0); background: rgba(255,255,255,.06); }
 .ahf-notes { margin-top: 3px; }
 .ahf-flag {
   display: inline-block;
@@ -1721,7 +1798,7 @@ table.data tfoot th { text-align: left; }
 .ahf-conf-tt-text { margin: 0; font-size: 13px; line-height: 1.4; padding-right: 8px; }
 .item-tt.ahf-conf-tt.is-touch-sheet .ahf-conf-tt-text { padding-right: 48px; padding-top: 4px; }
 @media (max-width: 900px) {
-  .ahf-conf {
+  .ahf-conf, .ahf-steady {
     min-height: 44px;
     display: inline-flex;
     align-items: center;
@@ -1730,6 +1807,13 @@ table.data tfoot th { text-align: left; }
   .ahf-howto { max-width: none; }
   .ahf-howto li { font-size: 14px; }
   .ahf-howprices, .ahf-status { max-width: none; }
+  #ahFlipsTable td[data-label="7-day"] .ahf-spark,
+  #ahFlipsTable td.ahf-spark-cell .ahf-spark {
+    width: 100%;
+    max-width: 240px;
+    height: 36px;
+  }
+  .ahf-sort-field { width: 100%; }
 }
 #ahFlipsTable tbody tr { cursor: pointer; }
 #ahFlipsTable tbody tr:hover { background: rgba(212, 180, 76, 0.06); }

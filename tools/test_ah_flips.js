@@ -207,6 +207,155 @@ async function overflow(page, label) {
     else ok("sort options without sale rates: " + intro.sortOpts.join(", "));
   }
 
+  // Sparklines, steadiness estimate, and header sorting
+  const trend = await page.evaluate(() => {
+    const sparks = document.querySelectorAll("#ahFlipsTable svg.ahf-spark");
+    const empty = document.querySelectorAll("#ahFlipsTable .ahf-spark-empty");
+    const first = sparks[0];
+    const badges = Array.from(document.querySelectorAll("#ahFlipsTable [data-ahf-steady]"));
+    const levels = { steady: 0, jumpy: 0, new: 0 };
+    badges.forEach((b) => { const k = b.getAttribute("data-ahf-steady"); if (levels[k] != null) levels[k]++; });
+    const all = (window.AhFlips && AhFlips.allRows && AhFlips.allRows()) || [];
+    const allLevels = { steady: 0, jumpy: 0, new: 0 };
+    all.forEach((r) => { const k = r.steadyLevel || (r.steady && r.steady.level); if (allLevels[k] != null) allLevels[k]++; });
+    const visible = (window.AhFlips && AhFlips.rows && AhFlips.rows()) || [];
+    const visLevels = { steady: 0, jumpy: 0, new: 0 };
+    visible.forEach((r) => { const k = r.steadyLevel || (r.steady && r.steady.level); if (visLevels[k] != null) visLevels[k]++; });
+    const chk = document.getElementById("ahfSteadier");
+    const sampleTip = (badges[0] && (badges[0].getAttribute("data-ahf-tip") || badges[0].getAttribute("title"))) || "";
+    const profitTh = document.querySelector('#ahFlipsTable thead [data-ahf-sort="profit"]');
+    return {
+      sparkN: sparks.length,
+      emptyN: empty.length,
+      hasLine: !!(first && first.querySelector("polyline.ahf-spark-line")),
+      hasUsual: !!(first && first.querySelector("line.ahf-spark-usual")),
+      hasNow: !!(first && first.querySelector("circle.ahf-spark-now")),
+      badgeN: badges.length,
+      levels,
+      allN: all.length,
+      allLevels,
+      visN: visible.length,
+      visLevels,
+      steadierChecked: !!(chk && chk.checked),
+      sampleTip,
+      profitAria: profitTh && profitTh.closest("th") && profitTh.closest("th").getAttribute("aria-sort"),
+      sortValue: (document.getElementById("ahfSort") || {}).value || "",
+    };
+  });
+  if (!trend.sparkN || !trend.hasLine || !trend.hasUsual || !trend.hasNow) {
+    fail("rows should render a 7-day sparkline with usual and current marks when history exists", trend);
+  } else ok("sparklines drawn in " + trend.sparkN + " rows (usual + current marked; " + trend.emptyN + " not enough history)");
+  if (!trend.badgeN || !(trend.visLevels.steady + trend.visLevels.jumpy + trend.visLevels.new)) {
+    fail("steadiness badges should be present", trend);
+  } else {
+    ok("visible flips: Steady " + trend.visLevels.steady + ", Jumpy " + trend.visLevels.jumpy + ", New " + trend.visLevels.new +
+      " (all flips: " + trend.allLevels.steady + "/" + trend.allLevels.jumpy + "/" + trend.allLevels.new + " of " + trend.allN + ")");
+  }
+  if (trend.steadierChecked) fail("Steadier flips only should be off by default");
+  else ok("Steadier flips only is off by default");
+  if (!/not a sale rate/i.test(trend.sampleTip) || !/estimate/i.test(trend.sampleTip) || !/snapshot/i.test(trend.sampleTip)) {
+    fail("steadiness tooltip should say it is an estimate from snapshots, not a sale rate", trend.sampleTip);
+  } else ok("steadiness tooltip describes the estimate");
+  if (trend.sortValue !== "profit" || trend.profitAria !== "descending") {
+    fail("default test sort should be Est. profit, highest first, with aria-sort", trend);
+  } else ok("Est. profit header is the active descending sort");
+
+  const beforeFilter = trend.visN;
+  await page.click("#ahfSteadier");
+  await sleep(400);
+  const filtered = await page.evaluate(() => {
+    const badges = Array.from(document.querySelectorAll("#ahFlipsTable [data-ahf-steady]"));
+    const levels = Array.from(new Set(badges.map((b) => b.getAttribute("data-ahf-steady"))));
+    const chk = document.getElementById("ahfSteadier");
+    return { n: badges.length, levels, checked: !!(chk && chk.checked) };
+  });
+  if (!filtered.checked) fail("Steadier flips only should check on");
+  else if (!filtered.n) fail("steadier filter hid every flip — thresholds may be too strict", filtered);
+  else if (filtered.levels.some((l) => l !== "steady") || filtered.n > beforeFilter) {
+    fail("steadier filter should leave only Steady rows and fewer or equal of them", { beforeFilter, filtered });
+  } else ok("Steadier flips only leaves " + filtered.n + " Steady rows (was " + beforeFilter + ")");
+  await page.click("#ahfSteadier");
+  await sleep(400);
+
+  await page.click('button[data-ahf-sort="name"]');
+  await sleep(300);
+  const az = await page.evaluate(() => {
+    const names = Array.from(document.querySelectorAll("#ahFlipsTable tbody tr[data-item-id] .item-name")).map((el) => el.textContent.trim());
+    const th = document.querySelector('#ahFlipsTable thead [data-ahf-sort="name"]');
+    return {
+      names,
+      aria: th && th.closest("th") && th.closest("th").getAttribute("aria-sort"),
+      sortValue: (document.getElementById("ahfSort") || {}).value || "",
+    };
+  });
+  const azSorted = az.names.slice().sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+  if (az.sortValue !== "name" || az.aria !== "ascending" || JSON.stringify(az.names) !== JSON.stringify(azSorted)) {
+    fail("first click on Item should sort A–Z and sync the Sort dropdown", { aria: az.aria, sortValue: az.sortValue, first: az.names[0], last: az.names[az.names.length - 1] });
+  } else ok("Item header sorts A–Z and the Sort dropdown follows");
+
+  await page.click('button[data-ahf-sort="name"]');
+  await sleep(300);
+  const za = await page.evaluate(() => {
+    const names = Array.from(document.querySelectorAll("#ahFlipsTable tbody tr[data-item-id] .item-name")).map((el) => el.textContent.trim());
+    const th = document.querySelector('#ahFlipsTable thead [data-ahf-sort="name"]');
+    return { names, aria: th && th.closest("th") && th.closest("th").getAttribute("aria-sort") };
+  });
+  const zaSorted = azSorted.slice().reverse();
+  if (za.aria !== "descending" || JSON.stringify(za.names) !== JSON.stringify(zaSorted)) {
+    fail("second click on Item should reverse to Z–A", { aria: za.aria, first: za.names[0], last: za.names[za.names.length - 1] });
+  } else ok("second click reverses Item sort to Z–A");
+
+  await page.click('button[data-ahf-sort="discount"]');
+  await sleep(300);
+  const disc1 = await page.evaluate(() => {
+    const vals = Array.from(document.querySelectorAll('#ahFlipsTable td[data-label="Discount"]')).map((el) => parseFloat(el.textContent));
+    const th = document.querySelector('#ahFlipsTable thead [data-ahf-sort="discount"]');
+    return { vals, aria: th && th.closest("th") && th.closest("th").getAttribute("aria-sort") };
+  });
+  const discHighToLow = disc1.vals.every((v, i, arr) => i === 0 || arr[i - 1] + 1e-9 >= v);
+  if (disc1.aria !== "descending" || !discHighToLow) fail("first click on Discount should sort highest first", disc1);
+  else ok("Discount header sorts highest first");
+  await page.click('button[data-ahf-sort="discount"]');
+  await sleep(300);
+  const disc2 = await page.evaluate(() => {
+    const vals = Array.from(document.querySelectorAll('#ahFlipsTable td[data-label="Discount"]')).map((el) => parseFloat(el.textContent));
+    const th = document.querySelector('#ahFlipsTable thead [data-ahf-sort="discount"]');
+    return { vals, aria: th && th.closest("th") && th.closest("th").getAttribute("aria-sort") };
+  });
+  const discLowToHigh = disc2.vals.every((v, i, arr) => i === 0 || arr[i - 1] - 1e-9 <= v);
+  if (disc2.aria !== "ascending" || !discLowToHigh) fail("second click on Discount should reverse", disc2);
+  else ok("second click reverses Discount sort");
+
+  await page.focus('button[data-ahf-sort="listed"]');
+  await page.keyboard.press("Enter");
+  await sleep(300);
+  const listedKb = await page.evaluate(() => {
+    const vals = Array.from(document.querySelectorAll('#ahFlipsTable td[data-label="Listed"]')).map((el) => parseInt(el.textContent.replace(/,/g, ""), 10));
+    const th = document.querySelector('#ahFlipsTable thead [data-ahf-sort="listed"]');
+    return { vals, aria: th && th.closest("th") && th.closest("th").getAttribute("aria-sort") };
+  });
+  const listedDesc = listedKb.vals.every((v, i, arr) => i === 0 || arr[i - 1] >= v);
+  if (listedKb.aria !== "descending" || !listedDesc) fail("Enter on Listed should sort highest first", listedKb);
+  else ok("Listed header is keyboard-sortable (Enter)");
+
+  await page.select("#ahfSort", "profit");
+  await sleep(300);
+  const restored = await page.evaluate(() => ({
+    sort: (document.getElementById("ahfSort") || {}).value || "",
+    aria: (document.querySelector('#ahFlipsTable thead [data-ahf-sort="profit"]') || {}).closest &&
+      document.querySelector('#ahFlipsTable thead [data-ahf-sort="profit"]').closest("th").getAttribute("aria-sort"),
+  }));
+  if (restored.sort !== "profit" || restored.aria !== "descending") fail("Sort dropdown should restore Est. profit, highest first", restored);
+  else ok("Sort dropdown restores Est. profit descending");
+
+  await page.evaluate(() => {
+    const el = document.getElementById("gold-sub-flips") || document.getElementById("ahFlips");
+    if (el) el.scrollIntoView({ block: "start" });
+  });
+  await sleep(150);
+  await page.screenshot({ path: path.join(OUT, "desktop-ah-trend-list.png") });
+  ok("screenshot desktop-ah-trend-list.png");
+
   // Toggle shows unnamed IDs
   await page.click("#ahfShowUnnamed");
   await sleep(300);
@@ -294,6 +443,9 @@ async function overflow(page, label) {
       hasListed: /Listed/.test(body),
       hasTooltip: !!(tip && tip.querySelector(".item-tt-body, .item-tt-inner")),
       hasOpenInItems: !!(open && /Open in Items/.test(open.textContent)),
+      hasTrend: !!document.querySelector("#ahfDetailTrend .ahf-spark, #ahfDetailTrend .ahf-spark-empty"),
+      hasTrendLine: !!document.querySelector("#ahfDetailTrend polyline.ahf-spark-line"),
+      hasSteady: !!document.querySelector("#ahfDetailBody [data-ahf-steady]"),
       goldActive: !!(gold && gold.classList.contains("active")),
       itemsActive: !!(items && items.classList.contains("active")),
       hash: location.hash,
@@ -307,6 +459,8 @@ async function overflow(page, label) {
   if (!panel.hasBuyout || !panel.hasUsual || !panel.hasListed || !panel.hasTooltip || !panel.hasOpenInItems) {
     fail("panel is missing expected sections", panel);
   } else ok("panel shows tooltip, prices, listed quantity, and Open in Items");
+  if (!panel.hasTrend || !panel.hasSteady) fail("detail panel should include a 7-day sparkline and a steadiness estimate", panel);
+  else ok("detail panel shows a larger 7-day sparkline and steadiness" + (panel.hasTrendLine ? " (with a price line)" : " (not enough history)"));
   const panelConf = await page.evaluate(() => {
     const badge = document.querySelector("#ahfDetail .ahf-conf, #ahfDetailBody .ahf-conf");
     const tips = window.AhFlips && {
@@ -334,6 +488,8 @@ async function overflow(page, label) {
   });
   await page.screenshot({ path: path.join(OUT, "desktop-ah-detail.png") });
   ok("screenshot desktop-ah-detail.png");
+  await page.screenshot({ path: path.join(OUT, "desktop-ah-trend-detail.png") });
+  ok("screenshot desktop-ah-trend-detail.png");
 
   // Escape closes
   await page.keyboard.press("Escape");
@@ -383,6 +539,8 @@ async function overflow(page, label) {
   await overflow(mobile, "390 ah flips closed");
   await mobile.screenshot({ path: path.join(OUT, "mobile-390-ah-list.png") });
   ok("screenshot mobile-390-ah-list.png");
+  await mobile.screenshot({ path: path.join(OUT, "mobile-390-ah-trend-list.png") });
+  ok("screenshot mobile-390-ah-trend-list.png");
 
   await mobile.evaluate(() => {
     const el = document.getElementById("gold-sub-flips") || document.getElementById("ahFlipsHowTo");
@@ -448,6 +606,8 @@ async function overflow(page, label) {
   await overflow(mobile, "390 ah flips with panel open");
   await mobile.screenshot({ path: path.join(OUT, "mobile-390-ah-detail.png") });
   ok("screenshot mobile-390-ah-detail.png");
+  await mobile.screenshot({ path: path.join(OUT, "mobile-390-ah-trend-detail.png") });
+  ok("screenshot mobile-390-ah-trend-detail.png");
 
   await mobile.keyboard.press("Escape");
   await sleep(200);

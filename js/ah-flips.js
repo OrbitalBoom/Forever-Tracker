@@ -15,7 +15,9 @@
     category: "all",
     hideThin: true,
     showUnnamed: false,   /* hide price IDs with no sourced name */
-    sort: "score"         /* profit | discount | score (profit × sold/day) */
+    steadier: false,      /* only flips estimated Steady from history */
+    sort: "score",        /* see sortRows() for keys */
+    sortDir: ""           /* "asc" | "desc"; empty = default for the key */
   };
   var THIN_QTY = 3;
   var loaded = false;
@@ -40,7 +42,7 @@
     var tag = document.querySelector('script[src*="js/ah-flips.js"], script[src*="js/app.js"]');
     var src = tag && (tag.getAttribute("src") || "");
     var m = src && src.match(/[?&]v=([^&]+)/);
-    return m ? m[1] : "20261126c";
+    return m ? m[1] : "20261126d";
   }
   function loadScript(src) {
     return new Promise(function (resolve, reject) {
@@ -132,7 +134,7 @@
 
   function effectiveSort(p, hasSold) {
     var sort = (p && p.sort) || (hasSold ? "score" : "profit");
-    if (!hasSold && sort === "score") return "profit";
+    if (!hasSold && (sort === "score" || sort === "sold")) return "profit";
     return sort;
   }
 
@@ -145,7 +147,10 @@
         maxBuy: DEFAULTS.maxBuy,
         category: DEFAULTS.category,
         hideThin: DEFAULTS.hideThin,
-        sort: DEFAULTS.sort
+        showUnnamed: DEFAULTS.showUnnamed,
+        steadier: DEFAULTS.steadier,
+        sort: DEFAULTS.sort,
+        sortDir: DEFAULTS.sortDir
       };
     }
     var p = state.goldFlips;
@@ -155,7 +160,9 @@
     if (!p.category) p.category = "all";
     if (p.hideThin == null) p.hideThin = true;
     if (p.showUnnamed == null) p.showUnnamed = DEFAULTS.showUnnamed;
+    if (p.steadier == null) p.steadier = false;
     if (!p.sort) p.sort = "score";
+    if (p.sortDir !== "asc" && p.sortDir !== "desc") p.sortDir = defaultSortDir(p.sort);
     return p;
   }
 
@@ -322,6 +329,332 @@
     return { first: first, last: last, count: h.samples.length, windowDays: h.windowDays || 7 };
   }
 
+  var SPARK_MIN_SAMPLES = 3;
+  var STEADY_MIN_SAMPLES = 3;
+  var STEADY_MAX_CV = 0.25;
+  var STEADY_MIN_PRESENCE = 0.7;
+  var STEADY_RANK = { steady: 3, jumpy: 2, "new": 1 };
+  var CONF_RANK = { high: 3, medium: 2, low: 1 };
+
+  function moneyPlain(c) {
+    if (c == null || isNaN(c)) return "unknown";
+    var neg = c < 0;
+    c = Math.round(Math.abs(c));
+    var g = Math.floor(c / 10000), s = Math.floor((c % 10000) / 100), cc = c % 100;
+    var out = [];
+    if (g) out.push(g.toLocaleString() + "g");
+    if (g || s) out.push(s + "s");
+    out.push(cc + "c");
+    return (neg ? "−" : "") + out.join(" ");
+  }
+
+  function historyOf(id) {
+    var h = window.PRICE_HISTORY;
+    if (!h || !h.items || !h.samples || !h.samples.length) return null;
+    var arr = h.items[id] || h.items[String(id)];
+    if (!arr || !arr.length) return null;
+    return {
+      stamps: h.samples.map(sampleStamp),
+      values: arr,
+      windowDays: h.windowDays || 7
+    };
+  }
+
+  function sampleStdev(xs) {
+    var n = xs.length;
+    if (n < 2) return 0;
+    var mean = 0, i;
+    for (i = 0; i < n; i++) mean += xs[i];
+    mean /= n;
+    var acc = 0;
+    for (i = 0; i < n; i++) acc += (xs[i] - mean) * (xs[i] - mean);
+    return Math.sqrt(acc / (n - 1));
+  }
+
+  function steadiness(id) {
+    var hist = historyOf(id);
+    var total = hist ? hist.values.length : 0;
+    var vals = [];
+    var i, v;
+    if (hist) {
+      for (i = 0; i < hist.values.length; i++) {
+        v = hist.values[i];
+        if (v != null && v > 0) vals.push(Number(v));
+      }
+    }
+    var n = vals.length;
+    var presence = total ? n / total : 0;
+    var cv = null;
+    if (n >= 2) {
+      var mean = 0;
+      for (i = 0; i < n; i++) mean += vals[i];
+      mean /= n;
+      var sd = sampleStdev(vals);
+      cv = mean > 0 ? sd / mean : null;
+    }
+    var level;
+    if (n < STEADY_MIN_SAMPLES) level = "new";
+    else if (cv == null || cv >= STEADY_MAX_CV || presence < STEADY_MIN_PRESENCE) level = "jumpy";
+    else level = "steady";
+    return {
+      level: level,
+      n: n,
+      total: total,
+      presence: presence,
+      cv: cv,
+      windowDays: hist ? hist.windowDays : 7
+    };
+  }
+
+  function steadinessTip(st) {
+    st = st || {};
+    var nPart = st.total ? (st.n + " of " + st.total + " snapshots") : ((st.n || 0) + " snapshots");
+    var win = st.windowDays || 7;
+    var cvPct = st.cv == null ? null : Math.round(st.cv * 100);
+    var presPct = Math.round((st.presence || 0) * 100);
+    if (st.level === "new") {
+      return "New: only " + (st.n || 0) + " priced snapshot" + (st.n === 1 ? "" : "s") +
+        " in the " + win + "-day window, so there is not enough history to estimate steadiness. This is not a sale rate.";
+    }
+    if (st.level === "steady") {
+      return "Steady: an estimate from " + nPart + ". Market value variation was " + cvPct +
+        "% of the average (under 25%), and the item was listed in " + presPct +
+        "% of snapshots (at least 70%). This is not a sale rate — the official feed has none.";
+    }
+    var why = [];
+    if (st.cv != null && st.cv >= STEADY_MAX_CV) {
+      why.push("market value variation was " + cvPct + "% of the average (25% or more)");
+    }
+    if (st.presence < STEADY_MIN_PRESENCE) {
+      why.push("it was listed in only " + presPct + "% of snapshots (under 70%)");
+    }
+    if (!why.length) why.push("the market was not both stable and consistently listed");
+    return "Jumpy: an estimate from " + nPart + " — " + why.join(", and ") +
+      ". This is not a sale rate — the official feed has none.";
+  }
+
+  function steadinessBadge(st) {
+    st = st || { level: "new", n: 0, total: 0 };
+    var level = st.level || "new";
+    var tip = steadinessTip(st);
+    var label = level.charAt(0).toUpperCase() + level.slice(1);
+    return '<span class="ahf-steady ahf-steady-' + esc(level) + '" data-ahf-steady="' + esc(level) +
+      '" data-ahf-tip="' + esc(tip) + '" title="' + esc(tip) + '" aria-label="' +
+      esc(label + " (estimate). " + tip) + '" tabindex="0">' + esc(label) + "</span>";
+  }
+
+  function sparkPoints(id, row) {
+    var hist = historyOf(id);
+    var stamps = hist ? hist.stamps.slice() : [];
+    var values = hist ? hist.values.slice() : [];
+    var asOf = window.PRICE_DATA && (window.PRICE_DATA.updated || window.PRICE_DATA.fetched);
+    var current = row && row.marketValue;
+    if (current != null && asOf) {
+      var last = stamps.length ? stamps[stamps.length - 1] : null;
+      var lastMs = last ? Date.parse(last) : NaN;
+      var nowMs = Date.parse(asOf);
+      if (!stamps.length || (!isNaN(nowMs) && !isNaN(lastMs) && nowMs > lastMs + 60000)) {
+        stamps.push(asOf);
+        values.push(current);
+      } else if (values.length && values[values.length - 1] == null && current != null) {
+        values[values.length - 1] = current;
+      }
+    }
+    return { stamps: stamps, values: values, current: current, usual: row && row.usual };
+  }
+
+  function sparkSvg(id, row, opts) {
+    opts = opts || {};
+    var wide = !!opts.wide;
+    var series = sparkPoints(id, row);
+    var priced = 0;
+    var i;
+    for (i = 0; i < series.values.length; i++) {
+      if (series.values[i] != null && series.values[i] > 0) priced++;
+    }
+    if (priced < SPARK_MIN_SAMPLES) {
+      return '<span class="ahf-spark-empty muted" title="Not enough history snapshots to draw a price line.">not enough history</span>';
+    }
+    var w = wide ? 400 : 84;
+    var h = wide ? 132 : 24;
+    var padL = wide ? 10 : 3, padR = wide ? 10 : 4, padT = wide ? 16 : 3, padB = wide ? 20 : 3;
+    var times = [];
+    var vmin = Infinity, vmax = -Infinity;
+    function consider(v) {
+      if (v != null && !isNaN(Number(v))) {
+        v = Number(v);
+        if (v < vmin) vmin = v;
+        if (v > vmax) vmax = v;
+      }
+    }
+    for (i = 0; i < series.stamps.length; i++) {
+      var ms = Date.parse(series.stamps[i] || "");
+      times.push(isNaN(ms) ? null : ms);
+      consider(series.values[i]);
+    }
+    consider(series.usual);
+    consider(series.current);
+    if (!isFinite(vmin) || !isFinite(vmax)) {
+      return '<span class="ahf-spark-empty muted" title="Not enough history snapshots to draw a price line.">not enough history</span>';
+    }
+    if (vmax <= vmin) {
+      var bump = Math.max(1, Math.abs(vmin) * 0.05);
+      vmin -= bump;
+      vmax += bump;
+    } else {
+      var slack = (vmax - vmin) * 0.12;
+      vmin -= slack;
+      vmax += slack;
+    }
+    var tmin = null, tmax = null;
+    for (i = 0; i < times.length; i++) {
+      if (times[i] != null) {
+        if (tmin == null || times[i] < tmin) tmin = times[i];
+        if (tmax == null || times[i] > tmax) tmax = times[i];
+      }
+    }
+    var useTime = tmin != null && tmax != null && tmax > tmin;
+    function xAt(idx) {
+      if (useTime && times[idx] != null) {
+        return padL + (times[idx] - tmin) / (tmax - tmin) * (w - padL - padR);
+      }
+      var n = Math.max(1, series.values.length - 1);
+      return padL + (idx / n) * (w - padL - padR);
+    }
+    function yAt(v) {
+      return padT + (1 - (Number(v) - vmin) / (vmax - vmin)) * (h - padT - padB);
+    }
+    var segs = [];
+    var cur = [];
+    var dots = [];
+    for (i = 0; i < series.values.length; i++) {
+      var val = series.values[i];
+      if (val == null || val <= 0) {
+        if (cur.length) { segs.push(cur); cur = []; }
+        continue;
+      }
+      var x = Math.round(xAt(i) * 10) / 10;
+      var y = Math.round(yAt(val) * 10) / 10;
+      cur.push(x + "," + y);
+      dots.push({ i: i, x: x, y: y, v: val, stamp: series.stamps[i] });
+    }
+    if (cur.length) segs.push(cur);
+    var usualY = series.usual != null ? Math.round(yAt(series.usual) * 10) / 10 : null;
+    var currDot = dots.length ? dots[dots.length - 1] : null;
+    var title = "7-day market value. Dashed line is usual (median). Dot is the current market.";
+    var svg = '<svg class="ahf-spark' + (wide ? " is-wide" : "") + '" viewBox="0 0 ' + w + " " + h +
+      '" width="' + w + '" height="' + h + '" role="img" aria-label="' + esc(title) + '">';
+    svg += "<title>" + esc(title) + "</title>";
+    if (usualY != null) {
+      svg += '<line class="ahf-spark-usual" x1="' + padL + '" y1="' + usualY + '" x2="' + (w - padR) +
+        '" y2="' + usualY + '" />';
+    }
+    segs.forEach(function (seg) {
+      if (seg.length === 1) {
+        var p = seg[0].split(",");
+        svg += '<circle class="ahf-spark-line-dot" cx="' + p[0] + '" cy="' + p[1] + '" r="1.5" />';
+      } else {
+        svg += '<polyline class="ahf-spark-line" fill="none" points="' + seg.join(" ") + '" />';
+      }
+    });
+    if (wide) {
+      dots.forEach(function (d) {
+        var label = formatStampCompactNY(d.stamp) + " · " + moneyPlain(d.v);
+        if (series.usual != null) label += " · usual " + moneyPlain(series.usual);
+        svg += '<circle class="ahf-spark-hit" cx="' + d.x + '" cy="' + d.y + '" r="8" data-ahf-pt="' +
+          esc(label) + '" tabindex="0"><title>' + esc(label) + "</title></circle>";
+        svg += '<circle class="ahf-spark-pt" cx="' + d.x + '" cy="' + d.y + '" r="2.5" />';
+      });
+    }
+    if (currDot) {
+      svg += '<circle class="ahf-spark-now" cx="' + currDot.x + '" cy="' + currDot.y + '" r="' +
+        (wide ? 3.5 : 2.2) + '" />';
+    }
+    if (wide && usualY != null) {
+      svg += '<text class="ahf-spark-cap" x="' + (w - padR) + '" y="' + Math.max(10, usualY - 4) +
+        '" text-anchor="end">usual</text>';
+    }
+    svg += "</svg>";
+    return svg;
+  }
+
+  function bindTrendHover(root) {
+    if (!root || root.getAttribute("data-bound") === "1") return;
+    root.setAttribute("data-bound", "1");
+    var box = root.querySelector(".ahf-trend-hover");
+    if (!box) {
+      box = document.createElement("div");
+      box.className = "ahf-trend-hover";
+      box.hidden = true;
+      root.appendChild(box);
+    }
+    function show(pt) {
+      var text = pt.getAttribute("data-ahf-pt") || "";
+      if (!text) return;
+      box.hidden = false;
+      box.textContent = text;
+    }
+    function hide() { box.hidden = true; box.textContent = ""; }
+    root.addEventListener("pointerover", function (ev) {
+      var pt = ev.target.closest && ev.target.closest("[data-ahf-pt]");
+      if (pt) show(pt);
+    });
+    root.addEventListener("pointerout", function (ev) {
+      var pt = ev.target.closest && ev.target.closest("[data-ahf-pt]");
+      if (!pt) return;
+      var next = ev.relatedTarget;
+      if (next && root.contains(next) && next.closest && next.closest("[data-ahf-pt]")) return;
+      hide();
+    });
+    root.addEventListener("focusin", function (ev) {
+      var pt = ev.target.closest && ev.target.closest("[data-ahf-pt]");
+      if (pt) show(pt);
+    });
+    root.addEventListener("focusout", hide);
+  }
+
+  function defaultSortDir(key) {
+    return key === "name" ? "asc" : "desc";
+  }
+
+  function effectiveSortDir(p, hasSold) {
+    var sort = effectiveSort(p, hasSold);
+    var dir = p && p.sortDir;
+    if (dir !== "asc" && dir !== "desc") dir = defaultSortDir(sort);
+    return dir;
+  }
+
+  function sortValue(row, key) {
+    if (key === "name") return String(row.name || "").toLowerCase();
+    if (key === "buyout") return row.minBuyout || 0;
+    if (key === "usual") return row.usual || 0;
+    if (key === "discount") return row.discount || 0;
+    if (key === "listed") return row.quantity || 0;
+    if (key === "sold") return row.soldPerDay == null ? -1 : row.soldPerDay;
+    if (key === "confidence") return CONF_RANK[row.confidence] || 0;
+    if (key === "steady") return STEADY_RANK[row.steadyLevel] || 0;
+    if (key === "score") return row.score || 0;
+    return row.profit || 0;
+  }
+
+  function sortHeading(key, label, p, hasSold) {
+    var sort = effectiveSort(p, hasSold);
+    var dir = effectiveSortDir(p, hasSold);
+    var active = sort === key;
+    var aria = active ? (dir === "asc" ? "ascending" : "descending") : "none";
+    var arrow = active ? (dir === "asc" ? "▲" : "▼") : "";
+    var hint;
+    if (!active) {
+      hint = "Sort by " + label + (key === "name" ? ", A to Z" : ", highest first");
+    } else {
+      hint = label + ", currently sorted " + (dir === "asc" ? "ascending" : "descending") + ". Activate to reverse.";
+    }
+    return '<th class="sortable" aria-sort="' + aria + '">' +
+      '<button type="button" class="ahf-th-sort" data-ahf-sort="' + esc(key) + '" aria-label="' + esc(hint) + '">' +
+      esc(label) + (arrow ? ' <span class="ahf-sort-arrow" aria-hidden="true">' + arrow + "</span>" : "") +
+      "</button></th>";
+  }
+
   function confidence(row) {
     var marketDown = row.marketValue && row.usual && row.marketValue < row.usual * 0.8;
     var thin = row.quantity < THIN_QTY || (row.soldPerDay != null && row.soldPerDay < 1);
@@ -422,8 +755,7 @@
   function showConfTip(anchor, asSheet) {
     if (!anchor) return;
     if (confTipTimer) { clearTimeout(confTipTimer); confTipTimer = null; }
-    var level = anchor.getAttribute("data-ahf-conf") || "";
-    var text = confidenceTip(level);
+    var text = anchor.getAttribute("data-ahf-tip") || confidenceTip(anchor.getAttribute("data-ahf-conf") || "");
     if (!text) return;
     if (confTipAnchor && confTipAnchor !== anchor && confTitleHold) {
       confTipAnchor.setAttribute("title", confTitleHold);
@@ -460,12 +792,12 @@
     if (bindConfidenceTips._done) return;
     bindConfidenceTips._done = true;
     document.addEventListener("pointerover", function (ev) {
-      var badge = ev.target.closest && ev.target.closest("[data-ahf-conf]");
+      var badge = ev.target.closest && ev.target.closest("[data-ahf-conf], [data-ahf-steady]");
       if (!badge || isCoarsePointer()) return;
       showConfTip(badge, false);
     });
     document.addEventListener("pointerout", function (ev) {
-      var badge = ev.target.closest && ev.target.closest("[data-ahf-conf]");
+      var badge = ev.target.closest && ev.target.closest("[data-ahf-conf], [data-ahf-steady]");
       if (!badge) return;
       var next = ev.relatedTarget;
       var el = document.getElementById("ahfConfTip");
@@ -475,7 +807,7 @@
     document.addEventListener("click", function (ev) {
       var close = ev.target.closest && ev.target.closest("#ahfConfTipClose");
       if (close) return;
-      var badge = ev.target.closest && ev.target.closest("[data-ahf-conf]");
+      var badge = ev.target.closest && ev.target.closest("[data-ahf-conf], [data-ahf-steady]");
       var el = document.getElementById("ahfConfTip");
       if (badge) {
         ev.preventDefault();
@@ -551,6 +883,8 @@
         vendorSell: vend.sell || 0
       };
       row.confidence = confidence(row);
+      row.steady = steadiness(row.id);
+      row.steadyLevel = row.steady.level;
       row.score = row.profit * (row.soldPerDay != null ? row.soldPerDay : 0);
       rows.push(row);
     }
@@ -568,15 +902,23 @@
         if (r.soldPerDay != null && r.soldPerDay < 1) return false;
       }
       if (!p.showUnnamed && isUnnamed(r)) return false;
+      if (p.steadier && r.steadyLevel !== "steady") return false;
       return true;
     });
   }
 
-  function sortRows(rows, sort) {
+  function sortRows(rows, sort, dir) {
     var out = rows.slice();
-    if (sort === "discount") out.sort(function (a, b) { return b.discount - a.discount || b.profit - a.profit; });
-    else if (sort === "profit") out.sort(function (a, b) { return b.profit - a.profit; });
-    else out.sort(function (a, b) { return b.score - a.score || b.profit - a.profit; });
+    dir = dir || defaultSortDir(sort);
+    var sign = dir === "asc" ? 1 : -1;
+    out.sort(function (a, b) {
+      var av = sortValue(a, sort);
+      var bv = sortValue(b, sort);
+      if (av < bv) return -1 * sign;
+      if (av > bv) return 1 * sign;
+      if (a.profit !== b.profit) return b.profit - a.profit;
+      return String(a.name || "").localeCompare(String(b.name || ""), undefined, { sensitivity: "base" });
+    });
     return out;
   }
 
@@ -683,7 +1025,13 @@
       html += "<div><dt>Sold/day</dt><dd>" + (row.soldPerDay == null ? '<span class="muted">unknown</span>' : String(row.soldPerDay)) + "</dd></div>";
     }
     html += "<div><dt>Confidence</dt><dd>" + confidenceBadge(row.confidence) + "</dd></div>";
+    if (!row.steady) row.steady = steadiness(row.id);
+    html += "<div><dt>Steadiness</dt><dd>" + steadinessBadge(row.steady) + ' <span class="muted">estimate</span></dd></div>';
     html += "</dl>";
+    html += '<div class="ahf-trend-panel" id="ahfDetailTrend">';
+    html += '<p class="ahf-trend-caption">7-day market value</p>';
+    html += sparkSvg(row.id, row, { wide: true });
+    html += '<div class="ahf-trend-hover" hidden></div></div>';
     var farms = farmsForItem(row.id);
     html += '<div class="ahf-detail-farms">';
     if (farms.length) {
@@ -716,6 +1064,7 @@
     } else {
       fill(null);
     }
+    bindTrendHover(document.getElementById("ahfDetailTrend"));
     var dialog = document.getElementById("ahfDetail");
     if (dialog && dialog.focus) dialog.focus();
   }
@@ -746,6 +1095,9 @@
     }
     paras.push("Estimated flip profit is after the 5% auction house cut and, when vendor sell is known, a Classic 12-hour deposit (5% of vendor sell). " +
       "Vendor flips use the vendor sell price and no auction cut. Items a vendor sells for at or below the auction buyout are hidden.");
+    paras.push("The 7-day sparkline is the item's market value at each history snapshot; gaps are times it was not listed. Current and usual (median) prices are marked. " +
+      "Steadiness (Steady / Jumpy / New) is an estimate from those snapshots — price variation under 25% of the average, and listed in at least 70% of snapshots — not a sale rate. " +
+      "Listing counts over time are not stored, so quantity churn is not part of the estimate.");
     return paras.map(function (p) { return "<p>" + esc(p) + "</p>"; }).join("");
   }
 
@@ -754,7 +1106,7 @@
     if (!root) return;
     var p = prefs(state);
     var all = buildRows();
-    var rows = sortRows(applyFilters(all, p), p.sort);
+    var rows = sortRows(applyFilters(all, p), p.sort, p.sortDir);
     lastRows = rows;
     var cats = {};
     all.forEach(function (r) { cats[r.cat] = (cats[r.cat] || 0) + 1; });
@@ -764,7 +1116,8 @@
 
     var hasSold = feedHasSoldRates();
     var sort = effectiveSort(p, hasSold);
-    rows = sortRows(applyFilters(all, p), sort);
+    var sortDir = effectiveSortDir(p, hasSold);
+    rows = sortRows(applyFilters(all, p), sort, sortDir);
     lastRows = rows;
     var howOpen = !!(document.getElementById("ahfHowPrices") && document.getElementById("ahfHowPrices").open);
 
@@ -776,6 +1129,7 @@
     html += "<li>Click a row to see details, usual price, and listed quantity on this page.</li>";
     html += "<li>Buy at the cheapest buyout and relist near the usual price.</li>";
     html += "<li>Hover or tap a confidence badge to see why that flip is Low, Medium, or High.</li>";
+    html += "<li>Use Sort (or a column header on desktop) to reorder the list. The 7-day line is recent market value; hover or tap Steady / Jumpy / New for that estimate.</li>";
     html += "</ol></div>";
     html += '<p class="muted ahf-status" id="ahFlipsStatus">' + esc(priceStatusLine()) + "</p>";
     html += '<details class="ahf-howprices" id="ahfHowPrices">';
@@ -796,14 +1150,29 @@
       html += '<option value="' + esc(c) + '"' + (p.category === c ? " selected" : "") + ">" + esc(label) + "</option>";
     });
     html += "</select></label>";
-    html += '<label class="field">Sort<select id="ahfSort">';
-    var sortOpts = hasSold
-      ? [["score", "Profit × sold/day"], ["profit", "Profit per item"], ["discount", "Discount %"]]
-      : [["profit", "Profit per item"], ["discount", "Discount %"]];
+    html += '<div class="field ahf-sort-field"><label class="field">Sort<select id="ahfSort">';
+    var sortOpts = [
+      ["profit", "Profit per item"],
+      ["discount", "Discount %"],
+      ["name", "Item name"],
+      ["buyout", "Cheapest buyout"],
+      ["usual", "Usual price"],
+      ["listed", "Listed"],
+      ["confidence", "Confidence"],
+      ["steady", "Steadiness"]
+    ];
+    if (hasSold) {
+      sortOpts.splice(2, 0, ["score", "Profit × sold/day"], ["sold", "Sold/day"]);
+    }
     sortOpts.forEach(function (opt) {
       html += '<option value="' + opt[0] + '"' + (sort === opt[0] ? " selected" : "") + ">" + opt[1] + "</option>";
     });
     html += "</select></label>";
+    html += '<button type="button" class="btn ahf-sort-dir" id="ahfSortDir" data-dir="' + esc(sortDir) + '" aria-label="' +
+      esc((sort === "name"
+        ? (sortDir === "asc" ? "A to Z. Activate to sort Z to A." : "Z to A. Activate to sort A to Z.")
+        : (sortDir === "desc" ? "Highest first. Activate to sort lowest first." : "Lowest first. Activate to sort highest first."))) +
+      '">' + (sortDir === "asc" ? "↑" : "↓") + "</button></div>";
     html += '<label class="muted ahf-check"><input type="checkbox" id="ahfHideThin"' +
       (p.hideThin ? " checked" : "") + "> Hide thin listings (fewer than " + THIN_QTY +
       " listed)</label>";
@@ -811,6 +1180,9 @@
     html += '<label class="muted ahf-check"><input type="checkbox" id="ahfShowUnnamed"' +
       (p.showUnnamed ? " checked" : "") + '> Show unnamed item IDs' +
       (unnamedN ? " (" + unnamedN + " in this flip set)" : "") + "</label>";
+    html += '<label class="muted ahf-check"><input type="checkbox" id="ahfSteadier"' +
+      (p.steadier ? " checked" : "") + "> Steadier flips only " +
+      '<span class="ahf-est-note">(estimate)</span></label>';
     html += "</div>";
     html += '<p class="muted ahf-meta" id="ahFlipsMeta"' +
       (range ? ' data-history-count="' + range.count + '"' : "") +
@@ -819,16 +1191,22 @@
       (range ? " · " + range.count + " history snapshots" : " · current snapshot only") +
       (unnamedN && !p.showUnnamed ? " · hiding " + unnamedN + " with no sourced name" : "") + ".</p>";
 
-    var colCount = hasSold ? 8 : 7;
+    var colCount = hasSold ? 10 : 9;
     html += '<div class="table-wrap"><table class="data" id="ahFlipsTable">';
     html += "<thead><tr>" +
-      "<th>Item</th><th>Cheapest buyout</th><th>Usual price</th><th>Discount</th>" +
-      "<th>Est. profit</th><th>Listed</th>" +
-      (hasSold ? "<th>Sold/day</th>" : "") +
-      "<th>Confidence</th>" +
+      sortHeading("name", "Item", p, hasSold) +
+      sortHeading("buyout", "Cheapest buyout", p, hasSold) +
+      sortHeading("usual", "Usual price", p, hasSold) +
+      sortHeading("discount", "Discount", p, hasSold) +
+      sortHeading("profit", "Est. profit", p, hasSold) +
+      sortHeading("listed", "Listed", p, hasSold) +
+      (hasSold ? sortHeading("sold", "Sold/day", p, hasSold) : "") +
+      "<th>7-day</th>" +
+      sortHeading("steady", "Steadiness", p, hasSold) +
+      sortHeading("confidence", "Confidence", p, hasSold) +
       "</tr></thead><tbody>";
     if (!rows.length) {
-      html += '<tr><td colspan="' + colCount + '" class="muted">No flips match these filters. Lower the minimum profit or turn off the thin-listing hide if you want to see more — thin markets are easy to get stuck with.</td></tr>';
+      html += '<tr><td colspan="' + colCount + '" class="muted">No flips match these filters. Lower the minimum profit, turn off the thin-listing hide, or turn off Steadier flips only if you want to see more — thin or jumpy markets are easy to get stuck with.</td></tr>';
     } else {
       rows.forEach(function (r) {
         var notes = [];
@@ -852,6 +1230,8 @@
         if (hasSold) {
           html += '<td data-label="Sold/day">' + (r.soldPerDay == null ? '<span class="muted">unknown</span>' : String(r.soldPerDay)) + "</td>";
         }
+        html += '<td data-label="7-day" class="ahf-spark-cell">' + sparkSvg(r.id, r) + "</td>";
+        html += '<td data-label="Steadiness">' + steadinessBadge(r.steady) + "</td>";
         html += '<td data-label="Confidence">' + confidenceBadge(r.confidence) + "</td>";
         html += "</tr>";
       });
@@ -871,13 +1251,21 @@
     var sort = $("#ahfSort");
     var hide = $("#ahfHideThin");
     var showU = $("#ahfShowUnnamed");
+    var steadyOnly = $("#ahfSteadier");
     if (minP) p.minProfit = copperFromGoldInput(minP.value);
     if (minS) p.minSold = minS.value === "" ? 0 : Number(minS.value) || 0;
     if (maxB) p.maxBuy = copperFromGoldInput(maxB.value);
     if (cat) p.category = cat.value || "all";
-    if (sort) p.sort = sort.value || effectiveSort(p, feedHasSoldRates());
+    if (sort) {
+      var nextSort = sort.value || effectiveSort(p, feedHasSoldRates());
+      if (nextSort !== p.sort) {
+        p.sort = nextSort;
+        p.sortDir = defaultSortDir(nextSort);
+      }
+    }
     if (hide) p.hideThin = !!hide.checked;
     if (showU) p.showUnnamed = !!showU.checked;
+    if (steadyOnly) p.steadier = !!steadyOnly.checked;
   }
 
   function bindFilters(state, hooks) {
@@ -897,14 +1285,50 @@
       var el = $("#" + id);
       if (el) el.addEventListener("input", delayed);
     });
-    ["ahfCat", "ahfSort", "ahfHideThin", "ahfShowUnnamed"].forEach(function (id) {
+    ["ahfCat", "ahfHideThin", "ahfShowUnnamed", "ahfSteadier"].forEach(function (id) {
       var el = $("#" + id);
       if (el) el.addEventListener("change", apply);
     });
+    var sortEl = $("#ahfSort");
+    if (sortEl) {
+      sortEl.addEventListener("change", function () {
+        var next = sortEl.value || effectiveSort(p, feedHasSoldRates());
+        p.sort = next;
+        p.sortDir = defaultSortDir(next);
+        if (hooks && hooks.save) hooks.save();
+        renderTable(state, hooks);
+      });
+    }
+    var dirEl = $("#ahfSortDir");
+    if (dirEl) {
+      dirEl.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        p.sortDir = effectiveSortDir(p, feedHasSoldRates()) === "asc" ? "desc" : "asc";
+        if (hooks && hooks.save) hooks.save();
+        renderTable(state, hooks);
+      });
+    }
     var table = $("#ahFlipsTable");
     if (table) {
       table.addEventListener("click", function (ev) {
-        if (ev.target.closest("[data-ahf-open-items], [data-ahf-conf]")) return;
+        var sortBtn = ev.target.closest && ev.target.closest("[data-ahf-sort]");
+        if (sortBtn) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          var key = sortBtn.getAttribute("data-ahf-sort");
+          var cur = effectiveSort(p, feedHasSoldRates());
+          if (cur === key) {
+            p.sort = key;
+            p.sortDir = effectiveSortDir(p, feedHasSoldRates()) === "asc" ? "desc" : "asc";
+          } else {
+            p.sort = key;
+            p.sortDir = defaultSortDir(key);
+          }
+          if (hooks && hooks.save) hooks.save();
+          renderTable(state, hooks);
+          return;
+        }
+        if (ev.target.closest("[data-ahf-open-items], [data-ahf-conf], [data-ahf-steady]")) return;
         var hit = ev.target.closest("[data-ahf-item], tr[data-item-id]");
         if (!hit) return;
         var id = hit.getAttribute("data-ahf-item") || hit.getAttribute("data-item-id");
@@ -1004,6 +1428,9 @@
     itemMeta: itemMeta,
     confidenceTip: confidenceTip,
     hideConfTip: hideConfTip,
-    feedHasSoldRates: feedHasSoldRates
+    feedHasSoldRates: feedHasSoldRates,
+    allRows: buildRows,
+    steadiness: steadiness,
+    steadinessTip: steadinessTip
   };
 })();

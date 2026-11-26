@@ -147,7 +147,7 @@ async function hoverAir(page) {
   await openFarms(page, base);
   const ver = await page.evaluate(() => window.ItemTooltip && ItemTooltip.version);
   console.log("ItemTooltip.version", ver);
-  if (ver !== "20261126c") fail("expected version 20261126c", ver);
+  if (ver !== "20261126d") fail("expected version 20261126d", ver);
   else ok("version " + ver);
 
   // --- 1. Hover shows tooltip ---
