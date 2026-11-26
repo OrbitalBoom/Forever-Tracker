@@ -14,6 +14,7 @@
     maxBuy: 0,            /* 0 = no budget cap */
     category: "all",
     hideThin: true,
+    showUnnamed: false,   /* hide price IDs with no sourced name */
     sort: "score"         /* profit | discount | score (profit × sold/day) */
   };
   var THIN_QTY = 3;
@@ -39,7 +40,7 @@
     var tag = document.querySelector('script[src*="js/ah-flips.js"], script[src*="js/app.js"]');
     var src = tag && (tag.getAttribute("src") || "");
     var m = src && src.match(/[?&]v=([^&]+)/);
-    return m ? m[1] : "20261125h";
+    return m ? m[1] : "20261126a";
   }
   function loadScript(src) {
     return new Promise(function (resolve, reject) {
@@ -121,18 +122,34 @@
     if (p.maxBuy == null) p.maxBuy = DEFAULTS.maxBuy;
     if (!p.category) p.category = "all";
     if (p.hideThin == null) p.hideThin = true;
+    if (p.showUnnamed == null) p.showUnnamed = DEFAULTS.showUnnamed;
     if (!p.sort) p.sort = "score";
     return p;
   }
 
   function itemMeta(id) {
     var idx = window.ITEM_INDEX;
-    if (idx && (!itemMeta._map || itemMeta._n !== idx.length)) {
+    var extra = window.AH_ITEM_META;
+    var n = (idx ? idx.length : 0) + (extra ? Object.keys(extra).length : 0);
+    if (!itemMeta._map || itemMeta._n !== n) {
       itemMeta._map = {};
-      itemMeta._n = idx.length;
-      idx.forEach(function (it) { itemMeta._map[String(it.id)] = it; });
+      itemMeta._n = n;
+      if (idx) idx.forEach(function (it) { itemMeta._map[String(it.id)] = it; });
+      if (extra) {
+        Object.keys(extra).forEach(function (k) {
+          if (!itemMeta._map[k]) itemMeta._map[k] = extra[k];
+        });
+      }
     }
     return (itemMeta._map && itemMeta._map[String(id)]) || null;
+  }
+
+  function isUnnamed(rowOrId, name) {
+    var id = (rowOrId && typeof rowOrId === "object") ? rowOrId.id : rowOrId;
+    var n = (rowOrId && typeof rowOrId === "object") ? rowOrId.name : name;
+    if (n && !/^Item \d+$/.test(n)) return false;
+    var meta = itemMeta(id);
+    return !(meta && meta.n);
   }
   function vendorOf(id) {
     var v = window.ITEM_VENDOR && (window.ITEM_VENDOR[id] || window.ITEM_VENDOR[String(id)]);
@@ -345,6 +362,7 @@
         if (r.quantity < THIN_QTY) return false;
         if (r.soldPerDay != null && r.soldPerDay < 1) return false;
       }
+      if (!p.showUnnamed && isUnnamed(r)) return false;
       return true;
     });
   }
@@ -358,8 +376,141 @@
   }
 
   function itemLink(row) {
-    return '<a class="item-name q-' + esc(row.quality) + '" href="#item-' + row.id + '" data-item-id="' + row.id + '">' +
+    return '<a class="item-name q-' + esc(row.quality) + '" href="#gold-flips" data-ahf-item="' + row.id + '">' +
       esc(row.name) + "</a>";
+  }
+
+  function farmsForItem(id) {
+    var spots = window.GOLD_FARMS || [];
+    var out = [];
+    var sid = String(id);
+    spots.forEach(function (spot) {
+      (spot.loot || []).forEach(function (loot) {
+        if (String(loot.id) === sid) out.push({ farm: spot, loot: loot });
+      });
+    });
+    return out;
+  }
+
+  function flipItemForTooltip(row, detail) {
+    if (detail) return detail;
+    var meta = itemMeta(row.id) || {};
+    return {
+      id: row.id,
+      name: row.name,
+      quality: row.quality || meta.q || "common",
+      icon: row.icon || meta.icon,
+      cat: row.cat || meta.cat,
+      slot: meta.slot,
+      type: meta.typ,
+      itemLevel: meta.il,
+      reqLevel: meta.rl,
+      sell: meta.sell,
+      forever: true
+    };
+  }
+
+  var panelBound = false;
+  function ensurePanel() {
+    var back = document.getElementById("ahfDetailBack");
+    if (back) return back;
+    back = document.createElement("div");
+    back.id = "ahfDetailBack";
+    back.className = "ahf-detail-back";
+    back.hidden = true;
+    back.innerHTML = '<div class="ahf-detail" id="ahfDetail" role="dialog" aria-modal="true" aria-labelledby="ahfDetailTitle" tabindex="-1">' +
+      '<button type="button" class="ahf-detail-close" aria-label="Close">Close</button>' +
+      '<div id="ahfDetailBody"></div></div>';
+    document.body.appendChild(back);
+    back.addEventListener("click", function (e) {
+      if (e.target === back) closeDetail();
+    });
+    back.querySelector(".ahf-detail-close").addEventListener("click", function () { closeDetail(); });
+    if (!panelBound) {
+      panelBound = true;
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") {
+          var el = document.getElementById("ahfDetailBack");
+          if (el && !el.hidden) {
+            e.preventDefault();
+            closeDetail();
+          }
+        }
+      });
+    }
+    return back;
+  }
+
+  function closeDetail() {
+    var back = document.getElementById("ahfDetailBack");
+    if (back) {
+      back.hidden = true;
+      back.classList.remove("is-open");
+    }
+    document.body.classList.remove("ahf-detail-open");
+  }
+
+  function openDetail(id) {
+    var rows = lastRows || [];
+    var row = null;
+    for (var i = 0; i < rows.length; i++) if (String(rows[i].id) === String(id)) { row = rows[i]; break; }
+    if (!row) {
+      /* Might be hidden by the current filter; still try to describe it from prices. */
+      var all = buildRows();
+      for (i = 0; i < all.length; i++) if (String(all[i].id) === String(id)) { row = all[i]; break; }
+    }
+    if (!row) return;
+    var back = ensurePanel();
+    var body = document.getElementById("ahfDetailBody");
+    var usualTip = row.usualSource === "median"
+      ? "Median market value across " + row.usualSamples + " snapshots"
+      : "Current market value (no history for this item)";
+    var html = "";
+    html += '<h3 id="ahfDetailTitle" class="ahf-detail-title"><a class="item-name q-' + esc(row.quality) + '">' + esc(row.name) + "</a></h3>";
+    html += '<div class="item-tt ahf-embedded-tt" id="ahfDetailTip"></div>';
+    html += '<dl class="ahf-detail-stats">';
+    html += "<div><dt>Cheapest buyout</dt><dd>" + money(row.minBuyout) + "</dd></div>";
+    html += "<div><dt>Current market</dt><dd>" + money(row.marketValue) + "</dd></div>";
+    html += "<div><dt>Usual / median</dt><dd>" + money(row.usual) + ' <span class="muted">(' + esc(usualTip) + ")</span></dd></div>";
+    html += "<div><dt>Est. profit</dt><dd>" + money(row.profit) + (row.vendorFlip ? ' <span class="ahf-flag ahf-vendor">vendor flip</span>' : "") + "</dd></div>";
+    html += "<div><dt>Listed</dt><dd>" + row.quantity.toLocaleString() + "</dd></div>";
+    html += "<div><dt>Sold/day</dt><dd>" + (row.soldPerDay == null ? '<span class="muted">unknown</span>' : String(row.soldPerDay)) + "</dd></div>";
+    html += "<div><dt>Confidence</dt><dd><span class='ahf-conf ahf-conf-" + row.confidence + "'>" + row.confidence + "</span></dd></div>";
+    html += "</dl>";
+    var farms = farmsForItem(row.id);
+    html += '<div class="ahf-detail-farms">';
+    if (farms.length) {
+      html += "<h4>Drop sources on this site</h4><ul>";
+      farms.forEach(function (f) {
+        var chance = f.loot.chance != null ? (" · " + (Math.round(f.loot.chance * 1000) / 10) + "%") : "";
+        html += "<li>" + esc(f.farm.name || f.farm.id) +
+          (f.farm.zone ? " <span class='muted'>(" + esc(f.farm.zone) + ")</span>" : "") +
+          esc(chance) + "</li>";
+      });
+      html += "</ul>";
+    } else {
+      html += '<p class="muted">No farm or drop source on this site for this item.</p>';
+    }
+    html += "</div>";
+    var inIndex = !!(window.ITEM_INDEX || []).some(function (it) { return String(it.id) === String(row.id); });
+    html += '<p class="ahf-detail-open"><a href="#item-' + row.id + '" data-ahf-open-items="1">' +
+      (inIndex ? "Open in Items" : "Open in Items") + "</a></p>";
+    body.innerHTML = html;
+    back.hidden = false;
+    back.classList.add("is-open");
+    document.body.classList.add("ahf-detail-open");
+    var tipEl = document.getElementById("ahfDetailTip");
+    var fill = function (detail) {
+      if (!tipEl || !window.ItemTooltip || !ItemTooltip.renderTo) return;
+      ItemTooltip.renderTo(tipEl, flipItemForTooltip(row, detail), { embedded: true });
+    };
+    if (window.ItemTooltip && ItemTooltip.detailOf) {
+      ItemTooltip.detailOf(row.id).then(function (d) { fill(d); }).catch(function () { fill(null); });
+    } else {
+      fill(null);
+    }
+    var dialog = document.getElementById("ahfDetail");
+    if (dialog && dialog.focus) dialog.focus();
   }
 
   function usualBlurb() {
@@ -420,12 +571,17 @@
     html += '<label class="muted ahf-check"><input type="checkbox" id="ahfHideThin"' +
       (p.hideThin ? " checked" : "") + "> Hide thin listings (fewer than " + THIN_QTY +
       " listed, or under 1 sold/day)</label>";
+    var unnamedN = all.filter(isUnnamed).length;
+    html += '<label class="muted ahf-check"><input type="checkbox" id="ahfShowUnnamed"' +
+      (p.showUnnamed ? " checked" : "") + '> Show unnamed item IDs' +
+      (unnamedN ? " (" + unnamedN + " in this flip set)" : "") + "</label>";
     html += "</div>";
     html += '<p class="muted ahf-meta" id="ahFlipsMeta"' +
       (range ? ' data-history-count="' + range.count + '"' : "") +
       ' data-history-status="' + esc(historyStatus) + '">Showing ' + rows.length + " of " + all.length +
       " flips" + (asOf ? " · as of " + esc(formatStampNY(asOf)) : "") +
-      (range ? " · " + range.count + " history snapshots" : " · current snapshot only") + ".</p>";
+      (range ? " · " + range.count + " history snapshots" : " · current snapshot only") +
+      (unnamedN && !p.showUnnamed ? " · hiding " + unnamedN + " with no sourced name" : "") + ".</p>";
 
     html += '<div class="table-wrap"><table class="data" id="ahFlipsTable">';
     html += "<thead><tr>" +
@@ -471,12 +627,14 @@
     var cat = $("#ahfCat");
     var sort = $("#ahfSort");
     var hide = $("#ahfHideThin");
+    var showU = $("#ahfShowUnnamed");
     if (minP) p.minProfit = copperFromGoldInput(minP.value);
     if (minS) p.minSold = minS.value === "" ? 0 : Number(minS.value) || 0;
     if (maxB) p.maxBuy = copperFromGoldInput(maxB.value);
     if (cat) p.category = cat.value || "all";
     if (sort) p.sort = sort.value || "score";
     if (hide) p.hideThin = !!hide.checked;
+    if (showU) p.showUnnamed = !!showU.checked;
   }
 
   function bindFilters(state, hooks) {
@@ -495,10 +653,22 @@
       var el = $("#" + id);
       if (el) el.addEventListener("input", delayed);
     });
-    ["ahfCat", "ahfSort", "ahfHideThin"].forEach(function (id) {
+    ["ahfCat", "ahfSort", "ahfHideThin", "ahfShowUnnamed"].forEach(function (id) {
       var el = $("#" + id);
       if (el) el.addEventListener("change", apply);
     });
+    var table = $("#ahFlipsTable");
+    if (table) {
+      table.addEventListener("click", function (ev) {
+        if (ev.target.closest("[data-ahf-open-items]")) return;
+        var hit = ev.target.closest("[data-ahf-item], tr[data-item-id]");
+        if (!hit) return;
+        var id = hit.getAttribute("data-ahf-item") || hit.getAttribute("data-item-id");
+        if (!id) return;
+        ev.preventDefault();
+        openDetail(id);
+      });
+    }
   }
 
   function ensureExtras() {
@@ -520,6 +690,11 @@
       jobs.push(window.ItemDB.ensure().catch(function () {}));
     } else {
       jobs.push(loadScript("data/items/index.js?v=" + encodeURIComponent(ver)).catch(function () {}));
+    }
+    if (!window.AH_ITEM_META) {
+      jobs.push(loadScript("data/items/ah-names.js?v=" + encodeURIComponent(ver)).then(function () {
+        itemMeta._map = null;
+      }).catch(function () {}));
     }
     /* Merge the live prices-data history with the bundled copy; a newer live
      * file must not replace a longer bundled window (early prices-data runs
@@ -578,6 +753,10 @@
     rows: function () { return lastRows; },
     defaults: DEFAULTS,
     mergeHistories: mergePriceHistories,
-    historyStatus: function () { return historyStatus; }
+    historyStatus: function () { return historyStatus; },
+    openDetail: openDetail,
+    closeDetail: closeDetail,
+    isUnnamed: isUnnamed,
+    itemMeta: itemMeta
   };
 })();

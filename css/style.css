@@ -1668,6 +1668,86 @@ table.data tfoot th { text-align: left; }
 .ahf-conf-high { color: #8fd18f; background: rgba(80,160,80,.12); }
 .ahf-conf-medium { color: var(--gold-2); background: rgba(217,164,65,.12); }
 .ahf-conf-low { color: #c9a27a; background: rgba(160,100,60,.12); }
+#ahFlipsTable tbody tr { cursor: pointer; }
+#ahFlipsTable tbody tr:hover { background: rgba(212, 180, 76, 0.06); }
+
+.ahf-detail-back {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+.ahf-detail-back[hidden] { display: none; }
+.ahf-detail {
+  position: relative;
+  width: min(520px, 100%);
+  max-height: min(86vh, 860px);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  background: #16130e;
+  border: 1px solid #3a2c18;
+  border-radius: 12px;
+  padding: 16px 16px 18px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+  outline: none;
+}
+.ahf-detail-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 12px;
+  background: #2a2214;
+  border: 1px solid #3a2c18;
+  color: var(--gold, #d4b44c);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.ahf-detail-title { margin: 0 48px 12px 0; font-size: 18px; }
+.ahf-embedded-tt {
+  position: static !important;
+  left: auto !important;
+  top: auto !important;
+  pointer-events: auto;
+  max-width: none;
+  width: auto;
+  margin: 0 0 12px;
+  z-index: auto;
+}
+.ahf-detail-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+  margin: 0 0 12px;
+}
+.ahf-detail-stats dt { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--gold, #d4b44c); margin: 0; }
+.ahf-detail-stats dd { margin: 2px 0 0; }
+.ahf-detail-farms h4 { margin: 0 0 6px; font-size: 14px; }
+.ahf-detail-farms ul { margin: 0; padding-left: 1.2em; }
+.ahf-detail-open { margin: 14px 0 0; }
+.ahf-detail-open a { display: inline-flex; align-items: center; min-height: 44px; }
+
+@media (max-width: 900px) {
+  .ahf-detail-back {
+    align-items: flex-end;
+    padding: 0;
+    background: rgba(0, 0, 0, 0.55);
+  }
+  .ahf-detail {
+    width: 100%;
+    max-width: none;
+    max-height: min(80dvh, calc(100dvh - 24px - env(safe-area-inset-top, 0px)));
+    border-radius: 12px 12px 0 0;
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+  .ahf-detail-stats { grid-template-columns: 1fr 1fr; }
+  body.ahf-detail-open { overflow: hidden; }
+}
 
 /* ---------- Gold tab sub-sections ---------- */
 .gold-subtabs {

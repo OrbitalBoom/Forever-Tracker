@@ -2,7 +2,7 @@ const fs = require("fs");
 const http = require("http");
 const path = require("path");
 
-const ROOT = "/workspace/wow-forever-mobmaps";
+const ROOT = process.env.FOREVER_ROOT || "/workspace/wow-forever-mobmaps";
 const PORT = 8785;
 const OUT = path.join(ROOT, "screenshots", "farm-maps");
 const puppeteer = require("/tmp/pptr/node_modules/puppeteer-core");

@@ -1,6 +1,6 @@
 /* Self-hosted Classic-style item tooltip. Does not load Wowhead power.js. */
 (function () {
-  var VERSION = "20261125h";
+  var VERSION = "20261126a";
   var ICON = "https://render.worldofwarcraft.com/forever-us/icons/56/{icon}.jpg";
   var HOVER_DELAY = 80;
   var HOLD_MS = 420;
@@ -433,12 +433,13 @@
   }
 
   function renderTooltip(el, item, opts) {
+    opts = opts || {};
     var icon = item && item.icon
       ? '<img class="item-tt-icon ' + qClass(item.quality) + '" src="' + ICON.replace("{icon}", String(item.icon)) + '" alt="" width="36" height="36" data-icon-img>'
       : '<span class="item-tt-icon item-tt-icon-empty"></span>';
     var close = '<button type="button" class="item-tt-close" aria-label="Close tooltip"' +
       (pinned ? "" : " hidden") + ">&times;</button>";
-    var db = (item && item.id != null && !opts.asEquipped)
+    var db = (item && item.id != null && !opts.asEquipped && !opts.embedded && !opts.hideDb)
       ? '<div class="item-tt-db-wrap"><a class="item-tt-db" href="#item-' + esc(String(item.id)) +
         '" data-item-db="' + esc(String(item.id)) + '">View in Items DB</a></div>'
       : "";
@@ -446,6 +447,11 @@
     var lockIcon = '<span class="item-tt-lock-icon"' + (pinned ? "" : " hidden") + ' aria-hidden="true">' +
       '<svg viewBox="0 0 12 12" width="12" height="12" focusable="false">' +
       '<path fill="currentColor" d="M8.1 1.15a2.35 2.35 0 0 1 .1 3.32L9.7 6 8.3 7.4 6.65 5.75a2.35 2.35 0 0 1-3.32-.1L1.9 4.2 3.1 3l1.45 1.45a.85.85 0 0 0 1.2 0L8.1 1.15zM5.15 6.35l.9.9-3.55 3.7-.9-.9 3.55-3.7z"/></svg></span>';
+    if (opts.embedded) {
+      el.classList.add("item-tt", "ahf-embedded-tt");
+      el.innerHTML = '<div class="item-tt-inner">' + icon + '<div class="item-tt-body">' + renderBody(item, opts) + "</div></div>";
+      return;
+    }
     el.innerHTML = dwell + close + lockIcon + '<div class="item-tt-inner">' + icon + '<div class="item-tt-body">' + renderBody(item, opts) + db + "</div></div>";
     if (el === tip) syncLockChrome();
   }
@@ -934,6 +940,7 @@
     hide: hideNow,
     isPinned: function () { return !!pinned; },
     isLocked: function () { return !!pinned && lockMode === "dwell"; },
-    detailOf: detailOf
+    detailOf: detailOf,
+    renderTo: renderTooltip
   };
 })();

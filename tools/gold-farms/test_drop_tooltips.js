@@ -2,7 +2,7 @@ const fs = require("fs");
 const http = require("http");
 const path = require("path");
 
-const ROOT = "/workspace/wow-forever-droptips";
+const ROOT = process.env.FOREVER_ROOT || "/workspace/wow-forever-droptips";
 const PORT = 8788;
 const OUT = path.join(ROOT, "screenshots", "drop-tips");
 const puppeteer = require("/tmp/pptr/node_modules/puppeteer-core");
