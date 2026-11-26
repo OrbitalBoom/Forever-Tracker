@@ -146,6 +146,53 @@ async function overflow(page, label) {
   await page.click("#ahfShowUnnamed");
   await sleep(300);
 
+  // Hover a Low confidence badge — custom tooltip describes the rating
+  const lowHover = await page.evaluate(() => {
+    const badge = document.querySelector("#ahFlipsTable .ahf-conf-low");
+    if (!badge) return { missing: true };
+    const r = badge.getBoundingClientRect();
+    badge.scrollIntoView({ block: "center" });
+    return {
+      missing: false,
+      label: (badge.getAttribute("aria-label") || ""),
+      title: badge.getAttribute("title") || "",
+      text: (window.AhFlips && AhFlips.confidenceTip("low")) || "",
+      x: r.left + r.width / 2,
+      y: r.top + r.height / 2,
+    };
+  });
+  if (lowHover.missing) fail("no Low confidence badge in the table");
+  else if (!/fewer than 3 are listed/.test(lowHover.text) || !/official Blizzard feed/.test(lowHover.text)) {
+    fail("Low tooltip text does not match the confidence() checks", lowHover.text);
+  } else ok("Low tooltip text matches the code");
+  if (lowHover.missing) {
+    /* skip hover if no badge */
+  } else {
+    const badgeHandle = await page.$("#ahFlipsTable .ahf-conf-low");
+    const box = await badgeHandle.boundingBox();
+    /* Approach from the right so the pointer does not cross the item name. */
+    await page.mouse.move(Math.min(1270, (box.x + box.width + 40)), box.y + box.height / 2);
+    await sleep(80);
+    await badgeHandle.hover();
+    await sleep(250);
+    const tip = await page.evaluate(() => {
+      const el = document.getElementById("ahfConfTip");
+      return {
+        open: !!(el && !el.hidden),
+        text: (el && el.textContent || "").trim(),
+        titleCleared: !!(document.querySelector("#ahFlipsTable .ahf-conf-low") &&
+          document.querySelector("#ahFlipsTable .ahf-conf-low").getAttribute("title") === ""),
+      };
+    });
+    if (!tip.open || tip.text.indexOf("fewer than 3 are listed") === -1) {
+      fail("hovering a Low badge should show the confidence tooltip", tip);
+    } else ok("hovering a Low badge shows the tooltip");
+    await page.screenshot({ path: path.join(OUT, "desktop-confidence-low.png") });
+    ok("screenshot desktop-confidence-low.png");
+    await page.mouse.move(0, 0);
+    await sleep(200);
+  }
+
   // Click first row — panel on this page, not Items tab
   const clicked = await page.evaluate(() => {
     const tr = document.querySelector("#ahFlipsTable tbody tr[data-item-id]");
@@ -184,6 +231,24 @@ async function overflow(page, label) {
   if (!panel.hasBuyout || !panel.hasUsual || !panel.hasListed || !panel.hasTooltip || !panel.hasOpenInItems) {
     fail("panel is missing expected sections", panel);
   } else ok("panel shows tooltip, prices, listed quantity, and Open in Items");
+  const panelConf = await page.evaluate(() => {
+    const badge = document.querySelector("#ahfDetail .ahf-conf, #ahfDetailBody .ahf-conf");
+    const tips = window.AhFlips && {
+      low: AhFlips.confidenceTip("low"),
+      medium: AhFlips.confidenceTip("medium"),
+      high: AhFlips.confidenceTip("high"),
+    };
+    return {
+      present: !!badge,
+      aria: badge && badge.getAttribute("aria-label") || "",
+      title: badge && badge.getAttribute("title") || "",
+      tips: tips,
+    };
+  });
+  if (!panelConf.present || !panelConf.aria || !panelConf.title) fail("detail panel confidence badge needs title and aria-label", panelConf);
+  else if (!panelConf.tips || !/3–4 listing/.test(panelConf.tips.medium) || !/at least 5 are listed/.test(panelConf.tips.high)) {
+    fail("Medium/High tooltip text does not match the confidence() checks", panelConf.tips);
+  } else ok("detail panel badge has accessible confidence text; Medium/High copy matches the code");
   if (clicked.name && panel.title.indexOf(clicked.name) === -1) fail("panel title should include the item name", { clicked, panel });
   else ok("panel title is " + panel.title);
 

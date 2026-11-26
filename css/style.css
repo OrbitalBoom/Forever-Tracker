@@ -1668,6 +1668,28 @@ table.data tfoot th { text-align: left; }
 .ahf-conf-high { color: #8fd18f; background: rgba(80,160,80,.12); }
 .ahf-conf-medium { color: var(--gold-2); background: rgba(217,164,65,.12); }
 .ahf-conf-low { color: #c9a27a; background: rgba(160,100,60,.12); }
+.ahf-conf { cursor: help; }
+.item-tt.ahf-conf-tt,
+.item-tt.ahf-conf-tt.is-touch-sheet,
+.item-tt.ahf-conf-tt.is-pinned {
+  z-index: 230;
+  pointer-events: auto;
+  max-width: 28em;
+  min-width: 16em;
+}
+.item-tt.ahf-conf-tt.is-touch-sheet {
+  max-width: none;
+}
+.ahf-conf-tt-text { margin: 0; font-size: 13px; line-height: 1.4; padding-right: 8px; }
+.item-tt.ahf-conf-tt.is-touch-sheet .ahf-conf-tt-text { padding-right: 48px; padding-top: 4px; }
+@media (max-width: 900px) {
+  .ahf-conf {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 10px;
+  }
+}
 #ahFlipsTable tbody tr { cursor: pointer; }
 #ahFlipsTable tbody tr:hover { background: rgba(212, 180, 76, 0.06); }
 

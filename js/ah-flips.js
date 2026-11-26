@@ -40,7 +40,7 @@
     var tag = document.querySelector('script[src*="js/ah-flips.js"], script[src*="js/app.js"]');
     var src = tag && (tag.getAttribute("src") || "");
     var m = src && src.match(/[?&]v=([^&]+)/);
-    return m ? m[1] : "20261126a";
+    return m ? m[1] : "20261126b";
   }
   function loadScript(src) {
     return new Promise(function (resolve, reject) {
@@ -299,6 +299,179 @@
     return "medium";
   }
 
+  /* Plain-language labels for the confidence() checks above. Do not drift from that logic. */
+  var CONFIDENCE_TIPS = {
+    low: "Low if fewer than 3 are listed, the current market is more than 20% below usual, or usual is a median of fewer than 3 history snapshots — a thinner or less settled flip. Sold/day under 1 would also count, but the official Blizzard feed no longer includes sale rates, so that check is unused right now.",
+    medium: "Medium if it is not Low, but fewer than 5 are listed (or sold/day is present and under 5). The official Blizzard feed has no sold/day, so today this is a 3–4 listing that is not Low.",
+    high: "High if at least 5 are listed, the market is not more than 20% below usual, and usual is not a median of fewer than 3 snapshots. Sold/day would also need to be at least 5 when a sale rate is present; the official Blizzard feed does not include it, so that check is skipped."
+  };
+
+  function confidenceTip(level) {
+    return CONFIDENCE_TIPS[String(level || "").toLowerCase()] || "";
+  }
+
+  function confidenceBadge(level) {
+    level = String(level || "").toLowerCase();
+    var tip = confidenceTip(level);
+    var label = level ? level.charAt(0).toUpperCase() + level.slice(1) : "Confidence";
+    return '<span class="ahf-conf ahf-conf-' + esc(level) + '" data-ahf-conf="' + esc(level) +
+      '" title="' + esc(tip) + '" aria-label="' + esc(label + ". " + tip) + '" tabindex="0">' +
+      esc(level) + "</span>";
+  }
+
+  var confTipTimer = null;
+  var confTipAnchor = null;
+  var confTitleHold = null;
+
+  function isCoarsePointer() {
+    if (!(window.matchMedia)) return false;
+    if (window.matchMedia("(hover: none) and (pointer: coarse)").matches) return true;
+    return window.matchMedia("(max-width: 900px)").matches && window.matchMedia("(pointer: coarse)").matches;
+  }
+
+  function confTipEl() {
+    var el = document.getElementById("ahfConfTip");
+    if (el) return el;
+    el = document.createElement("div");
+    el.id = "ahfConfTip";
+    el.className = "item-tt ahf-conf-tt";
+    el.setAttribute("role", "tooltip");
+    el.hidden = true;
+    document.body.appendChild(el);
+    el.addEventListener("pointerenter", function () {
+      if (confTipTimer) { clearTimeout(confTipTimer); confTipTimer = null; }
+    });
+    el.addEventListener("pointerleave", function () {
+      if (!el.classList.contains("is-touch-sheet")) scheduleHideConfTip();
+    });
+    return el;
+  }
+
+  function hideConfTip() {
+    if (confTipTimer) { clearTimeout(confTipTimer); confTipTimer = null; }
+    var el = document.getElementById("ahfConfTip");
+    if (el) {
+      el.hidden = true;
+      el.classList.remove("is-touch-sheet", "is-pinned");
+      el.style.left = "";
+      el.style.top = "";
+      el.style.right = "";
+      el.style.bottom = "";
+    }
+    if (confTipAnchor && confTitleHold) {
+      confTipAnchor.setAttribute("title", confTitleHold);
+    }
+    confTipAnchor = null;
+    confTitleHold = null;
+  }
+
+  function scheduleHideConfTip() {
+    if (confTipTimer) clearTimeout(confTipTimer);
+    confTipTimer = setTimeout(hideConfTip, 120);
+  }
+
+  function placeConfTip(anchor) {
+    var el = confTipEl();
+    if (el.classList.contains("is-touch-sheet")) return;
+    var r = anchor.getBoundingClientRect();
+    var pad = 8;
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var w = el.offsetWidth, h = el.offsetHeight;
+    var left = r.left;
+    var top = r.bottom + 8;
+    if (left + w > vw - pad) left = vw - w - pad;
+    if (left < pad) left = pad;
+    if (top + h > vh - pad) top = r.top - h - 8;
+    if (top < pad) top = pad;
+    el.style.left = left + "px";
+    el.style.top = top + "px";
+  }
+
+  function showConfTip(anchor, asSheet) {
+    if (!anchor) return;
+    if (confTipTimer) { clearTimeout(confTipTimer); confTipTimer = null; }
+    var level = anchor.getAttribute("data-ahf-conf") || "";
+    var text = confidenceTip(level);
+    if (!text) return;
+    if (confTipAnchor && confTipAnchor !== anchor && confTitleHold) {
+      confTipAnchor.setAttribute("title", confTitleHold);
+    }
+    confTipAnchor = anchor;
+    confTitleHold = anchor.getAttribute("title") || text;
+    anchor.setAttribute("title", ""); /* avoid a native tip stacking on the custom one */
+    var el = confTipEl();
+    var close = asSheet
+      ? '<button type="button" class="item-tt-close" id="ahfConfTipClose" aria-label="Close">×</button>'
+      : "";
+    el.innerHTML = close + '<div class="item-tt-body"><p class="ahf-conf-tt-text">' + esc(text) + "</p></div>";
+    if (window.ItemTooltip && ItemTooltip.hide) ItemTooltip.hide();
+    el.hidden = false;
+    el.classList.toggle("is-touch-sheet", !!asSheet);
+    el.classList.toggle("is-pinned", !!asSheet);
+    if (asSheet) {
+      el.style.left = "";
+      el.style.top = "";
+      el.style.right = "";
+      el.style.bottom = "";
+      var btn = document.getElementById("ahfConfTipClose");
+      if (btn) btn.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        hideConfTip();
+      });
+    } else {
+      placeConfTip(anchor);
+    }
+  }
+
+  function bindConfidenceTips() {
+    if (bindConfidenceTips._done) return;
+    bindConfidenceTips._done = true;
+    document.addEventListener("pointerover", function (ev) {
+      var badge = ev.target.closest && ev.target.closest("[data-ahf-conf]");
+      if (!badge || isCoarsePointer()) return;
+      showConfTip(badge, false);
+    });
+    document.addEventListener("pointerout", function (ev) {
+      var badge = ev.target.closest && ev.target.closest("[data-ahf-conf]");
+      if (!badge) return;
+      var next = ev.relatedTarget;
+      var el = document.getElementById("ahfConfTip");
+      if (el && next && (el === next || el.contains(next))) return;
+      if (!el || !el.classList.contains("is-touch-sheet")) scheduleHideConfTip();
+    });
+    document.addEventListener("click", function (ev) {
+      var close = ev.target.closest && ev.target.closest("#ahfConfTipClose");
+      if (close) return;
+      var badge = ev.target.closest && ev.target.closest("[data-ahf-conf]");
+      var el = document.getElementById("ahfConfTip");
+      if (badge) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        if (isCoarsePointer()) {
+          if (el && !el.hidden && el.classList.contains("is-touch-sheet") && confTipAnchor === badge) {
+            hideConfTip();
+          } else {
+            showConfTip(badge, true);
+          }
+        }
+        return;
+      }
+      if (el && !el.hidden && el.classList.contains("is-touch-sheet") && !(el.contains(ev.target))) {
+        hideConfTip();
+      }
+    }, true);
+    document.addEventListener("keydown", function (ev) {
+      if (ev.key !== "Escape") return;
+      var el = document.getElementById("ahfConfTip");
+      if (el && !el.hidden) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        hideConfTip();
+      }
+    }, true);
+  }
+
   function buildRows() {
     var data = window.PRICE_DATA;
     if (!data || !data.items) return [];
@@ -475,7 +648,7 @@
     html += "<div><dt>Est. profit</dt><dd>" + money(row.profit) + (row.vendorFlip ? ' <span class="ahf-flag ahf-vendor">vendor flip</span>' : "") + "</dd></div>";
     html += "<div><dt>Listed</dt><dd>" + row.quantity.toLocaleString() + "</dd></div>";
     html += "<div><dt>Sold/day</dt><dd>" + (row.soldPerDay == null ? '<span class="muted">unknown</span>' : String(row.soldPerDay)) + "</dd></div>";
-    html += "<div><dt>Confidence</dt><dd><span class='ahf-conf ahf-conf-" + row.confidence + "'>" + row.confidence + "</span></dd></div>";
+    html += "<div><dt>Confidence</dt><dd>" + confidenceBadge(row.confidence) + "</dd></div>";
     html += "</dl>";
     var farms = farmsForItem(row.id);
     html += '<div class="ahf-detail-farms">';
@@ -611,7 +784,7 @@
         html += '<td data-label="Est. profit" title="' + esc(profitTip) + '">' + money(r.profit) + "</td>";
         html += '<td data-label="Listed">' + r.quantity.toLocaleString() + "</td>";
         html += '<td data-label="Sold/day">' + (r.soldPerDay == null ? '<span class="muted">unknown</span>' : String(r.soldPerDay)) + "</td>";
-        html += '<td data-label="Confidence"><span class="ahf-conf ahf-conf-' + r.confidence + '">' + r.confidence + "</span></td>";
+        html += '<td data-label="Confidence">' + confidenceBadge(r.confidence) + "</td>";
         html += "</tr>";
       });
     }
@@ -638,6 +811,7 @@
   }
 
   function bindFilters(state, hooks) {
+    bindConfidenceTips();
     var p = prefs(state);
     var timer = null;
     function apply() {
@@ -660,7 +834,7 @@
     var table = $("#ahFlipsTable");
     if (table) {
       table.addEventListener("click", function (ev) {
-        if (ev.target.closest("[data-ahf-open-items]")) return;
+        if (ev.target.closest("[data-ahf-open-items], [data-ahf-conf]")) return;
         var hit = ev.target.closest("[data-ahf-item], tr[data-item-id]");
         if (!hit) return;
         var id = hit.getAttribute("data-ahf-item") || hit.getAttribute("data-item-id");
@@ -757,6 +931,8 @@
     openDetail: openDetail,
     closeDetail: closeDetail,
     isUnnamed: isUnnamed,
-    itemMeta: itemMeta
+    itemMeta: itemMeta,
+    confidenceTip: confidenceTip,
+    hideConfTip: hideConfTip
   };
 })();
